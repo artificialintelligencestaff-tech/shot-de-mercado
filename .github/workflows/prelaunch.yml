@@ -1,0 +1,65 @@
+name: prelaunch
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prelaunch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-dotenv
+
+      - name: Diagnostic before
+        run: |
+          echo "=== Working directory ==="
+          pwd
+          echo "=== pre_launch accumulated size ==="
+          ls -la 02_Analisis/pre_launch/_prelaunch_accumulated.json 2>/dev/null || echo "FILE_NOT_FOUND"
+          echo "=== Scripts pre-launch disponibles ==="
+          ls 04_Config/scripts/ | grep -E "prelaunch|metaplex|threews|airdrop" || echo "NO_PRELAUNCH_SCRIPTS"
+
+      - name: Run prelaunch pipeline
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          SHOT_ROOT: ${{ github.workspace }}
+        run: |
+          python 04_Config/scripts/script_99_prelaunch.py
+
+      - name: Diagnostic after
+        run: |
+          echo "=== pre_launch accumulated size after ==="
+          ls -la 02_Analisis/pre_launch/_prelaunch_accumulated.json 2>/dev/null || echo "FILE_NOT_FOUND"
+
+      - name: Commit state changes
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No hay cambios para commitear"
+          else
+            git commit -m "prelaunch auto: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi
