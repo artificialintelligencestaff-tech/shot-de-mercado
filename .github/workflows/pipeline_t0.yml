@@ -1,4 +1,4 @@
-name: trust_update
+name: pipeline_t0
 
 on:
   schedule:
@@ -9,9 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  trust_update:
+  pipeline_t0:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repo
@@ -27,35 +27,34 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests python-dotenv
+          pip install requests python-dotenv websockets
 
       - name: Diagnostic before
         run: |
-          echo "=== SHOT_ROOT ==="
-          echo "$SHOT_ROOT"
-          echo "=== _all_alerts.json size ==="
-          ls -la 02_Analisis/alerts/_all_alerts.json || echo "FILE_NOT_FOUND"
-          echo "=== _all_alerts.json content ==="
-          cat 02_Analisis/alerts/_all_alerts.json || echo "FILE_NOT_FOUND"
-        env:
-          SHOT_ROOT: ${{ github.workspace }}
+          echo "=== Working directory ==="
+          pwd
+          echo "=== Scripts available ==="
+          ls 04_Config/scripts/ | head -20
+          echo "=== shadow_v4 accumulated size ==="
+          ls -la 02_Analisis/shadow_v4/_accumulated.json 2>/dev/null || echo "FILE_NOT_FOUND"
 
-      - name: Run trust scheduler
+      - name: Run pipeline T+0
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           MADEONSOL_API_KEY: ${{ secrets.MADEONSOL_API_KEY }}
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
           SHOT_ROOT: ${{ github.workspace }}
         run: |
-          python 04_Config/scripts/script_98_trust_scheduler.py
+          python 04_Config/scripts/script_82_final_detection.py
 
       - name: Diagnostic after
         run: |
+          echo "=== shadow_v4 accumulated size after ==="
+          ls -la 02_Analisis/shadow_v4/_accumulated.json 2>/dev/null || echo "FILE_NOT_FOUND"
           echo "=== _all_alerts.json size after ==="
-          ls -la 02_Analisis/alerts/_all_alerts.json || echo "FILE_NOT_FOUND"
-          echo "=== trust_*.json files ==="
-          ls -la 02_Analisis/alerts/trust_*.json 2>/dev/null || echo "NO_TRUST_FILES"
+          ls -la 02_Analisis/alerts/_all_alerts.json 2>/dev/null || echo "FILE_NOT_FOUND"
 
       - name: Commit state changes
         run: |
@@ -65,6 +64,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No hay cambios para commitear"
           else
-            git commit -m "trust_update auto: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git commit -m "pipeline_t0 auto: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             git push
           fi
