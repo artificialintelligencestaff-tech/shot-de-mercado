@@ -70,6 +70,7 @@ def main():
         # For simplicity, we store/fetch current price and compare with initial expected price
         current_price = get_current_price(mint)
         if not current_price:
+            print(f"[SKIP] {symbol} ({mint[:8]}...) sin precio consultable. Se reintentará en el próximo ciclo.")
             continue
 
         trust_updates = alert.setdefault("trust_updates", [])
@@ -89,11 +90,11 @@ def main():
                 # Perform update
                 # For baseline comparison, let's look at trust_updates history or fetch previous price
                 # Fix baseline (Ciclo 17.15): comparar contra initial_price si existe.
-                # Fallback 1: último trust_update. Fallback 2: backfill con precio actual.
+                # Fallback 1: primer trust_update. Fallback 2: backfill con precio actual.
                 if alert.get("initial_price") and alert["initial_price"] > 0:
                     prev_price = alert["initial_price"]
                 elif trust_updates:
-                    prev_price = trust_updates[-1].get("price", current_price)
+                    prev_price = trust_updates[0].get("price", current_price)
                 else:
                     print(f"[WARN] {symbol} sin initial_price ni historial. Backfill = current_price.")
                     alert["initial_price"] = current_price
@@ -137,19 +138,21 @@ def main():
 
                 # If t+24h, set final verdict
                 if stage == "t+24h":
-                    if price_change_pct >= 20:
-                        alert["final_verdict"] = "ACIERTO"
-                    elif price_change_pct <= -50:
-                        alert["final_verdict"] = "FALSO POSITIVO"
-                    elif price_change_pct <= -20:
-                        alert["final_verdict"] = "FALLO"
-                    else:
-                        alert["final_verdict"] = "NEUTRAL"
+                    # Fix Ciclo 18.1: priorizar el peor veredicto de toda la historia.
+                    # Razón: si t+6h fue FALSO POSITIVO pero t+24h es NEUTRAL,
+                    # el veredicto final debe reflejar el peor momento (FALSO POSITIVO).
+                    _priority = {"FALSO POSITIVO": 4, "FALLO": 3, "NEUTRAL": 2, "ACIERTO": 1}
+                    _all_verdicts = [u.get("stage_verdict", "NEUTRAL") for u in trust_updates] + ["NEUTRAL"]
+                    alert["final_verdict"] = max(_all_verdicts, key=lambda v: _priority.get(v, 0))
 
                 # Save individual trust file
                 trust_file = os.path.join(ALERTS_DIR, f"trust_{mint}.json")
                 with open(trust_file, "w") as f:
                     json.dump(trust_updates, f, indent=2)
+
+                # Fix Ciclo 18.1: solo procesar UN stage por ejecución.
+                # Los stages atrasados se procesan en ejecuciones posteriores (cada 20 min).
+                break
 
     if updated_any:
         with open(ALL_ALERTS_FILE, "w") as f:
