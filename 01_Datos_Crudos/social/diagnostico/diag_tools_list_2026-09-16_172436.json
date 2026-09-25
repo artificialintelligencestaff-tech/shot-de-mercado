@@ -1,0 +1,20 @@
+{
+  "http_status": 200,
+  "response_headers": {
+    "Content-Type": "application/json",
+    "Content-Length": "871",
+    "Connection": "keep-alive",
+    "Cache-Control": "no-cache, no-transform",
+    "Content-Encoding": "gzip",
+    "Vary": "Accept-Encoding",
+    "Date": "Wed, 16 Sep 2026 17:24:41 GMT",
+    "Server": "APISIX",
+    "X-Request-Id": "2876724c-6a6e-4027-8d5a-84e11a0b2330",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,CONNECT,TRACE",
+    "Access-Control-Max-Age": "600",
+    "Access-Control-Expose-Headers": "**",
+    "Access-Control-Allow-Credentials": "true"
+  },
+  "response_body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"tools\":[{\"description\":\"Fetches structured details for one topic so an LLM can quickly understand what it is about. Input is topic_id (from trending or search). Output should include a topic description/definition, core keywords, representative post summaries (post ids/links/authors/timestamps), and metadata.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"topic_id\":{\"type\":\"string\"}},\"required\":[\"topic_id\"],\"additionalProperties\":false},\"name\":\"get_topic\"},{\"description\":\"Retrieves posts associated with a topic. Output should be a list of posts sorted by time or relevance with text, author, timestamp, permalink, and engagement metrics (if available).\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"topic_id\":{\"type\":\"string\"}},\"required\":[\"topic_id\"],\"additionalProperties\":false},\"name\":\"get_topic_posts\"},{\"description\":\"Returns a ranked list of currently trending crypto narratives/topics. Use it for ideation and trend scanning. language selects the locale/language (affects tokenization and trend definition). Output should include topic_id, title/keywords, and a score/rank summary.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"language\":{\"type\":\"string\"}},\"required\":[\"language\"],\"additionalProperties\":false},\"name\":\"list_trending_topics\"},{\"description\":\"Searches recent social mentions (Twitter/X) for a keyword to answer \\\"who is talking / what are they saying / what just happened\\\". Output should be a list of tweets with text, author, timestamp, permalink, engagement metrics (if available), and optional language/region info.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"keyword\":{\"type\":\"string\"}},\"required\":[\"keyword\"],\"additionalProperties\":false},\"name\":\"search_mentions\"},{\"description\":\"Reverse-searches topic candidates from a human keyword to map a fuzzy narrative into the platform's topic taxonomy. Input is keyword (e.g., \\\"RWA\\\", \\\"AI Agent\\\", \\\"Restaking\\\"). Output is a list of candidate topics with topic_id, match rationale/keyword overlap, and a trend/heat summary. Recommended: let the client-side LLM cluster/name/summarize the candidates.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"keyword\":{\"type\":\"string\"}},\"required\":[\"keyword\"],\"additionalProperties\":false},\"name\":\"search_narrative_candidates\"}]}}"
+}

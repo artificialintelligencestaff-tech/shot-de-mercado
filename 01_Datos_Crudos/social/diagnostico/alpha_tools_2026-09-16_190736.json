@@ -1,0 +1,169 @@
+{
+  "http_status": 200,
+  "parsed": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "tools": [
+        {
+          "name": "search_alpha",
+          "description": "Alpha의 entity·topic·event·creator 검색. 한국 크립토·매크로·정치·국제정세 관련 키워드로 검색.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "검색어 (한글/영문 모두 가능)"
+              },
+              "limit": {
+                "type": "number",
+                "description": "최대 결과 수 (기본 10)",
+                "default": 10
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        },
+        {
+          "name": "get_entity",
+          "description": "Entity 상세 — stance 분포 + AI 합성 카드 + 관련 영상 5편. ID는 search_alpha로 먼저 찾을 것.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "entity ID (e.g., 'bitcoin', 'lee-jae-myung')"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "get_topic",
+          "description": "Topic 상세 — 설명 + AI 합성 + stance 분포 + 관련 영상.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "get_event",
+          "description": "Event 상세 — 사건 정리 + AI 합성 + 연결된 엔티티.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "name": "get_macro_snapshot",
+          "description": "현재 US + KR 매크로 데이터 (Fed Funds, BoK 기준금리, 미 10Y, 한국 국고채 3년, 원/달러 등).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "get_active_pulses",
+          "description": "최근 N시간 내 활성 가격 시그널 (BTC/ETH 등 5분 윈도우 ≥1% 변동).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "hours": {
+                "type": "number",
+                "description": "조회 윈도우 (기본 24)",
+                "default": 24
+              }
+            }
+          }
+        },
+        {
+          "name": "get_today_brief",
+          "description": "어제 또는 특정 날짜의 한국 시장 일일 브리프 (AI 합성 — oneLine + why + 5 points + quotes).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "YYYY-MM-DD 형식. 미입력 시 어제."
+              }
+            }
+          }
+        },
+        {
+          "name": "get_connections",
+          "description": "Entity의 다른 entity와의 인과 가설 (AI 합성 — '~연관 가능성'). 8개 정렬.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "entity_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "entity_id"
+            ]
+          }
+        },
+        {
+          "name": "ask_alpha",
+          "description": "자연어 질문 → Alpha의 데이터 RAG 답변 + 인용. 답변 ≤ 300자. 컨텍스트에 없으면 솔직히 답변.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "description": "한국어/영문 자연어 질문 (5-500자)"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          }
+        },
+        {
+          "name": "list_topics",
+          "description": "Alpha의 모든 canonical topic 목록.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "list_events",
+          "description": "Alpha의 모든 canonical event 목록.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "name": "list_personas",
+          "description": "Alpha의 AI 페르소나 8명 카탈로그 (커뮤니티 활동 중). 합성 캐릭터 — 1:1 실명 모방 X.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      ]
+    }
+  },
+  "raw_preview": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"tools\":[{\"name\":\"search_alpha\",\"description\":\"Alpha의 entity·topic·event·creator 검색. 한국 크립토·매크로·정치·국제정세 관련 키워드로 검색.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"검색어 (한글/영문 모두 가능)\"},\"limit\":{\"type\":\"number\",\"description\":\"최대 결과 수 (기본 10)\",\"default\":10}},\"required\":[\"query\"]}},{\"name\":\"get_entity\",\"description\":\"Entity 상세 — stance 분포 + AI 합성 카드 + 관련 영상 5편. ID는 search_alpha로 먼저 찾을 것.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"entity ID (e.g., 'bitcoin', 'lee-jae-myung')\"}},\"required\":[\"id\"]}},{\"name\":\"get_topic\",\"description\":\"Topic 상세 — 설명 + AI 합성 + stance 분포 + 관련 영상.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"]}},{\"name\":\"get_event\",\"description\":\"Event 상세 — 사건 정리 + AI 합성 + 연결된 엔티티.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"]}},{\"name\":\"get_macro_snapshot\",\"description\":\"현재 US + KR 매크로 데이"
+}

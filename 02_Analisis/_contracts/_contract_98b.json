@@ -1,0 +1,30 @@
+{
+  "script": "script_98_trust_scheduler.py",
+  "version": "1.0",
+  "created_by": "YIN",
+  "created_at": "2026-09-24T02:48:24Z",
+  "inputs": [
+    "_all_alerts.json",
+    "Dexscreener API"
+  ],
+  "outputs": {
+    "_scheduler_log.json": {
+      "schema": {
+        "timestamp": "ISO8601",
+        "alert_id": "str",
+        "checkpoint": "str",
+        "price_before": "float",
+        "price_after": "float",
+        "adjustment": "int",
+        "verdict": "str"
+      },
+      "required": true
+    }
+  },
+  "exit_codes": {
+    "0": "success",
+    "1": "no alerts",
+    "2": "API failure",
+    "3": "write failure"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-09-16T17:58:48Z",
+  "fase": "B_etapa_1_escaneo",
+  "script_ejecutado": "script_01_tops_mcp.py v4",
+  "estado_ejecucion": "error",
+  "narrativas_detectadas": 2,
+  "narrativas_early_rising": 0,
+  "archivo_salida": "",
+  "errores": [
+    {
+      "tipo": "AttributeError",
+      "mensaje": "'list' object has no attribute 'get'",
+      "descripcion": "El script v4 crasha en la línea 101 al ejecutar parsed.get('topics', parsed.get('data', [])). La respuesta cruda del MCP tiene una estructura inesperada: result.content[0].text contiene un JSON STRING con un array de topics, no result.topics o result.data. El script intenta parsear un dict pero recibe un list.",
+      "estructura_real": "response → result → content[0] → text (JSON string) → [array de topics]",
+      "datos_obtenidos": "El API sí devuelve datos reales. 2 narrativas detectadas: 'US Middle East Base Damage' (score 472.51, rank 1, ~39 authors, ~80 tweets) y 'EU Canada Associate Member'. La respuesta cruda se guardó en diagnostico/diag_list_trending_raw_2026-09-16_175848.json (46,411 caracteres).",
+      "solucion_propuesta": "Parsear result.content[0].text como JSON para obtener el array de topics, en lugar de buscar result.topics o result.data."
+    }
+  ],
+  "notas": "El script v4 con LANGUAGE='en' conecta correctamente al MCP. La API responde con datos reales de narrativas (2 topics detectados). Sin embargo, la estructura de respuesta del MCP es: result.content[0].text = JSON string de array, no result.topics. El script crashea al intentar acceder a un diccionario cuando recibe un list. El archivo de respuesta cruda (46,411 chars) se guardó exitosamente en 01_Datos_Crudos/social/diagnostico/. El script no completó el guardado del archivo narrativas_YYYY-MM-DD_HHMMSS.json porque el crash ocurrió antes de la línea de guardado."
+}
