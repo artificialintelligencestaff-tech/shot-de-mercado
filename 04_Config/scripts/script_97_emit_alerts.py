@@ -6,12 +6,14 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv(r"D:\Proyecto Shot de mercado\04_Config\.env")
+from pathlib import Path as _Path
+PROJECT_ROOT = _Path(os.getenv("SHOT_ROOT", str(_Path(__file__).resolve().parents[2])))
+load_dotenv(PROJECT_ROOT / "04_Config" / ".env")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-ACCUMULATED_FILE = r"D:\Proyecto Shot de mercado\02_Analisis\shadow_v4\_accumulated.json"
-ALERTS_DIR = r"D:\Proyecto Shot de mercado\02_Analisis\alerts"
+ACCUMULATED_FILE = str(PROJECT_ROOT / "02_Analisis" / "shadow_v4" / "_accumulated.json")
+ALERTS_DIR = str(PROJECT_ROOT / "02_Analisis" / "alerts")
 os.makedirs(ALERTS_DIR, exist_ok=True)
 
 PRECISION_LOG = os.path.join(ALERTS_DIR, "_precision_log.json")
@@ -100,6 +102,20 @@ Este token cumple los criterios mínimos. No tiene señales de KOL accumulating 
 """
     return msg, confidence
 
+
+def get_current_price(token):
+    """Extract current price from token data (dexscreener or ms_data)."""
+    dx = token.get("dx", {})
+    price = dx.get("priceUsd")
+    if price and price > 0:
+        return float(price)
+    # Fallback: try ms_data if present
+    ms = token.get("ms_data", {})
+    price = ms.get("priceUsd")
+    if price and price > 0:
+        return float(price)
+    return None
+
 def main():
     print("[YIN] Iniciando emisión de alertas reales (Script 97)...")
     
@@ -137,12 +153,22 @@ def main():
         success = send_telegram(msg)
         
         mint = token["mint"]
+        # Fix Ciclo 17.16: persistir initial_price al emitir alerta.
+        # Sin este campo, el trust scheduler no puede calcular cambio real.
+        try:
+            initial_price = get_current_price(token)
+        except Exception:
+            initial_price = None
+        if not initial_price or initial_price <= 0:
+            print(f"[SKIP] {token.get('symbol')} sin precio inicial. No se emite alerta.")
+            continue
         alert_record = {
             "timestamp": timestamp,
             "mint": mint,
             "symbol": token["symbol"],
             "score": token["score"],
             "confidence": confidence,
+            "initial_price": initial_price,
             "status": "active_tracking",
             "trust_updates": []
         }

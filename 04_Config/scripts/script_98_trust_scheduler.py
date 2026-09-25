@@ -5,11 +5,13 @@ import requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-load_dotenv(r"D:\Proyecto Shot de mercado\04_Config\.env")
+from pathlib import Path as _Path
+PROJECT_ROOT = _Path(os.getenv("SHOT_ROOT", str(_Path(__file__).resolve().parents[2])))
+load_dotenv(PROJECT_ROOT / "04_Config" / ".env")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-ALERTS_DIR = r"D:\Proyecto Shot de mercado\02_Analisis\alerts"
+ALERTS_DIR = str(PROJECT_ROOT / "02_Analisis" / "alerts")
 ALL_ALERTS_FILE = os.path.join(ALERTS_DIR, "_all_alerts.json")
 PRECISION_LOG = os.path.join(ALERTS_DIR, "_precision_log.json")
 DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens/"
@@ -86,9 +88,16 @@ def main():
             if stage not in completed_stages and age_hours >= threshold_hours:
                 # Perform update
                 # For baseline comparison, let's look at trust_updates history or fetch previous price
-                prev_price = current_price # Default if first check
-                if trust_updates:
+                # Fix baseline (Ciclo 17.15): comparar contra initial_price si existe.
+                # Fallback 1: último trust_update. Fallback 2: backfill con precio actual.
+                if alert.get("initial_price") and alert["initial_price"] > 0:
+                    prev_price = alert["initial_price"]
+                elif trust_updates:
                     prev_price = trust_updates[-1].get("price", current_price)
+                else:
+                    print(f"[WARN] {symbol} sin initial_price ni historial. Backfill = current_price.")
+                    alert["initial_price"] = current_price
+                    prev_price = current_price
                 
                 price_change_pct = 0.0
                 if prev_price > 0:
