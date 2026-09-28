@@ -42,7 +42,7 @@ jobs:
           echo "=== shadow_v4 accumulated size ==="
           ls -la 02_Analisis/shadow_v4/_accumulated.json 2>/dev/null || echo "FILE_NOT_FOUND"
 
-      - name: Run pipeline T+0
+      - name: Run pipeline T+0 detection
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -52,6 +52,17 @@ jobs:
           SHOT_ROOT: ${{ github.workspace }}
         run: |
           python 04_Config/scripts/script_82_final_detection.py
+
+      - name: Emit alerts
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MADEONSOL_API_KEY: ${{ secrets.MADEONSOL_API_KEY }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          SHOT_ROOT: ${{ github.workspace }}
+        run: |
+          python 04_Config/scripts/script_97_emit_alerts.py
 
       - name: Diagnostic after
         run: |
