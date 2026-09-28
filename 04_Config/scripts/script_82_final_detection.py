@@ -14,6 +14,7 @@ DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens/"
 
 OUTPUT_DIR = "03_Informes/shot_de_mercado"
 RAW_DIR = "01_Datos_Crudos/final_detection"
+ACCUMULATED_FILE = "02_Analisis/shadow_v4/_accumulated.json"
 
 import os
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -377,6 +378,21 @@ def main():
             sym = t.get("symbol") or t.get("name", "?")
             print(f"  {sym} ({mint[:8]}...) | Score {data['score']} | {data['reasons']}")
     
+    # Update _accumulated.json with new enriched tokens
+    try:
+        accumulated = {}
+        if os.path.exists(ACCUMULATED_FILE):
+            with open(ACCUMULATED_FILE, "r", encoding="utf-8") as f:
+                accumulated = json.load(f)
+        # Merge enriched tokens into accumulated
+        for mint, data in enriched.items():
+            accumulated[mint] = data
+        with open(ACCUMULATED_FILE, "w", encoding="utf-8") as f:
+            json.dump(accumulated, f, indent=2)
+        print(f"[YIN] _accumulated.json actualizado con {len(enriched)} tokens")
+    except Exception as e:
+        print(f"[WARN] No se pudo actualizar _accumulated.json: {e}")
+
     return report
 
 if __name__ == "__main__":
