@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: repo-write-main
+  cancel-in-progress: false
+
 jobs:
   pipeline_t0:
     runs-on: ubuntu-24.04
