@@ -138,7 +138,7 @@ def main():
     candidates = []
     for mint, token in accumulated.items():
         if token.get("score", 0) >= 50 and mint not in alerted_mints:
-            candidates.append(token)
+            candidates.append((mint, token))
 
     # Max 3 alerts per cycle
     to_emit = candidates[:3]
@@ -148,11 +148,11 @@ def main():
     emitted_count = 0
     timestamp = datetime.utcnow().strftime("%Y-%m-%d_%H%M%S")
 
-    for token in to_emit:
+    for mint, token in to_emit:
         msg, confidence = format_alert_message(token)
         success = send_telegram(msg)
         
-        mint = token["mint"]
+        # mint is already available from the tuple
         # Fix Ciclo 17.16: persistir initial_price al emitir alerta.
         # Sin este campo, el trust scheduler no puede calcular cambio real.
         try:
