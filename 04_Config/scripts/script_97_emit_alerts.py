@@ -45,10 +45,14 @@ def send_telegram(text):
         return False
 
 def format_alert_message(token):
-    symbol = token.get("symbol", "UNKNOWN")
-    mint = token.get("mint", "")
+    # Symbol is in token.token.symbol, fallback to top-level
+    symbol = token.get("token", {}).get("symbol") or token.get("symbol") or "UNKNOWN"
+    # Mint is in token.token.mint, fallback to top-level
+    mint = token.get("token", {}).get("mint") or token.get("mint", "")
     score = token.get("score", 55)
+    # solAmount is in token, fallback
     sol_amt = token.get("solAmount", 85)
+    # marketCapSol is in token, fallback
     mcap = token.get("marketCapSol", 411)
     
     # Get price/liq from dexscreener or ms_data if available
