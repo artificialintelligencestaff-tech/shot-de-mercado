@@ -105,8 +105,14 @@ Este token cumple los criterios mínimos. No tiene señales de KOL accumulating 
 
 def get_current_price(token):
     """Extract current price from token data (dexscreener or ms_data)."""
+    # Priority 1: dx (pumpportal enriched)
     dx = token.get("dx", {})
     price = dx.get("priceUsd")
+    if price and price > 0:
+        return float(price)
+    # Priority 2: dexscreener (direct from detection)
+    dx2 = token.get("dexscreener", {})
+    price = dx2.get("priceUsd")
     if price and price > 0:
         return float(price)
     # Fallback: try ms_data if present
