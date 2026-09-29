@@ -1,0 +1,41 @@
+# Sonda manual de fuentes gratuitas. No toca el pipeline: solo lectura, sin secretos, disparo manual.
+name: probe-fuentes
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample_mint:
+        description: "Mint base58 para RugCheck/GoPlus/Trench (vacío = BONK)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: probe-fuentes
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Ejecutar sonda
+        env:
+          PROBE_SAMPLE_MINT: ${{ inputs.sample_mint }}
+        run: python3 tools/probe_fuentes.py --out probe_report.json
+
+      - name: Publicar reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-report
+          path: probe_report.json
+          if-no-files-found: warn

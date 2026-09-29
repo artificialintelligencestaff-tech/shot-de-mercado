@@ -42,6 +42,9 @@ def fetch_dexscreener(mint):
         if not pairs:
             return None
         best = max(pairs, key=lambda p: float(p.get("liquidity", {}).get("usd", 0) or 0))
+        txns = best.get("txns", {})
+        volume = best.get("volume", {})
+        price_change = best.get("priceChange", {})
         return {
             "priceUsd": float(best.get("priceUsd", 0) or 0),
             "liquidityUsd": float(best.get("liquidity", {}).get("usd", 0) or 0),
@@ -49,7 +52,18 @@ def fetch_dexscreener(mint):
             "marketCapUsd": float(best.get("marketCap", 0) or 0),
             "priceChange24h": float(best.get("priceChange", {}).get("h24", 0) or 0),
             "dexId": best.get("dexId", ""),
-            "pairAddress": best.get("pairAddress", "")
+            "pairAddress": best.get("pairAddress", ""),
+            # New temporal fields
+            "volume_m5": float(volume.get("m5", 0) or 0),
+            "volume_h1": float(volume.get("h1", 0) or 0),
+            "volume_h6": float(volume.get("h6", 0) or 0),
+            "txns_m5_buys": int(txns.get("m5", {}).get("buys", 0) or 0),
+            "txns_m5_sells": int(txns.get("m5", {}).get("sells", 0) or 0),
+            "txns_h1_buys": int(txns.get("h1", {}).get("buys", 0) or 0),
+            "txns_h1_sells": int(txns.get("h1", {}).get("sells", 0) or 0),
+            "priceChange_m5": float(price_change.get("m5", 0) or 0),
+            "priceChange_h1": float(price_change.get("h1", 0) or 0),
+            "pairCreatedAt": int(best.get("pairCreatedAt", 0) or 0),
         }
     except Exception as e:
         print(f"[ERROR] Dexscreener {mint}: {e}")
@@ -59,7 +73,80 @@ def score_token(token_data, dexscreener_data=None):
     """Scoring adaptativo 0-100"""
     score = 0
     reasons = []
+
+
+    # Temporal derivatives: acceleration metrics from DexScreener m5/h1
+    def calc_derivatives(dexscreener_data):
+        """Calculate acceleration metrics from DexScreener 5m/1h data"""
+        if not dexscreener_data:
+            return {"vol_ratio": 0, "trades_ratio": 0, "price_change_m5": 0, "price_change_h1": 0}
+        
+        vol_m5 = dexscreener_data.get("volume_m5", 0)
+        vol_h1 = dexscreener_data.get("volume_h1", 0)
+        vol_ratio = vol_m5 / vol_h1 if vol_h1 > 0 else 0
+        
+        txns_m5 = dexscreener_data.get("txns_m5_buys", 0) + dexscreener_data.get("txns_m5_sells", 0)
+        txns_h1 = dexscreener_data.get("txns_h1_buys", 0) + dexscreener_data.get("txns_h1_sells", 0)
+        trades_ratio = txns_m5 / txns_h1 if txns_h1 > 0 else 0
+        
+        price_change_m5 = dexscreener_data.get("priceChange_m5", 0)
+        price_change_h1 = dexscreener_data.get("priceChange_h1", 0)
+        
+        return {
+            "vol_ratio": vol_ratio,
+            "trades_ratio": trades_ratio,
+            "price_change_m5": price_change_m5,
+            "price_change_h1": price_change_h1
+        }
+
+    # Calculate derivatives from DexScreener data (not token_data)
+    derivs = calc_derivatives(dexscreener_data)
     
+    # Add missing fields for v7.2 scoring
+    if dexscreener_data:
+        derivs["vol_m5"] = dexscreener_data.get("volume_m5", 0)
+        derivs["vol_h1"] = dexscreener_data.get("volume_h1", 0)
+        txns_m5 = dexscreener_data.get("txns_m5_buys", 0) + dexscreener_data.get("txns_m5_sells", 0)
+        derivs["buy_pressure"] = (dexscreener_data.get("txns_m5_buys", 0) / txns_m5) if txns_m5 > 0 else 0.5
+        
+        # Calculate age in minutes from pairCreatedAt
+        if dexscreener_data.get("pairCreatedAt"):
+            import time
+            derivs["age_min"] = (time.time() - dexscreener_data["pairCreatedAt"] / 1000) / 60
+        else:
+            derivs["age_min"] = None
+    else:
+        derivs["vol_m5"] = 0
+        derivs["buy_pressure"] = 0.5
+        derivs["age_min"] = None
+
+    # Dynamic buy_pressure comparison with previous state
+    # Read previous buy_pressure from _accumulated.json if available
+    try:
+        acc_file = "02_Analisis/shadow_v4/_accumulated.json"
+        if os.path.exists(acc_file):
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accumulated = json.load(f)
+            mint = token_data.get("token", {}).get("mint") or token_data.get("mint", "")
+            if mint and mint in accumulated:
+                prev_data = accumulated[mint]
+                prev_bp = prev_data.get("buy_pressure")
+                if prev_bp is not None and isinstance(prev_bp, (int, float)):
+                    derivs["prev_buy_pressure"] = prev_bp
+                    bp_change = derivs.get("buy_pressure", 0.5) - prev_bp
+                    derivs["bp_delta"] = round(bp_change, 4)
+    except Exception as e:
+        pass  # Silent fail for dynamic BP
+
+    # Apply bp_delta scoring (dynamic buy_pressure change)
+    bp_delta = derivs.get("bp_delta", 0)
+    if bp_delta <= -0.10:
+        score -= 15
+        reasons.append("Buy pressure cayendo")
+    elif bp_delta >= 0.10:
+        score += 15
+        reasons.append("Buy pressure subiendo")
+
     ws_score = token_data.get("score", 0)
     score += ws_score * 0.3
     if ws_score >= 80:
@@ -98,7 +185,77 @@ def score_token(token_data, dexscreener_data=None):
         reasons.append("Volumen decente")
     else:
         reasons.append("Volumen bajo")
+
+    # Acceleration bonuses (temporal derivatives)
+    if derivs["vol_ratio"] > 0.5:
+        score += 25
+        reasons.append("Volumen acelerado (5m/1h > 50%)")
+    elif derivs["vol_ratio"] > 0.25:
+        score += 15
+        reasons.append("Volumen en aceleración (5m/1h > 25%)")
+    if derivs["trades_ratio"] > 0.5:
+        score += 20
+        reasons.append("Trades acelerados (5m/1h > 50%)")
+    elif derivs["trades_ratio"] > 0.25:
+        score += 10
+        reasons.append("Trades en aceleración (5m/1h > 25%)")
+
+    # === SCORING v7.2: Buy pressure & temporal signals ===
+    # Buy pressure bonus
+    if derivs.get("buy_pressure", 0.5) > 0.6:
+        score += 25
+        reasons.append("Buy pressure >60%")
+    elif derivs.get("buy_pressure", 0.5) > 0.55:
+        score += 15
+        reasons.append("Buy pressure >55%")
+
+    # Momentum corto+medio positivo
+    pc_m5 = derivs.get("price_change_m5", 0)
+    pc_h1 = derivs.get("price_change_h1", 0)
+    if pc_m5 > 0 and pc_h1 > 0:
+        score += 20
+        reasons.append("Momentum corto+medio positivo")
+    elif pc_m5 > 0 and pc_h1 > -5:
+        score += 10
+        reasons.append("Momentum corto positivo")
+
+    # Edge temprano (<60 min)
+    age_min = derivs.get("age_min")
+    if age_min is not None and age_min < 60:
+        score += 15
+        reasons.append("Edge temprano (<60 min)")
+    elif age_min is not None and age_min < 240:
+        score += 8
+        reasons.append("Edge temprano (<4h)")
+
+    # Volumen activo m5
+    if derivs.get("vol_m5", 0) > 1000:
+        score += 10
+        reasons.append("Volumen activo m5 (>$1K)")
+    elif derivs.get("vol_m5", 0) > 500:
+        score += 5
+        reasons.append("Volumen moderado m5")
+
+    # Penalizaciones v7.2
+    # Detección tardía (sin datos m5 y >4h)
+    if derivs.get("vol_m5", 0) == 0 and age_min is not None and age_min > 240:
+        score -= 30
+        reasons.append("Detección tardía (sin datos m5, >4h)")
     
+    # Par >24h, no nativo pump.fun
+    if age_min is not None and age_min > 1440:
+        score -= 50
+        reasons.append("Par >24h, no nativo pump.fun")
+    
+    # Venta dominante
+    bp = derivs.get("buy_pressure", 0.5)
+    if bp < 0.4 and derivs.get("vol_m5", 0) > 0:
+        score -= 20
+        reasons.append("Venta dominante (buy_pressure <40%)")
+    elif bp < 0.3 and derivs.get("vol_m5", 0) > 0:
+        score -= 35
+        reasons.append("Venta agresiva (buy_pressure <30%)")
+
     liq = 0
     if dexscreener_data and dexscreener_data.get("liquidityUsd"):
         liq = dexscreener_data["liquidityUsd"]
@@ -115,9 +272,8 @@ def score_token(token_data, dexscreener_data=None):
     else:
         reasons.append("Liquidez baja")
     
-    change = token_data.get("change", 0)
-    if dexscreener_data and dexscreener_data.get("priceChange24h"):
-        change = dexscreener_data["priceChange24h"]
+    # Use dexscreener_data priceChange24h as primary source for 24h change
+    change = (dexscreener_data or {}).get("priceChange24h", 0)
     
     if change >= 50:
         score += 10
@@ -128,8 +284,62 @@ def score_token(token_data, dexscreener_data=None):
     elif change <= -30:
         score -= 5
         reasons.append("Dump 24h")
+
+    # Overbought / sobre-compra penalties (Ciclo 18: scoring v7) - Decision Matrix
+    # Calculate liq/mcap ratio
+    liq = dexscreener_data.get("liquidityUsd", 0) if dexscreener_data else 0
+    mcap = dexscreener_data.get("marketCapUsd", 0) if dexscreener_data else 0
+    ratio = (liq / mcap * 100) if mcap else 0
+
+    if change > 50000:
+        score -= 50  # bajado de 70
+        reasons.append("SOBRECOMPRA EXTREMA (>50,000%)")
+    elif change > 5000:
+        if ratio < 1:
+            score -= 50
+            reasons.append(f"SOBRECOMPRA ALTA (>5,000%) + liq/mcap={ratio:.1f}% <1%")
+        elif ratio < 3:
+            score -= 15
+            reasons.append(f"SOBRECOMPRA ALTA (>5,000%) + liq/mcap={ratio:.1f}% <3%")
+        else:
+            reasons.append(f"SOBRECOMPRA ALTA (>5,000%) + liq/mcap={ratio:.1f}% >=3% (sin penalización)")
+    elif change > 500:
+        if ratio < 1:
+            score -= 30
+            reasons.append(f"SOBRECOMPRA MEDIA (>500%) + liq/mcap={ratio:.1f}% <1%")
+        elif ratio < 3:
+            score -= 10
+            reasons.append(f"SOBRECOMPRA MEDIA (>500%) + liq/mcap={ratio:.1f}% <3%")
+        else:
+            reasons.append(f"SOBRECOMPRA MEDIA (>500%) + liq/mcap={ratio:.1f}% >=3% (sin penalización)")
+
+    # Kill switch: token muy nuevo (<5 min) con pump extremo
+    pair_age_min = None
+    if dexscreener_data and dexscreener_data.get("pairCreatedAt"):
+        try:
+            pair_created = dexscreener_data["pairCreatedAt"] / 1000  # ms to s
+            pair_age_min = (time.time() - pair_created) / 60
+        except:
+            pass
+    if pair_age_min is not None and pair_age_min < 5 and change > 10000:
+        score -= 50
+        reasons.append("KILL SWITCH: token <5min con pump >10,000%")
+
+    final_score = min(100, max(0, int(score)))
     
-    return min(100, max(0, int(score))), reasons
+    # Score persistence v7.2
+    score_v71 = token_data.get("score_v71", score)  # Original score before v7.2
+    score_v72 = final_score
+    score_delta = score_v72 - score_v71
+    scored_at = datetime.now(timezone.utc).isoformat()
+    
+    # Add to derivs for persistence
+    derivs["score_v71"] = score_v71
+    derivs["score_v72"] = score_v72
+    derivs["score_delta"] = score_v72 - score_v71
+    derivs["scored_at"] = scored_at
+    
+    return final_score, reasons
 
 async def pumpportal_listen(duration_seconds=300):
     """Escucha PumpPortal WebSocket por N segundos"""
@@ -261,7 +471,7 @@ def main():
                 "reasons": reasons
             }
         else:
-            score, reasons = score_token(info["data"])
+            score, reasons = score_token(info["data"], None)
             enriched[mint] = {
                 "source": info["source"],
                 "windows": info.get("windows"),

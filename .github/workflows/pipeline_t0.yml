@@ -54,6 +54,7 @@ jobs:
           python 04_Config/scripts/script_82_final_detection.py
 
       - name: Emit alerts
+        if: env.PAUSE_EMISSIONS != 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -61,6 +62,7 @@ jobs:
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
           SHOT_ROOT: ${{ github.workspace }}
+          PAUSE_EMISSIONS: "true"
         run: |
           python 04_Config/scripts/script_97_emit_alerts.py
 
