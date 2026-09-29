@@ -168,10 +168,12 @@ def main():
         if not initial_price or initial_price <= 0:
             print(f"[SKIP] {token.get('symbol')} sin precio inicial. No se emite alerta.")
             continue
+        # Get symbol from token.token.symbol or fallback
+        symbol = token.get("token", {}).get("symbol") or token.get("symbol", "UNKNOWN")
         alert_record = {
             "timestamp": timestamp,
             "mint": mint,
-            "symbol": token["symbol"],
+            "symbol": symbol,
             "score": token["score"],
             "confidence": confidence,
             "initial_price": initial_price,
