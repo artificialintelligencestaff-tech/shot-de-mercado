@@ -80,18 +80,111 @@ def build(now):
             "autorepair_actions_24h": sum(len(e["actions"]) for e in repairs)}
 
 
+SEP = "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+YOUNG_SHARE_MAX = 0.20          # criterio de Dirección para v7.2.1 (doc 22 §1.1): exposición < 60 min
+STATUS_LABELS = {"shadow": "shadow", "active_tracking": "activas"}
+
+
+def fmt_int(n):
+    """1440 -> "1.440" (separador de miles rioplatense)."""
+    return f"{int(n):,}".replace(",", ".") if isinstance(n, (int, float)) else "n/d"
+
+
+def fmt_pct(x):
+    return f"{x * 100:.0f}%" if isinstance(x, (int, float)) else "n/d"
+
+
+def version_key(v):
+    try:
+        return tuple(int(p) for p in v.split("."))
+    except (AttributeError, ValueError):
+        return ()
+
+
+def current_version(s):
+    """Scorer vigente = la versión numérica más alta vista en detecciones o en la métrica dual."""
+    seen = [v for v in s["detections"]["scoring_versions"] if version_key(v)]
+    seen += [v for v in s["dual_metric"] if version_key(v)]
+    return max(seen, key=version_key) if seen else None
+
+
+def metric_line(label, m):
+    m = m or {}
+    if not m:
+        return f"• {label}: n/d"
+    return (f"• {label}: {fmt_int(m.get('k_hit') or 0)}/{fmt_int(m.get('n_resolved') or 0)} resueltas · "
+            f"{fmt_int(m.get('pending') or 0)} pendientes")
+
+
+def young_line(share):
+    mark = " ⚠️" if isinstance(share, (int, float)) and share > YOUNG_SHARE_MAX else ""
+    return f"• Exposición a <60 min: {fmt_pct(share)}{mark}"
+
+
+def mode_line(mode):
+    if str(mode.get("PAUSE_EMISSIONS")).lower() == "true":
+        return "⛔ Modo: PAUSA (no se procesan emisiones)"
+    if str(mode.get("SHADOW_MODE")).lower() == "true":
+        return "⏸️ Modo: SOMBRA (emisiones pausadas)"
+    if mode.get("SHADOW_MODE") is None:
+        return "❔ Modo: n/d"
+    return "▶️ Modo: EMISIÓN ACTIVA"
+
+
 def render(s):
-    lines = [f"📋 Resumen diario Shot de Mercado — {s['date']}",
-             f"Modo: SHADOW_MODE={s['emission_mode'].get('SHADOW_MODE')} · PAUSE={s['emission_mode'].get('PAUSE_EMISSIONS')}",
-             f"Detecciones 24 h: {s['detections']['runs']} corridas · {s['detections']['tokens']} tokens · "
-             f"scorer {s['detections']['scoring_versions']}",
-             f"Alertas 24 h: {s['alerts_24h']['total']} {s['alerts_24h']['by_status']} · enviadas: {s['alerts_24h']['telegram_sent']}"]
-    for v, d in s["dual_metric"].items():
+    try:
+        stamp = datetime.fromisoformat(s["generated_at"]).strftime("%d/%m/%Y · %H:%M UTC")
+    except (KeyError, TypeError, ValueError):
+        stamp = s.get("date", "n/d")
+    alerts = s["alerts_24h"]
+    by_status = alerts.get("by_status") or {}
+    order = list(STATUS_LABELS)                       # shadow, activas y después el resto por nombre
+    ordered = sorted(by_status.items(),
+                     key=lambda kv: (order.index(kv[0]) if kv[0] in order else len(order), str(kv[0])))
+    detail = " · ".join(f"{fmt_int(n)} {STATUS_LABELS.get(k, k)}" for k, n in ordered)
+    lines = ["📊 SHOT DE MERCADO — RESUMEN DIARIO", f"📅 {stamp}", SEP, "",
+             "🔍 ACTIVIDAD (24h)",
+             f"• Corridas del pipeline: {fmt_int(s['detections']['runs'])}",
+             f"• Tokens analizados: {fmt_int(s['detections']['tokens'])}",
+             f"• Alertas registradas: {fmt_int(alerts['total'])}" + (f" ({detail})" if detail else ""),
+             f"• Enviadas al público: {fmt_int(alerts['telegram_sent'])}", ""]
+
+    # Calidad separada por versión del scorer (anomalía A-b: el 83% agregado mezclaba v7.2 y v7.2.1)
+    current = current_version(s)
+    dual = s["dual_metric"]
+    lines.append(f"📈 CALIDAD (v{current})" if current else "📈 CALIDAD")
+    if current in dual:
+        d = dual[current]
+        lines += [metric_line("Primaria (tocar +20%)", d.get("primary")),
+                  metric_line("Secundaria (cerrar +20%)", d.get("secondary")), young_line(d.get("young_share"))]
+    else:
+        lines.append("• Sin alertas de esta versión todavía")
+    for v in sorted((v for v in dual if v != current), key=lambda v: (version_key(v), v), reverse=True):
+        d = dual[v]
         p, q = d.get("primary") or {}, d.get("secondary") or {}
-        lines.append(f"v{v}: primaria {p.get('k_hit')}/{p.get('n_resolved')} (pend {p.get('pending')}) · "
-                     f"secundaria {q.get('k_hit')}/{q.get('n_resolved')} (pend {q.get('pending')}) · "
-                     f"<60 min {d.get('young_share')} · veredicto {d.get('verdict') or 'n<20'}")
-    lines.append(f"Salud: {s['health']['problems'] or 'sin problemas'} · reparaciones 24 h: {s['autorepair_actions_24h']}")
+        lines.append(f"• v{v} (anterior): primaria {fmt_int(p.get('k_hit') or 0)}/{fmt_int(p.get('n_resolved') or 0)} · "
+                     f"secundaria {fmt_int(q.get('k_hit') or 0)}/{fmt_int(q.get('n_resolved') or 0)} · "
+                     f"<60 min {fmt_pct(d.get('young_share'))}")
+    lines.append("")
+
+    lines.append("🚀 SCORER")
+    versions = s["detections"]["scoring_versions"]
+    for v in sorted((v for v in versions if version_key(v)), key=version_key, reverse=True):
+        label = f"v{v}" if v == current else f"v{v} (transición)"
+        lines.append(f"• {label}: {fmt_int(versions[v])} tokens")
+    legacy = sum(n for v, n in versions.items() if not version_key(v))
+    if legacy:
+        lines.append(f"• Legacy (sin versión): {fmt_int(legacy)} tokens")
+    if not versions:
+        lines.append("• Sin detecciones en 24 h")
+    lines.append("")
+
+    lines.append("🛡️ SALUD")
+    problems = s["health"].get("problems") or []
+    lines += [f"⚠️ {p}" for p in problems] or ["✅ Sin problemas"]
+    repairs = s["autorepair_actions_24h"]
+    lines.append("✅ 0 reparaciones en 24h" if not repairs else f"🔧 {fmt_int(repairs)} reparaciones en 24h")
+    lines += ["", mode_line(s.get("emission_mode") or {})]
     return "\n".join(lines)
 
 

@@ -159,18 +159,61 @@ class TestAutorepair(Base):
         self.assertFalse(repair.LOG_FILE.exists())
 
 
+SUMMARY = {"date": "2026-09-30", "generated_at": "2026-09-30T06:00:00+00:00", "window_hours": 24,
+           "emission_mode": {"SHADOW_MODE": "true", "PAUSE_EMISSIONS": "false"},
+           "detections": {"runs": 32, "tokens": 1440, "scoring_versions": {"sin_version": 1343, "7.2": 62, "7.2.1": 35}},
+           "alerts_24h": {"total": 25, "by_status": {"active_tracking": 4, "shadow": 21}, "telegram_sent": 0},
+           "alerts_total": 33,
+           "dual_metric": {"7.2": {"primary": {"k_hit": 0, "n_resolved": 3, "pending": 3},
+                                   "secondary": {"k_hit": 0, "n_resolved": 0, "pending": 6}, "young_share": 0.8333}},
+           "health": {"checked_at": None, "problems": []}, "autorepair_actions_24h": 0}
+
+
 class TestDaily(Base):
-    def test_resumen_y_una_entrada_por_dia(self):
+    def write_alerts(self):
         al = Path(TMP) / "02_Analisis" / "alerts"
         al.mkdir(parents=True)
         (al / "_all_alerts.json").write_text(json.dumps([
             {"timestamp": f"{(NOW - timedelta(hours=2)):%Y-%m-%d_%H%M%S}", "status": "shadow", "telegram_sent": False},
             {"timestamp": f"{(NOW - timedelta(hours=40)):%Y-%m-%d_%H%M%S}", "status": "active_tracking"}]))
+
+    def test_resumen_y_una_entrada_por_dia(self):
+        self.write_alerts()
         s = daily.run(now=NOW, notify=self.notify)
         self.assertEqual(s["alerts_24h"], {"total": 1, "by_status": {"shadow": 1}, "telegram_sent": 0})
         daily.run(now=NOW, notify=self.notify)
         self.assertEqual(len(lib_ops.read_json(daily.OUT)["days"]), 1)
-        self.assertIn("Resumen diario", self.sent[0])
+        self.assertIn("RESUMEN DIARIO", self.sent[0])
+
+    def test_formato_legible(self):
+        text = daily.render(SUMMARY)
+        for line in ("📊 SHOT DE MERCADO — RESUMEN DIARIO", "📅 30/09/2026 · 06:00 UTC",
+                     "🔍 ACTIVIDAD (24h)", "• Corridas del pipeline: 32", "• Tokens analizados: 1.440",
+                     "• Alertas registradas: 25 (21 shadow · 4 activas)", "• Enviadas al público: 0",
+                     "📈 CALIDAD (v7.2.1)", "• Sin alertas de esta versión todavía",
+                     "• v7.2 (anterior): primaria 0/3 · secundaria 0/0 · <60 min 83%",
+                     "🚀 SCORER", "• v7.2.1: 35 tokens", "• v7.2 (transición): 62 tokens",
+                     "• Legacy (sin versión): 1.343 tokens",
+                     "🛡️ SALUD", "✅ Sin problemas", "✅ 0 reparaciones en 24h",
+                     "⏸️ Modo: SOMBRA (emisiones pausadas)"):
+            self.assertIn(line, text.splitlines())                   # línea exacta
+        self.assertNotIn("{", text)                               # nada de JSON crudo
+        self.assertNotIn("sin_version", text)
+
+    def test_calidad_de_la_version_vigente(self):
+        s = json.loads(json.dumps(SUMMARY))
+        s["dual_metric"]["7.2.1"] = {"primary": {"k_hit": 2, "n_resolved": 5, "pending": 1},
+                                     "secondary": {"k_hit": 0, "n_resolved": 1, "pending": 5}, "young_share": 0.1}
+        s["health"]["problems"] = ["pipeline_stale:pipeline_t0.yml"]
+        s["autorepair_actions_24h"] = 2
+        text = daily.render(s)
+        self.assertIn("• Primaria (tocar +20%): 2/5 resueltas · 1 pendientes\n", text)
+        self.assertIn("• Secundaria (cerrar +20%): 0/1 resueltas · 5 pendientes\n", text)
+        self.assertIn("• Exposición a <60 min: 10%\n", text)              # < 20%: sin marca
+        self.assertIn("⚠️ pipeline_stale:pipeline_t0.yml\n", text)
+        self.assertIn("🔧 2 reparaciones en 24h\n", text)
+        s["dual_metric"]["7.2.1"]["young_share"] = 0.8333
+        self.assertIn("• Exposición a <60 min: 83% ⚠️\n", daily.render(s))
 
 
 class TestMonitorBot(Base):
