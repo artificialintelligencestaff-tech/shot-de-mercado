@@ -14,6 +14,9 @@ load_dotenv(PROJECT_ROOT / "04_Config" / ".env")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# Grupo de usuarios finales (opcional). Si está definido, cada alerta de mercado va también ahí.
+# No confundir con TELEGRAM_OPS_CHAT_ID ("La mano de Dios"), que solo recibe avisos de los bots.
+TELEGRAM_PUBLIC_CHAT_ID = os.getenv("TELEGRAM_PUBLIC_CHAT_ID")
 ACCUMULATED_FILE = str(PROJECT_ROOT / "02_Analisis" / "shadow_v4" / "_accumulated.json")
 ALERTS_DIR = str(PROJECT_ROOT / "02_Analisis" / "alerts")
 os.makedirs(ALERTS_DIR, exist_ok=True)
@@ -186,15 +189,21 @@ def log_cycle_event(event):
     except Exception as e:
         print(f"[WARN] No se pudo registrar en _cycle_log.json: {e}")
 
-def send_telegram(text):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("[WARN] Telegram credentials missing, printing to console instead.")
-        print(text)
-        return False
-    
+def telegram_destinations():
+    """Destinos de las alertas de mercado: el chat personal (TELEGRAM_CHAT_ID) y, si está definido, el grupo
+    de usuarios (TELEGRAM_PUBLIC_CHAT_ID). Sin grupo = comportamiento anterior. Un mismo chat_id no se repite."""
+    dests = []
+    for label, chat_id in (("personal", TELEGRAM_CHAT_ID), ("grupo", TELEGRAM_PUBLIC_CHAT_ID)):
+        chat_id = (chat_id or "").strip()
+        if chat_id and all(chat_id != c for _, c in dests):
+            dests.append((label, chat_id))
+    return dests
+
+
+def send_telegram_to(label, chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
+        "chat_id": chat_id,
         "text": text,
         "parse_mode": "Markdown",
         "disable_web_page_preview": True
@@ -202,14 +211,25 @@ def send_telegram(text):
     try:
         r = requests.post(url, json=payload, timeout=15)
         if r.status_code == 200:
-            print("[INFO] Alerta enviada a Telegram exitosamente.")
+            print(f"[INFO] Alerta enviada a Telegram ({label}).")
             return True
-        else:
-            print(f"[ERROR] Telegram API error: {r.status_code} - {r.text}")
-            return False
-    except Exception as e:
-        print(f"[ERROR] Telegram exception: {e}")
+        print(f"[ERROR] Telegram API error ({label}): {r.status_code} - {r.text}")
         return False
+    except Exception as e:
+        print(f"[ERROR] Telegram exception ({label}): {e}")
+        return False
+
+
+def send_telegram(text):
+    """Envía la alerta a todos los destinos. True si al menos uno la recibió: así el mint queda registrado
+    como enviado y no se reintenta en cada ciclo (la falla de un destino queda en el log del workflow)."""
+    dests = telegram_destinations()
+    if not TELEGRAM_BOT_TOKEN or not dests:
+        print("[WARN] Telegram credentials missing, printing to console instead.")
+        print(text)
+        return False
+    results = [send_telegram_to(label, chat_id, text) for label, chat_id in dests]
+    return any(results)
 
 def load_emission_calibration(path=None):
     """Probabilidades VALIDADAS (métrica dual) del scorer/umbral que emiten.
