@@ -13,20 +13,24 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 
 ---
 
-## 1. Estado (cierre de sesión 2026-09-30 ~06:20 UTC)
+## 1. Estado (cierre de sesión 2026-09-30 ~23:30 UTC)
 
 | Componente | Estado | Rótulo |
 |---|---|---|
 | Emisión | **SHADOW** (`SHADOW_MODE: "true"`, `PAUSE_EMISSIONS: "false"` en `pipeline_t0.yml`). Las alertas se registran con `status: "shadow"` y `telegram_sent: false`. **No reactivar emisiones reales sin validar v7.2.1** (criterios en §1.1). | [V] |
 | Scorer | **v7.2.1** en main desde 2026-09-30 (`SCORING_VERSION = "7.2.1"`, `ACCEL_GATE_MIN_AGE = 60`). Cada token lleva `detected_at` y `scoring_version`. 1.ª corrida de producción (`detection_2026-09-30_055022`): 35/35 tokens con 7.2.1, **≥ 56: 2/35** (vs 19/29 y 23/33 en las dos corridas v7.2 previas). | [V] |
 | Filtros de emisión (script_97) | umbral `EMIT_MIN_SCORE = 56` · frescura R1 `CANDIDATE_MAX_AGE_MIN = 60` · **edad mínima del par `EMIT_MIN_AGE_MIN = 30`** (edad desconocida → no emite) · dedup PARASITE. | [V] |
-| Plantilla Telegram | Dual (probabilidades "en validación" hasta que `emission_calibration.json` tenga `validated: true`), "n/d" para datos faltantes, **ADVERTENCIA CRÍTICA siempre presente** (76% cae −99% después de +20%, take-profit +20%, NO holdear, stop −30%). | [V] |
+| Plantilla Telegram | **Framing neutral** (`c727ece`, Dirección): el proyecto informa con datos y método; **no juzga, no advierte, no disuade: el usuario decide**. Sin "ADVERTENCIA", sin "plan sugerido", sin "no invertir más de…". Bloques: 🪪 ACTIVO (nombre, chain, mint, creador) · 🕒 DETECCIÓN (hora, edad del par, creación del par, ventana < 48 h) · 🎯 PROBABILIDADES (primaria, secundaria y "después de tocar +20%, llegar a ≤ −99%" como **métrica**, no advertencia; "en validación" hasta `validated: true`) · 📊 DATOS · 🔎 motivos · 🛒 cómo adquirirlo · 🔗 FUENTES VERIFICABLES (Solscan, DexScreener, pump.fun) · seguimiento. "n/d" para lo desconocido; Markdown de datos externos escapado (T4 `06fedff`). | [V] |
 | Trust loop (script_98) | Solo procesa `status == "active_tracking"` (ignora sombra). | [V] |
 | Bots gemelos | `monitor_shadow_bot` (6 h), `health_check_bot` (2 h), `autorepair_bot` (4 h), `daily_summary_bot` (06:00 UTC). Los 4 verificados con workflow_dispatch el 2026-09-30 05:50 UTC (success + commit de su log). | [V] |
 | Telegram de operaciones | Los bots escriben SOLO a `TELEGRAM_OPS_CHAT_ID` (grupo "La mano de Dios"). Secret cargado por Dirección el 2026-09-30 06:05 UTC; primer envío (resumen diario por dispatch, run 36677130640) a las 06:13 UTC con `notified: sent`. | [V] API · **recepción confirmada por Dirección** |
-| Tests | 128/128 (9 archivos `04_Config/scripts/test_*.py`, unittest, sin red). | [V] |
-| Alertas acumuladas (`_all_alerts.json` en `d47a265`) | 33 en total: **24 `shadow`** (de 2026-09-30 03:55 a 06:15 UTC), **7 `active_tracking`**, 2 `DESCARTAR_NOPAR`. `telegram_sent: true` = 0. | [V] |
-| Hashes de cierre | main antes del push de docs: `d47a265`. Código de la sesión: T3 `26ce5b7` · T4 `3ef7b50` · bots `daf9cc4`. Docs 22/23 + probe: rama `claude/investigacion-grupos`, push autorizado por Dirección. | [V] |
+| Destinos de alertas de mercado | `TELEGRAM_CHAT_ID` (personal) + `TELEGRAM_PUBLIC_CHAT_ID` (grupo de usuarios, opcional), pausa 0,5 s entre envíos (T3 `ba44f21` + `68953b8`). `script_97 --test-send` + workflow manual `telegram_test_send.yml`. Run 36790810810 (23:23 UTC): **personal OK · grupo "Sin configurar"**: el secret `TELEGRAM_PUBLIC_CHAT_ID` **no existe** en el repo (ni en Actions, variables, Dependabot, Codespaces ni environments). | [V] |
+| Resumen diario (ops) | Formato legible por secciones, calidad separada por versión (T1 `7b14a58`); un envío por día UTC con `last_sent_date`, `--force` para reenviar (T2 `dd48a77`). | [V] |
+| Scanner multi-chain v0 | `script_114_multichain_scanner.py` (T5 `3694aa8`): grupos h, f, c, g, d, e (CoinGecko sin key) + a (GeckoTerminal: solana, base, eth, blast, monad). Solo recolección + marca de aceleración [H]; sin score, sin emisión, **no enganchado a ningún workflow**. Humo real: 13 llamadas, 0 errores. | [V] |
+| Tests | **151/151** (11 archivos `04_Config/scripts/test_*.py`, unittest, sin red). | [V] |
+| Alertas acumuladas (`_all_alerts.json` en `3694aa8`) | 35 en total: **26 `shadow`** (de 2026-09-30 03:55 a 12:48 UTC; ninguna más hasta el cierre), **7 `active_tracking`** (la última del 2026-09-29 17:55 UTC, anterior a SHADOW), 2 `DESCARTAR_NOPAR`. `telegram_sent: true` = 0. | [V] |
+| Hashes de cierre | Sesión 1: T3 `26ce5b7` · T4 `3ef7b50` · bots `daf9cc4` · docs 22/23 `63a1b95`. Sesión 2: framing `c727ece` (aplicado por Dirección/YIN) · push fast-forward `77b2a1c..3694aa8` con T1 `7b14a58` · T2 `dd48a77` · T3 `ba44f21` + `68953b8` · T4 `06fedff` · T5 `3694aa8`. | [V] |
+| Incidente | Dirección reportó el sistema caído y luego **recuperado** ("GitHub Actions funcionando") [reportado]. Verificación propia: `pipeline_t0` y `trust_update` con runs `success` cada ~20 min hasta 23:05 UTC. | [V] |
 
 ### 1.1 Criterios de validación de v7.2.1 (Dirección)
 
@@ -152,28 +156,31 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 | Deuda | Origen | Prioridad |
 |---|---|---|
-| Transición: hasta ~06:32 UTC del 2026-09-30 pueden salir alertas **en sombra** puntuadas por v7.2 (frescas por R1). Visto: 3 a las 05:55. El monitor las cuenta como v7.2 (propuesta I-4 del doc 23) | T1 | P2 |
+| ~~Transición v7.2 → v7.2.1~~ Cerrada por tiempo (ventana R1 hasta 06:32 UTC del 30/09). Las 3 alertas de las 05:55 quedan como v7.2 en el monitor. | T1 | — |
 | `HISTORICAL_RUG_AFTER_HIT` fijo en código (v7.1) | T4 | P2 |
 | `no_alerts_24h` es informativo: con el volumen bajo esperado puede ser ruido | bots | P3 |
 | El monitor en Actions no tiene cache persistente de velas (reusa filas definitivas; el tope es 80 llamadas por corrida) | bots | P3 |
 | Hallazgo #17 (defaults heurísticos de fusión) sin calibrar | Cap. II | P2 |
 | Rutas `signals/{chain}/{mint}.json` multi-chain sin productores | Cap. II | P2 |
-| **A-c) Hay alertas `active_tracking` estando en SHADOW.** El resumen diario de 24 h reportó 4; el histórico tiene 7. En modo sombra no debería haber ninguna nueva. No investigado. [H] podrían ser anteriores al cambio a SHADOW (03:42 UTC), pero no está verificado. | resumen diario 06:13 | **P0** |
-| **A-a) Resumen diario duplicado** (llegó 03:13 y 03:14 hora AR). Hipótesis de Dirección: reintento sin idempotencia. Dato [V] sin investigar: en main hay dos commits del bot, `22fb807` (06:13:29, dispatch manual) y `9e39038` (06:14:44, [H] el cron de las 06:00 corrido con atraso). Falta decidir si el bot debe saltear el envío cuando ya existe la entrada del día. | resumen diario | P1 |
-| **A-b) 83% de las alertas en tokens < 60 min** (`0.8333`). Hay que desagregar por versión del scorer (v7.2 vs v7.2.1). Dato [V]: en el monitor ese 0.8333 corresponde a la fila v7.2 (5/6). Todavía no hay alertas v7.2.1 para medir. | resumen diario | P1 |
-| **A-d) 1343 tokens sin `scoring_version`** en las detecciones de 24 h. Esperado: son anteriores a R1 y se completa en 24 h. | resumen diario | P3 |
+| **A-c) Alertas `active_tracking` estando en SHADOW.** Dato [V] (cierre sesión 2): las 7 son anteriores al cambio a SHADOW (la última, 2026-09-29 17:55 UTC); las 4 "de 24 h" del resumen de las 06:13 eran del 29/09 a la tarde. **Ninguna nueva en sombra.** Falta confirmar que el trust loop las sigue procesando bien. | resumen diario 06:13 | P1 (baja de P0) |
+| ~~**A-a) Resumen diario duplicado**~~ **Resuelta con T2 (`dd48a77`)**. (Llegó 03:13 y 03:14 hora AR.) Hipótesis de Dirección: reintento sin idempotencia. Dato [V] sin investigar: en main hay dos commits del bot, `22fb807` (06:13:29, dispatch manual) y `9e39038` (06:14:44, [H] el cron de las 06:00 corrido con atraso). Falta decidir si el bot debe saltear el envío cuando ya existe la entrada del día. | resumen diario | P1 |
+| **A-b) 83% de las alertas en tokens < 60 min** (`0.8333`). Hay que desagregar por versión del scorer (v7.2 vs v7.2.1). Dato [V]: en el monitor ese 0.8333 corresponde a la fila v7.2 (5/6). Todavía no hay alertas v7.2.1 para medir. **El resumen ya separa la calidad por versión (T1)**; falta la medición con n suficiente. | resumen diario | P1 |
+| **A-d) 1343 tokens sin `scoring_version`** en las detecciones de 24 h. Esperado: son anteriores a R1 y se completa en 24 h. (A las 22:47 UTC ya eran 450.) | resumen diario | P3 |
+| **Falta el secret `TELEGRAM_PUBLIC_CHAT_ID`** en el repo: las alertas no pueden llegar al grupo de usuarios. Lo carga Dirección (Settings → Secrets and variables → Actions → *Repository secrets*, nombre exacto). Después: re-disparar `telegram_test_send`. | T3 sesión 2 | **P0 (Dirección)** |
+| El scanner multi-chain v0 no corre solo: engancharlo a un workflow requiere consulta. El grupo b (preventa) no tiene fuente gratuita en CoinGecko. | T5 | P2 |
 
 ---
 
 ## 8. Próximos pasos
 
-1. **P0: investigar las alertas `active_tracking` en modo sombra (A-c)**: cuándo se crearon, por qué ruta de código y si el trust loop las está procesando.
-2. **Medir la exposición a tokens < 60 min después de v7.2.1 (A-b)**: separada por versión, sobre alertas de v7.2.1 únicamente (criterio < 20%).
-3. Idempotencia del resumen diario (A-a).
-4. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
-5. Con n ≥ 20 primarias resueltas → veredicto automático al chat de operaciones → decisión de Dirección.
-6. Si la primaria < 20% → gate a 30 min (rama aparte, sin merge sin validar).
-7. Expansión por fases según el doc 23 (Fase 1 = Universo A con `arch`), más las propuestas P1 del doc 23 §8: I-1 rug-después-del-hit en vivo, I-2 enriquecimiento de riesgo en sombra, I-3 guardia de sombra.
+1. **Dirección:** cargar `TELEGRAM_PUBLIC_CHAT_ID` y re-disparar `telegram_test_send` (esperado: personal OK · grupo OK).
+2. **Próxima fase: knowledge sheet / dossier por activo** (Dirección, sesión 2). Diseñar primero el template y después `script_113_dossier_builder.py` (nombre tentativo). Un dossier por alerta con: (1) identificación completa (nombre, symbol, mint, chain, deployer, auditoría); (2) método de detección: datos usados, cálculos, probabilidad; (3) vigencia de la señal; (4) adquisición paso a paso; (5) fuentes verificables; (6) documentación de cálculos para que el usuario audite el método. Información educativa, sin secciones de advertencia.
+3. **Medir la exposición a tokens < 60 min solo sobre alertas v7.2.1 (A-b)** (criterio < 20%). Al cierre, la muestra v7.2.1 era mínima (primaria 0/1) y no hubo alertas nuevas después de las 12:48 UTC.
+4. Confirmar que el trust loop procesa bien las 7 `active_tracking` previas a SHADOW (A-c).
+5. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
+6. Con n ≥ 20 primarias resueltas → veredicto automático al chat de operaciones → decisión de Dirección.
+7. Si la primaria < 20% → gate a 30 min (rama aparte, sin merge sin validar).
+8. Expansión por fases según el doc 23 (Fase 1 = Universo A con `arch`; el scanner v0 de T5 es la base para h/f/c), más las propuestas P1 del doc 23 §8: I-1 rug-después-del-hit en vivo, I-2 enriquecimiento de riesgo en sombra, I-3 guardia de sombra.
 
 ---
 
@@ -182,3 +189,4 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | Fecha | Sesión | Resultado |
 |---|---|---|
 | 2026-09-30 | Directiva ampliada (máximo aprovechamiento) | T1 v7.2.1 en main (sombra) · T2 fase2-p1 en main · T3 gate de edad 30 min · T4 advertencia crítica · bots gemelos desplegados y verificados (4/4 success) · 1.ª corrida v7.2.1 verificada (35/35 tokens 7.2.1, ≥56: 2/35) · doc 22 creado · doc 23 (8 grupos, 42 fuentes, 12 propuestas de innovación) · ops chat "La mano de Dios" operativo (confirmado) · 4 anomalías del primer resumen registradas en §7 (A-c P0) |
+| 2026-09-30 (noche) | Post-incidente + mejoras operativas | Framing neutral en main (`c727ece`, aplicado por Dirección/YIN) · T1 resumen legible · T2 resumen idempotente · T3 alertas a personal + grupo, `--test-send`, pausa 0,5 s · T4 template con ACTIVO / DETECCIÓN / FUENTES · T5 scanner multi-chain v0 · push ff `77b2a1c..3694aa8` · 151/151 tests · test-send: personal OK, grupo sin secret · A-c: las `active_tracking` son todas previas a SHADOW |
