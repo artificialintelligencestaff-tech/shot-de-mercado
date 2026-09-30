@@ -5,12 +5,14 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv(r"D:\Proyecto Shot de mercado\04_Config\.env")
+from pathlib import Path as _Path
+PROJECT_ROOT = _Path(os.getenv("SHOT_ROOT", str(_Path(__file__).resolve().parents[2])))
+load_dotenv(PROJECT_ROOT / "04_Config" / ".env")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-PRELAUNCH_DIR = r"D:\Proyecto Shot de mercado\01_Datos_Crudos\pre_launch"
-ANALYSIS_PRELAUNCH = r"D:\Proyecto Shot de mercado\02_Analisis\pre_launch"
+PRELAUNCH_DIR = str(PROJECT_ROOT / "01_Datos_Crudos" / "pre_launch")
+ANALYSIS_PRELAUNCH = str(PROJECT_ROOT / "02_Analisis" / "pre_launch")
 os.makedirs(PRELAUNCH_DIR, exist_ok=True)
 os.makedirs(ANALYSIS_PRELAUNCH, exist_ok=True)
 
