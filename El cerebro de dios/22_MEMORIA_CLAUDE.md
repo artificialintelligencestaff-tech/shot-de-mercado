@@ -23,7 +23,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 | Plantilla Telegram | Dual (probabilidades "en validación" hasta que `emission_calibration.json` tenga `validated: true`), "n/d" para datos faltantes, **ADVERTENCIA CRÍTICA siempre presente** (76% cae −99% después de +20%, take-profit +20%, NO holdear, stop −30%). | [V] |
 | Trust loop (script_98) | Solo procesa `status == "active_tracking"` (ignora sombra). | [V] |
 | Bots gemelos | `monitor_shadow_bot` (6 h), `health_check_bot` (2 h), `autorepair_bot` (4 h), `daily_summary_bot` (06:00 UTC). Tres verificados con workflow_dispatch el 2026-09-30 05:50 UTC (success + commit de su log). | [V] |
-| Telegram de operaciones | Los bots escriben SOLO a `TELEGRAM_OPS_CHAT_ID`. **El secret todavía no existe** → los avisos quedan `skipped_no_ops_chat`. Lo carga Dirección. | [V] |
+| Telegram de operaciones | Los bots escriben SOLO a `TELEGRAM_OPS_CHAT_ID` (grupo "La mano de Dios"). Secret cargado por Dirección el 2026-09-30 06:05 UTC; primer envío (resumen diario por dispatch, run 36677130640) a las 06:13 UTC con `notified: sent`. | [V] envío aceptado por la API · [P] recepción en el grupo la confirma Dirección |
 | Tests | 128/128 (9 archivos `04_Config/scripts/test_*.py`, unittest, sin red). | [V] |
 
 ### 1.1 Criterios de validación de v7.2.1 (Dirección)
@@ -139,7 +139,7 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 ## 6. Preguntas abiertas
 
-1. [P] ¿Cuándo se carga `TELEGRAM_OPS_CHAT_ID`? Sin él los bots solo registran.
+1. ~~¿Cuándo se carga `TELEGRAM_OPS_CHAT_ID`?~~ Cargado el 2026-09-30 06:05 UTC [V].
 2. [P] Con la edad mínima de 30 min y el gate de 60 min, ¿alcanza el volumen para llegar a n ≥ 20 primarias en un plazo razonable? El monitor lo va a mostrar en el DÍA N.
 3. [P] ¿La advertencia del 76% se recalcula automáticamente cuando haya calibración v7.2.1, o queda fija con la fuente "histórico v7.1"?
 4. [H] ¿El take-profit a +20% debería ser parte de la métrica publicada (tasa de "tocó +20%" = lo que el usuario puede capturar) en lugar de la secundaria?
@@ -161,7 +161,7 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 ## 8. Próximos pasos
 
-1. Pedir a Dirección el secret `TELEGRAM_OPS_CHAT_ID` y confirmar que los bots avisan.
+1. Confirmar con Dirección que el resumen de las 06:13 UTC llegó al grupo "La mano de Dios".
 2. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
 3. Con n ≥ 20 primarias resueltas → veredicto automático al chat de operaciones → decisión de Dirección.
 4. Si la primaria < 20% → gate a 30 min (rama aparte, sin merge sin validar).
