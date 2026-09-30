@@ -271,6 +271,58 @@ def market_snapshot(token):
             "sol_amount": _num(tok.get("solAmount", token.get("solAmount")))}
 
 
+# El pipeline de script_82 es Solana; un token de otra cadena trae "chain" (multi-chain, doc 23).
+DEFAULT_CHAIN = "solana"
+CHAIN_LABELS = {"solana": "Solana", "base": "Base", "ethereum": "Ethereum", "blast": "Blast", "monad": "Monad"}
+# Exploradores por cadena (nombre, URL). Cadena sin explorador conocido = sin link (no se inventa).
+EXPLORERS = {"solana": ("Solscan", "https://solscan.io/token/{addr}"),
+             "base": ("BaseScan", "https://basescan.org/token/{addr}"),
+             "ethereum": ("Etherscan", "https://etherscan.io/token/{addr}"),
+             "blast": ("BlastScan", "https://blastscan.io/token/{addr}")}
+DEXSCREENER_CHAINS = {"solana", "base", "ethereum", "blast"}
+SIGNAL_WINDOW_H = 48   # horizonte de la métrica dual: la señal se evalúa dentro de las 48 h
+
+
+def md(text):
+    """Escapa '_', '*', '`' y '[' (Markdown de Telegram) en datos externos: un '_' en un nombre o en un
+    motivo rompía el parseo y la API rechazaba el mensaje entero."""
+    return re.sub(r"([_*`\[])", r"\\\1", str(text))
+
+
+def detection_facts(token):
+    """Identificación y tiempos de la detección. Lo desconocido queda en None ("n/d" en el mensaje)."""
+    tok = token.get("token") or {}
+    dx = token.get("dexscreener") or token.get("dx") or {}
+    created = dx.get("pairCreatedAt")
+    created_dt = (datetime.fromtimestamp(created / 1000, timezone.utc)
+                  if isinstance(created, (int, float)) and not isinstance(created, bool) and created > 0 else None)
+    try:
+        detected_dt = datetime.fromisoformat(token["detected_at"])
+        if detected_dt.tzinfo is None:
+            detected_dt = detected_dt.replace(tzinfo=timezone.utc)
+    except (KeyError, TypeError, ValueError):
+        detected_dt = None
+    age = ((detected_dt - created_dt).total_seconds() / 60
+           if detected_dt and created_dt and detected_dt >= created_dt else None)
+    return {"name": tok.get("name") or token.get("name"),
+            "chain": str(token.get("chain") or dx.get("chainId") or DEFAULT_CHAIN).lower(),
+            "creator": tok.get("traderPublicKey") or tok.get("creator"), "pool": tok.get("pool"),
+            "pair": dx.get("pairAddress"), "created": created_dt, "detected": detected_dt, "age_min": age}
+
+
+def source_links(mint, facts):
+    """Fuentes externas verificables: explorador de la cadena, DexScreener y la página oficial del lanzamiento."""
+    links, chain = [], facts["chain"]
+    if mint and chain in EXPLORERS:
+        label, url = EXPLORERS[chain]
+        links.append((label, url.format(addr=mint)))
+    if chain in DEXSCREENER_CHAINS and (facts["pair"] or mint):
+        links.append(("DexScreener", f"https://dexscreener.com/{chain}/{facts['pair'] or mint}"))
+    if facts["pool"] == "pump" and mint:
+        links.append(("pump.fun (página del lanzamiento)", f"https://pump.fun/coin/{mint}"))
+    return links
+
+
 def format_alert_message(token, collisions=(), calibration=None):
     # Symbol is in token.token.symbol, fallback to top-level
     symbol = (token.get("token") or {}).get("symbol") or token.get("symbol") or "UNKNOWN"
@@ -306,16 +358,41 @@ def format_alert_message(token, collisions=(), calibration=None):
 
     # Dato de identificación (no advertencia): otro token ya alertado comparte el símbolo
     collision_line = (
-        f"• Símbolo compartido: ya se alertó OTRO token {symbol} con mint distinto\n" if collisions else ""
+        f"• Símbolo compartido: ya se alertó OTRO token {md(symbol)} con mint distinto\n" if collisions else ""
     )
     reasons = [r for r in token.get("reasons", []) if not str(r).startswith("v7.2.1:")][:4]
-    reasons_block = "".join(f"• {r}\n" for r in reasons) or "• n/d\n"
+    reasons_block = "".join(f"• {md(r)}\n" for r in reasons) or "• n/d\n"
     sol_line = f"• Compra inicial del creador: {snap['sol_amount']:.2f} SOL\n" if snap["sol_amount"] is not None else ""
 
-    msg = f"""🚨 *SHOT DE MERCADO — {symbol}*
+    facts = detection_facts(token)
+
+    def when(dt):
+        return dt.strftime("%d/%m/%Y %H:%M UTC") if dt else "n/d"
+
+    age = facts["age_min"]
+    age_text = "n/d" if age is None else (f"{age:.0f} min" if age < 120 else f"{age / 60:.1f} h")
+    name_text = f"{md(facts['name'])} ({md(symbol)})" if facts["name"] else "n/d"
+    chain_text = CHAIN_LABELS.get(facts["chain"], facts["chain"])
+    mint_text = f"`{mint}`" if mint else "n/d"
+    creator_line = f"• Creador: `{facts['creator']}`\n" if facts["creator"] else ""
+    links_block = "".join(f"• {label}: {url}\n" for label, url in source_links(mint, facts)) or "• n/d\n"
+
+    msg = f"""🚨 *SHOT DE MERCADO* — {md(symbol)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{probabilities}📊 *DATOS (DexScreener, al detectar)*
+🪪 *ACTIVO*
+• Nombre: {name_text}
+• Chain: {chain_text}
+• Mint: {mint_text}
+{creator_line}
+🕒 *DETECCIÓN*
+• Detectado: {when(facts['detected'])}
+• Edad del par al detectar: {age_text}
+• Par creado: {when(facts['created'])}
+• Ventana operativa: < {SIGNAL_WINDOW_H} h desde la detección
+
+{probabilities}
+📊 *DATOS (DexScreener, al detectar)*
 • Precio: {show(snap['price'], '${:.8g}')}
 • MCap: {show(snap['mcap_usd'], '${:,.0f}')}
 • Liquidez: {show(snap['liquidity'], '${:,.0f}')}
@@ -332,6 +409,8 @@ def format_alert_message(token, collisions=(), calibration=None):
 6. Slippage: 5-10%
 7. Ejecutar swap
 
+🔗 *FUENTES VERIFICABLES*
+{links_block}
 ⏱️ *SEGUIMIENTO*
 • t+1h, t+6h y t+24h: actualización del precio contra la entrada
 """

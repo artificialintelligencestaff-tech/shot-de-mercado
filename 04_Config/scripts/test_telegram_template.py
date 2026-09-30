@@ -9,6 +9,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parent / "script_97_emit_alerts.py"
@@ -21,6 +22,10 @@ TOKEN = {"token": {"symbol": "PARASITE", "mint": "8ed8xX8TVRDdeyyUwq7Kyo8VwxMWZ6
                                    "MCap > $1M", "Volumen alto", "Liquidez alta"],
          "dexscreener": {"priceUsd": 0.009848, "liquidityUsd": 141632.8, "volume24hUsd": 201003.7,
                          "marketCapUsd": 9844684.6}}
+
+def epoch_ms(dt):
+    return int(dt.timestamp() * 1000)
+
 
 class TemplateTest(unittest.TestCase):
     def setUp(self):
@@ -57,7 +62,8 @@ class TemplateTest(unittest.TestCase):
         msg, _ = self.m.format_alert_message(bare, (), None)
         for fake in ("$0.001", "$25,000", "$50,000", "85.0 SOL", "top 1%", "Sin señales de riesgo", "ballena"):
             self.assertNotIn(fake, msg)
-        self.assertEqual(msg.count("n/d"), 5)   # precio, mcap, liquidez, volumen + motivos
+        # nombre, mint, detectado, edad, par creado, precio, mcap, liquidez, volumen, motivos, fuentes
+        self.assertEqual(msg.count("n/d"), 11)
 
     def test_motivos_reales_sin_nota_interna(self):
         msg, _ = self.m.format_alert_message(TOKEN, (), None)
@@ -97,6 +103,47 @@ class TemplateTest(unittest.TestCase):
         msg, _ = self.m.format_alert_message(TOKEN, (), None)
         self.assertIn("• Histórico (histórico v7.1, score ≥ 56, n=21): después de tocar +20%, "
                       "el 76% llegó a ≤ −99% dentro de las 48 h", msg)
+
+    def test_activo_deteccion_y_fuentes(self):
+        mint = "GmcLzFNHxjFLby3uTBAZkzpPbfkTZa8sZUfLrtoD7bUg"
+        pair = "DguFz7QMapVm6aHDmthnPGqVrxguKPa3FHov6CMdg4pV"
+        full = {"token": {"symbol": "PMP", "name": "Pump Token", "mint": mint, "pool": "pump",
+                          "traderPublicKey": "7jQwHdK771P286Vsn44v7dFVfCH8CzZcL3PZGidbShch"},
+                "score": 70, "detected_at": "2026-09-30T22:36:03+00:00",
+                "dexscreener": {"priceUsd": 5.6e-06, "pairAddress": pair,              # par creado 45 min antes
+                                "pairCreatedAt": epoch_ms(datetime(2026, 9, 30, 21, 51, 3, tzinfo=timezone.utc))}}
+        msg, _ = self.m.format_alert_message(full, (), None)
+        for line in ("🚨 *SHOT DE MERCADO* — PMP", "🪪 *ACTIVO*", "• Nombre: Pump Token (PMP)", "• Chain: Solana",
+                     f"• Mint: `{mint}`", "• Creador: `7jQwHdK771P286Vsn44v7dFVfCH8CzZcL3PZGidbShch`",
+                     "🕒 *DETECCIÓN*", "• Detectado: 30/09/2026 22:36 UTC", "• Edad del par al detectar: 45 min",
+                     "• Par creado: 30/09/2026 21:51 UTC", "• Ventana operativa: < 48 h desde la detección",
+                     "🔗 *FUENTES VERIFICABLES*", f"• Solscan: https://solscan.io/token/{mint}",
+                     f"• DexScreener: https://dexscreener.com/solana/{pair}",
+                     f"• pump.fun (página del lanzamiento): https://pump.fun/coin/{mint}"):
+            self.assertIn(line, msg.splitlines())
+        # orden: activo y detección arriba, fuentes después de la guía de adquisición
+        self.assertLess(msg.index("ACTIVO"), msg.index("PROBABILIDADES"))
+        self.assertLess(msg.index("CÓMO ADQUIRIRLO"), msg.index("FUENTES VERIFICABLES"))
+        self.assertLess(msg.index("FUENTES VERIFICABLES"), msg.index("SEGUIMIENTO"))
+
+    def test_edad_en_horas_y_cadena_sin_explorador(self):
+        tok = {"token": {"symbol": "B", "mint": "0xabc"}, "chain": "monad", "score": 60,
+               "detected_at": "2026-09-30T12:00:00+00:00",
+               "dexscreener": {"pairCreatedAt": epoch_ms(datetime(2026, 9, 30, 9, 30, tzinfo=timezone.utc))}}  # 2,5 h
+        msg, _ = self.m.format_alert_message(tok, (), None)
+        self.assertIn("• Edad del par al detectar: 2.5 h", msg.splitlines())
+        self.assertIn("• Chain: Monad", msg.splitlines())
+        self.assertNotIn("Solscan", msg)                                              # no se inventa link
+        self.assertNotIn("dexscreener.com", msg)
+
+    def test_markdown_de_datos_externos_escapado(self):
+        tok = {"token": {"symbol": "DOG_WIF", "name": "dog *wif* [hat]", "mint": "M1"}, "score": 60,
+               "reasons": ["bp_delta+ alto"], "dexscreener": None}
+        msg, _ = self.m.format_alert_message(tok, ["otro"], None)
+        self.assertIn("🚨 *SHOT DE MERCADO* — DOG\\_WIF", msg)
+        self.assertIn("• Nombre: dog \\*wif\\* \\[hat] (DOG\\_WIF)", msg)
+        self.assertIn("• bp\\_delta+ alto", msg)
+        self.assertIn("OTRO token DOG\\_WIF con mint distinto", msg)
 
 
 if __name__ == "__main__":
