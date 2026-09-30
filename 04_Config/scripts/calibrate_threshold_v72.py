@@ -1,23 +1,32 @@
 #!/usr/bin/env python3
 """
-calibrate_threshold_v72.py — Calibración del umbral de ALERTA del scoring v7.2 (solo lectura).
+calibrate_threshold_v72.py — Calibración del umbral de ALERTA del scoring (v7.2 / v7.2.1), solo lectura.
 
 Hipótesis de Dirección  [H1]: "el umbral 50 quedó desactualizado tras las bonificaciones de v7.2".
 Hipótesis complementaria [H2]: "la inflación se explica por tokens de < 60 min, donde vol_m5/vol_h1 ≈ 1
                                 por construcción: los bonos de 'aceleración' premian la juventud".
 
 Datos: 01_Datos_Crudos/final_detection/detection_*.json
-  - Conjunto A: detecciones con campos v7.2 (dexscreener.volume_m5 presente) -> se RECALCULA el
-    score con script_82.score_token, con el reloj fijado al momento de la detección (la edad del par
-    se mide entonces, no hoy) y sin _accumulated.json (evita leer estado posterior: bp_delta = 0).
+  - Conjunto A: detecciones con campos v7.2 (dexscreener.volume_m5 presente) -> se RECALCULA el score
+    con el script_82 del árbol actual (versión = script_82.SCORING_VERSION, "7.2" si no existe), con el
+    reloj fijado al momento de la detección y sin _accumulated.json (bp_delta = 0).
   - Conjunto B: detecciones legadas (sin campos v7.2) -> solo el score v7.1 guardado, como línea base.
-Resultados (opcional, --outcomes-sample N): muestra estratificada por score del Conjunto B con ventana de
-48 h ya cumplida; OHLCV de 15 min de GeckoTerminal (sin key) del mismo pool. Evento definitivo de
-Dirección: > +20% en <= 48 h, medido de dos formas: máximo (high) y cierre a 48 h. Además: rug
-(mínimo <= -90%) y AUC del score.
-Salida: 02_Analisis/diagnostics/threshold_analysis.json (+ resumen en consola)
 
-Uso: python 04_Config/scripts/calibrate_threshold_v72.py [--outcomes-sample 50]
+Métrica dual de precisión (decisión de Dirección, 2026-09-30):
+  - PRIMARIA (operativa, para calibrar): tocar +20% antes de caer −30% desde el precio de entrada.
+  - SECUNDARIA (honestidad, para el público): cierre >= +20% a las 48 h.
+  Precios: OHLCV de 15 min de GeckoTerminal (sin key) del mismo pool. Dentro de cada vela se asume el
+  orden open -> low -> high -> close: si una vela toca −30% y +20% a la vez, cuenta primero la caída
+  (resolución conservadora; las velas ambiguas se reportan). Entrada = precio de DexScreener en la
+  detección. Ventana (t0, t0 + 48 h].
+  Observación censurada (Conjunto A, 48 h aún no cumplidas): la primaria queda decidida en cuanto se
+  toca una barrera; si no, queda "pendiente". La secundaria queda pendiente hasta cumplir 48 h.
+
+Uso:
+  python 04_Config/scripts/calibrate_threshold_v72.py                          # tasas (sin red)
+  python 04_Config/scripts/calibrate_threshold_v72.py --outcomes-sample 50     # + legado, métrica dual
+  python 04_Config/scripts/calibrate_threshold_v72.py --outcomes-set-a         # + Conjunto A (censurado)
+  opciones: --out RUTA · --cache RUTA (velas ya descargadas; evita repetir llamadas)
 """
 import argparse
 import glob
@@ -41,7 +50,7 @@ SCRIPTS = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
 DETECTION_GLOB = str(ROOT / "01_Datos_Crudos" / "final_detection" / "detection_*.json")
 OUT_FILE = ROOT / "02_Analisis" / "diagnostics" / "threshold_analysis.json"
-THRESHOLDS = [50, 60, 70, 80, 90]
+THRESHOLDS = [50, 56, 60, 70, 80, 90]
 FINE_THRESHOLDS = list(range(50, 61))
 SCORING_DELAY_S = 330   # script_82 escucha PumpPortal 300 s y luego enriquece: ~5.5 min tras el timestamp
 TARGET_RATE = (0.05, 0.15)
@@ -52,12 +61,71 @@ GT_OHLCV = "https://api.geckoterminal.com/api/v2/networks/solana/pools/{pool}/oh
 GT_INTERVAL_S = 6.5          # [V] a 2.2 s, 128/164 llamadas devolvieron HTTP 429
 GT_MAX_RETRIES = 3
 GT_BACKOFF_S = 30.0
+CANDLE_S = 900
+CACHE_MAX_AGE_S = 6 * 3600
 HORIZON_S = 48 * 3600
-EVENT_MOVE = 0.20
+EVENT_UP = 0.20              # primaria y secundaria: +20%
+EVENT_DOWN = -0.30           # primaria: antes de caer −30%
 RUG_MOVE = -0.90
 SCORE_BUCKETS = [(0, 30), (30, 50), (50, 70), (70, 101)]
 SEED = 20260930
 
+
+# ---------------------------------------------------------------------------
+# Métrica dual (definiciones de Dirección)
+# ---------------------------------------------------------------------------
+
+def event_primary(prices_48h, entry_price):
+    """Tocar +20% antes de caer -30%."""
+    peak = entry_price
+    for p in prices_48h:
+        peak = max(peak, p)
+        if peak >= entry_price * (1 + EVENT_UP):
+            return True
+        if p <= entry_price * (1 + EVENT_DOWN):
+            return False
+    return False
+
+
+def event_secondary(prices_48h, entry_price):
+    """Cierre >= +20% a 48h."""
+    if not prices_48h:
+        return False
+    return prices_48h[-1] >= entry_price * (1 + EVENT_UP)
+
+
+def candle_path(candles):
+    """Velas [ts, o, h, l, c, v] -> serie de precios con orden open -> low -> high -> close."""
+    path = []
+    for c in candles:
+        path += [c[1], c[3], c[2], c[4]]
+    return path
+
+
+def evaluate_outcome(candles, p0, t0, now):
+    """Estados 'hit' | 'miss' | 'pending' para la primaria y la secundaria (+ diagnósticos)."""
+    complete = now >= t0 + HORIZON_S
+    up, down = p0 * (1 + EVENT_UP), p0 * (1 + EVENT_DOWN)
+    path = candle_path(candles)
+    touched = any(p >= up or p <= down for p in path)
+    if complete or touched:
+        primary = "hit" if event_primary(path, p0) else "miss"
+    else:
+        primary = "pending"
+    secondary = ("hit" if event_secondary([c[4] for c in candles] or [p0], p0) else "miss") if complete else "pending"
+    return {
+        "primary": primary, "secondary": secondary, "complete": complete,
+        "ambiguous_candles": sum(1 for c in candles if c[2] >= up and c[3] <= down),
+        "n_candles": len(candles),
+        "max_ret": round(max((c[2] for c in candles), default=p0) / p0 - 1, 4),
+        "min_ret": round(min((c[3] for c in candles), default=p0) / p0 - 1, 4),
+        "last_ret": round((candles[-1][4] if candles else p0) / p0 - 1, 4),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Estadística
+# ---------------------------------------------------------------------------
 
 def wilson(k, n, z=1.645):
     """IC 90% de Wilson para una proporción."""
@@ -67,7 +135,7 @@ def wilson(k, n, z=1.645):
     den = 1 + z * z / n
     c = (p + z * z / (2 * n)) / den
     h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / den
-    return [round(c - h, 4), round(c + h, 4)]
+    return [round(max(0.0, c - h), 4), round(min(1.0, c + h), 4)]
 
 
 def auc(scores_pos, scores_neg):
@@ -78,97 +146,165 @@ def auc(scores_pos, scores_neg):
     return round(wins / (len(scores_pos) * len(scores_neg)), 4)
 
 
-def fetch_outcome(pool, t0, p0, session):
-    """Máximo, cierre y mínimo en (t0, t0+48h] relativos al precio de detección p0."""
-    for attempt in range(GT_MAX_RETRIES + 1):
-        try:
-            r = session.get(GT_OHLCV.format(pool=pool), timeout=20,
-                            params={"aggregate": 15, "before_timestamp": int(t0 + HORIZON_S + 900), "limit": 200,
-                                    "currency": "usd"},
-                            headers={"Accept": "application/json;version=20230302",
-                                     "User-Agent": "shot-de-mercado-calibration/1.0"})
-        except requests.RequestException as e:
-            return {"status": "error", "detail": str(e)[:120]}
-        if r.status_code == 429 and attempt < GT_MAX_RETRIES:
-            ra = r.headers.get("Retry-After", "")
-            time.sleep(float(ra) if ra.isdigit() else GT_BACKOFF_S * (attempt + 1))
-            continue
-        break
-    if r.status_code != 200:
-        return {"status": f"http_{r.status_code}"}
-    rows = ((r.json().get("data") or {}).get("attributes") or {}).get("ohlcv_list") or []
-    win = sorted(c for c in rows if t0 < c[0] <= t0 + HORIZON_S - 900)
-    if not win:
-        return {"status": "sin_velas"}
-    return {"status": "ok", "n_candles": len(win), "coverage": round(len(win) / (HORIZON_S / 900), 3),
-            "max_ret": round(max(c[2] for c in win) / p0 - 1, 4),
-            "close_ret": round(win[-1][4] / p0 - 1, 4),
-            "min_ret": round(min(c[3] for c in win) / p0 - 1, 4)}
+def precision_block(rows, metric):
+    """k/n de 'hit' entre las observaciones resueltas de `metric`; informa las pendientes."""
+    resolved = [r for r in rows if r[metric] in ("hit", "miss")]
+    k = sum(r[metric] == "hit" for r in resolved)
+    return {"n_resolved": len(resolved), "k_hit": k, "pending": sum(r[metric] == "pending" for r in rows),
+            "rate": round(k / len(resolved), 4) if resolved else None, "ci90": wilson(k, len(resolved))}
 
 
-def outcome_study(set_b_rows, per_bucket):
-    """Muestra estratificada por score v7.1 (semilla fija), ventana de 48 h cumplida."""
-    now = time.time()
-    eligible = [r for r in set_b_rows if r.get("pool") and r.get("price") and r["t0"] + HORIZON_S + 3600 < now]
-    seen, pool_rows = set(), []
-    for r in eligible:                       # un token una sola vez (su primera detección)
-        if r["mint"] not in seen:
+def precision_by_threshold(rows, score_key):
+    out = {"all": {"n": len(rows), "primary": precision_block(rows, "primary"),
+                   "secondary": precision_block(rows, "secondary")}}
+    for t in THRESHOLDS:
+        sel = [r for r in rows if r[score_key] >= t]
+        out[str(t)] = {"n": len(sel), "primary": precision_block(sel, "primary"),
+                       "secondary": precision_block(sel, "secondary")}
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Descarga de velas (con caché)
+# ---------------------------------------------------------------------------
+
+class CandleSource:
+    def __init__(self, cache_path=None):
+        self.cache_path = Path(cache_path) if cache_path else None
+        self.cache = {}
+        if self.cache_path and self.cache_path.exists():
+            self.cache = json.loads(self.cache_path.read_text(encoding="utf-8"))
+        self.session, self.calls, self.last = requests.Session(), 0, 0.0
+
+    def get(self, pool, t0):
+        key = f"{pool}@{int(t0)}"
+        hit = self.cache.get(key)
+        # Se reutiliza solo lo descargado bien: completo, o censurado de hace < 6 h. Los errores se reintentan.
+        if hit and hit["status"] == "ok" and (hit.get("complete") or time.time() - hit["fetched_at"] < CACHE_MAX_AGE_S):
+            return hit["status"], hit.get("candles", [])
+        wait = GT_INTERVAL_S - (time.monotonic() - self.last)
+        if self.calls and wait > 0:
+            time.sleep(wait)
+        status, candles = self._fetch(pool, t0)
+        self.last, self.calls = time.monotonic(), self.calls + 1
+        self.cache[key] = {"status": status, "candles": candles, "fetched_at": time.time(),
+                           "complete": time.time() >= t0 + HORIZON_S}
+        return status, candles
+
+    def _fetch(self, pool, t0):
+        for attempt in range(GT_MAX_RETRIES + 1):
+            try:
+                r = self.session.get(GT_OHLCV.format(pool=pool), timeout=20,
+                                     params={"aggregate": 15, "before_timestamp": int(t0 + HORIZON_S + CANDLE_S),
+                                             "limit": 200, "currency": "usd"},
+                                     headers={"Accept": "application/json;version=20230302",
+                                              "User-Agent": "shot-de-mercado-calibration/1.1"})
+            except requests.RequestException:
+                return "error", []
+            if r.status_code == 429 and attempt < GT_MAX_RETRIES:
+                ra = r.headers.get("Retry-After", "")
+                time.sleep(float(ra) if ra.isdigit() else GT_BACKOFF_S * (attempt + 1))
+                continue
+            break
+        if r.status_code != 200:
+            return f"http_{r.status_code}", []
+        rows = ((r.json().get("data") or {}).get("attributes") or {}).get("ohlcv_list") or []
+        return "ok", sorted(c for c in rows if t0 < c[0] <= t0 + HORIZON_S - CANDLE_S)
+
+    def save(self):
+        if self.cache_path:
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            self.cache_path.write_text(json.dumps(self.cache), encoding="utf-8")
+
+
+def measure(rows, source, label):
+    """Evalúa la métrica dual para filas con pool, price, t0. 'sin_velas' con API ok = sin operaciones."""
+    now, out = time.time(), []
+    for i, r in enumerate(rows):
+        status, candles = source.get(r["pool"], r["t0"])
+        if status == "ok":
+            res = evaluate_outcome(candles, r["price"], r["t0"], now)
+            res["status"] = "ok" if candles else "sin_velas"
+        else:
+            res = {"status": status, "primary": "sin_datos", "secondary": "sin_datos"}
+        out.append({**{k: r[k] for k in ("mint", "run") if k in r}, **{k: v for k, v in r.items() if k.startswith("score")}, **res})
+        if (i + 1) % 25 == 0:
+            print(f"   {label}: {i + 1}/{len(rows)} (llamadas a la API: {source.calls})", flush=True)
+            source.save()
+    source.save()
+    return out
+
+
+def unique_first(rows):
+    seen, out = set(), []
+    for r in rows:
+        if r["mint"] not in seen and r.get("pool") and r.get("price"):
             seen.add(r["mint"])
-            pool_rows.append(r)
+            out.append(r)
+    return out
+
+
+def outcome_study_legacy(set_b_rows, per_bucket, source):
+    """Conjunto B: muestra estratificada por score v7.1 (semilla fija), ventana de 48 h cumplida."""
+    now = time.time()
+    pool_rows = unique_first([r for r in set_b_rows if r["t0"] + HORIZON_S + 3600 < now])
     rng = random.Random(SEED)
     sample = []
     for lo, hi in SCORE_BUCKETS:
         bucket = [r for r in pool_rows if lo <= r["score"] < hi]
         sample += rng.sample(bucket, min(per_bucket, len(bucket)))
-    session, results = requests.Session(), []
-    for i, r in enumerate(sample):
-        if i:
-            time.sleep(GT_INTERVAL_S)
-        out = fetch_outcome(r["pool"], r["t0"], r["price"], session)
-        results.append({"mint": r["mint"], "run": r["run"], "score": r["score"], **out})
-        if (i + 1) % 25 == 0:
-            print(f"   resultados: {i + 1}/{len(sample)}", flush=True)
-    ok = [x for x in results if x["status"] == "ok"]
-    summary = {"eligible_unique_tokens": len(pool_rows), "sampled": len(sample), "with_data": len(ok),
-               "status_counts": dict(Counter(x["status"] for x in results)), "by_bucket": {}, "by_threshold": {}}
-    for name, key in (("max_48h", "max_ret"), ("close_48h", "close_ret")):
-        pos = [x["score"] for x in ok if x[key] >= EVENT_MOVE]
-        neg = [x["score"] for x in ok if x[key] < EVENT_MOVE]
-        summary[f"base_rate_{name}"] = {"k": len(pos), "n": len(ok), "rate": round(len(pos) / len(ok), 4) if ok else None,
-                                        "ci90": wilson(len(pos), len(ok))}
-        summary[f"auc_{name}"] = auc(pos, neg)
-    rugs = sum(x["min_ret"] <= RUG_MOVE for x in ok)
-    summary["rug_rate_48h"] = {"k": rugs, "n": len(ok), "rate": round(rugs / len(ok), 4) if ok else None, "ci90": wilson(rugs, len(ok))}
+    rows = measure([{**r, "score": r["score"]} for r in sample], source, "legado")
+    ok = [x for x in rows if x["status"] == "ok"]
+    summary = {"eligible_unique_tokens": len(pool_rows), "sampled": len(sample), "with_candles": len(ok),
+               "status_counts": dict(Counter(x["status"] for x in rows)),
+               "precision_excluding_no_candles": precision_by_threshold(ok, "score"),
+               "precision_no_candles_as_miss": precision_by_threshold(
+                   [dict(x, primary="miss", secondary="miss") if x["status"] == "sin_velas" else x
+                    for x in rows if x["status"] in ("ok", "sin_velas")], "score"),
+               "rug_48h": precision_block([dict(x, rug="hit" if x["min_ret"] <= RUG_MOVE else "miss") for x in ok], "rug"),
+               "primary_hit_and_rug": sum(1 for x in ok if x["primary"] == "hit" and x["min_ret"] <= RUG_MOVE),
+               "ambiguous_candles_total": sum(x.get("ambiguous_candles", 0) for x in ok),
+               "by_bucket": {}}
     for lo, hi in SCORE_BUCKETS:
         b = [x for x in ok if lo <= x["score"] < hi]
-        k_max = sum(x["max_ret"] >= EVENT_MOVE for x in b)
-        k_close = sum(x["close_ret"] >= EVENT_MOVE for x in b)
-        summary["by_bucket"][f"{lo}-{hi - 1}"] = {
-            "n": len(b),
-            "hit_max_48h": {"k": k_max, "ci90": wilson(k_max, len(b))},
-            "hit_close_48h": {"k": k_close, "ci90": wilson(k_close, len(b))},
-            "rug_48h": {"k": sum(x["min_ret"] <= RUG_MOVE for x in b)},
-        }
-    for t in THRESHOLDS:
-        a = [x for x in ok if x["score"] >= t]
-        k = sum(x["max_ret"] >= EVENT_MOVE for x in a)
-        kc = sum(x["close_ret"] >= EVENT_MOVE for x in a)
-        summary["by_threshold"][str(t)] = {"n": len(a), "precision_max": round(k / len(a), 4) if a else None,
-                                           "ci90_max": wilson(k, len(a)), "precision_close": round(kc / len(a), 4) if a else None,
-                                           "ci90_close": wilson(kc, len(a))}
-    summary["note"] = ("Muestra estratificada: las tasas por umbral NO son la tasa poblacional (los buckets altos están "
-                       "sobre-representados). La base poblacional se estima ponderando por bucket.")
+        summary["by_bucket"][f"{lo}-{hi - 1}"] = {"n": len(b), "primary": precision_block(b, "primary"),
+                                                  "secondary": precision_block(b, "secondary"),
+                                                  "rugs": sum(x["min_ret"] <= RUG_MOVE for x in b)}
+    for m in ("primary", "secondary"):
+        pos = [x["score"] for x in ok if x[m] == "hit"]
+        neg = [x["score"] for x in ok if x[m] == "miss"]
+        summary[f"auc_{m}"] = auc(pos, neg)
     weights, pop = {}, 0.0
     for lo, hi in SCORE_BUCKETS:
         w = sum(lo <= r["score"] < hi for r in pool_rows)
         weights[f"{lo}-{hi - 1}"] = w
-        b = [x for x in ok if lo <= x["score"] < hi]
+        b = [x for x in ok if lo <= x["score"] < hi and x["primary"] in ("hit", "miss")]
         if b and pool_rows:
-            pop += w / len(pool_rows) * sum(x["max_ret"] >= EVENT_MOVE for x in b) / len(b)
-    summary["population_weighted_base_rate_max_48h"] = round(pop, 4)
+            pop += w / len(pool_rows) * sum(x["primary"] == "hit" for x in b) / len(b)
+    summary["population_weighted_primary_rate"] = round(pop, 4)
     summary["population_bucket_counts"] = weights
-    return summary, results
+    summary["note"] = ("Muestra estratificada: por umbral NO es la tasa poblacional (buckets altos sobre-representados); "
+                       "la base poblacional se pondera por bucket. 'sin_velas' = el pool no operó en la ventana.")
+    return summary, rows
 
+
+def outcome_study_set_a(set_a_rows, source, version):
+    """Conjunto A: todas las detecciones v7.2 (primera por token), censura hasta cumplir 48 h."""
+    uniq = unique_first(set_a_rows)
+    rows = measure([{"mint": r["mint"], "run": r["run"], "pool": r["pool"], "price": r["price"], "t0": r["t0"],
+                     "score_v72_prod": r["stored"], "score_current": r["recomputed"]} for r in uniq], source, "conjunto A")
+    ok = [x for x in rows if x["status"] in ("ok", "sin_velas")]
+    return {"unique_tokens": len(uniq), "status_counts": dict(Counter(x["status"] for x in rows)),
+            "current_scorer_version": version,
+            "precision_v72_prod": precision_by_threshold(ok, "score_v72_prod"),
+            f"precision_v{version}": precision_by_threshold(ok, "score_current"),
+            "complete_48h": sum(1 for x in ok if x.get("complete")),
+            "note": "Censurado: 'pending' = sin barrera tocada todavía (primaria) o 48 h no cumplidas (secundaria)."}, rows
+
+
+# ---------------------------------------------------------------------------
+# Recálculo del score
+# ---------------------------------------------------------------------------
 
 def load_script_82(workdir):
     """Importa script_82 con cwd en un directorio temporal: sus makedirs relativos y la lectura
@@ -208,15 +344,26 @@ def age_bucket(age_min):
     return ">24h"
 
 
+def fmt_prec(block):
+    p = block["primary"]
+    s = block["secondary"]
+    return (f"n={block['n']:<4} primaria {p['k_hit']}/{p['n_resolved']}={p['rate']} IC90={p['ci90']} (pend {p['pending']}) · "
+            f"secundaria {s['k_hit']}/{s['n_resolved']}={s['rate']} IC90={s['ci90']} (pend {s['pending']})")
+
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Calibración del umbral v7.2")
+    ap = argparse.ArgumentParser(description="Calibración del umbral de ALERTA (v7.2 / v7.2.1)")
     ap.add_argument("--outcomes-sample", type=int, default=0,
-                    help="tokens por bucket de score para medir resultados a 48 h (0 = no medir)")
+                    help="tokens por bucket del legado para medir la métrica dual (0 = no medir)")
+    ap.add_argument("--outcomes-set-a", action="store_true", help="medir la métrica dual en el Conjunto A (censurado)")
+    ap.add_argument("--out", default=str(OUT_FILE), help="ruta del reporte JSON")
+    ap.add_argument("--cache", default=None, help="caché de velas (JSON) para no repetir llamadas")
     args = ap.parse_args(argv)
     files = sorted(glob.glob(DETECTION_GLOB))
     set_a, set_b, per_run = [], [], {}
     with tempfile.TemporaryDirectory() as work:
         s82 = load_script_82(work)
+        version = getattr(s82, "SCORING_VERSION", "7.2")
         prev = os.getcwd()
         os.chdir(work)                       # sin _accumulated.json -> bp_delta = 0
         try:
@@ -234,7 +381,8 @@ def main(argv=None):
                         vol_ratio = dx["volume_m5"] / dx["volume_h1"] if dx.get("volume_h1") else None
                         set_a.append({"run": ts, "mint": mint, "source": x.get("source"), "stored": x.get("score"),
                                       "recomputed": score, "reasons": reasons, "age_min": age, "vol_ratio": vol_ratio,
-                                      "mcap": dx.get("marketCapUsd"), "liq": dx.get("liquidityUsd")})
+                                      "mcap": dx.get("marketCapUsd"), "liq": dx.get("liquidityUsd"),
+                                      "pool": dx.get("pairAddress"), "price": dx.get("priceUsd"), "t0": t_score})
                         run_scores.append(x.get("score"))
                     elif isinstance(x.get("score"), (int, float)):
                         set_b.append({"run": ts, "mint": mint, "score": x["score"], "has_dex": isinstance(dx, dict),
@@ -251,21 +399,20 @@ def main(argv=None):
     agree = sum(1 for r in set_a if r["stored"] == r["recomputed"])
     within15 = sum(1 for r in set_a if abs(r["stored"] - r["recomputed"]) <= 15)
 
-    # H2: ¿qué explica las ALERTAS (>= 70)?
+    # H2: ¿qué explica las ALERTAS (>= 70) del score recalculado?
     alerts = [r for r in set_a if r["recomputed"] >= 70]
     by_age = {}
     for r in set_a:
-        b = by_age.setdefault(age_bucket(r["age_min"]), {"n": 0, "alerta_70": 0})
+        b = by_age.setdefault(age_bucket(r["age_min"]), {"n": 0, "alerta_70": 0, "emite_56": 0})
         b["n"] += 1
         b["alerta_70"] += r["recomputed"] >= 70
+        b["emite_56"] += r["recomputed"] >= 56
     young_saturated = sum(1 for r in alerts if r["age_min"] is not None and r["age_min"] < 60
                           and r["vol_ratio"] is not None and r["vol_ratio"] >= 0.9)
     reason_freq = Counter(reason for r in alerts for reason in r["reasons"])
     low_fund = sum(1 for r in alerts if "MCap bajo" in r["reasons"] and "Volumen bajo" in r["reasons"])
 
-    # Contrafáctico: bonos de aceleración solo con la ventana h1 completa (edad >= 60 min).
-    # Aproximación: se restan del score final ya topeado en 100, así que subestima levemente
-    # a los tokens que superaban 100 antes del tope (los deja más bajos, no más altos).
+    # Contrafáctico v7.2 (solo tiene sentido si el scorer actual es v7.2): bonos de aceleración con edad >= 60 min.
     gated = []
     for r in set_a:
         s = r["recomputed"]
@@ -273,63 +420,81 @@ def main(argv=None):
             s = s - sum(v for k, v in ACCEL_BONUSES.items() if k in r["reasons"])
         r["gated"] = max(0, s)
         gated.append(r["gated"])
-    fine = {str(t): round(sum(g >= t for g in gated) / len(gated), 4) for t in FINE_THRESHOLDS} if gated else {}
+    fine_cf = {str(t): round(sum(g >= t for g in gated) / len(gated), 4) for t in FINE_THRESHOLDS} if gated else {}
+    fine_current = {str(t): round(sum(s >= t for s in recomp) / len(recomp), 4) for t in FINE_THRESHOLDS} if recomp else {}
 
     legacy = [r["score"] for r in set_b]
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "hypotheses": {"H1": "umbral desactualizado tras bonos v7.2",
                        "H2": "inflación por tokens < 60 min con vol_m5/vol_h1 ≈ 1 por construcción"},
+        "event_definitions": {"primary": "tocar +20% antes de caer −30% desde la entrada (calibración)",
+                              "secondary": "cierre >= +20% a 48 h (público)",
+                              "intra_candle_order": "open -> low -> high -> close (conservador)"},
         "data": {"files": len(files), "set_a_v72_complete": len(set_a), "set_a_runs": sorted(per_run),
                  "set_b_legacy": len(set_b), "set_b_with_dex": sum(r["has_dex"] for r in set_b)},
         "method": {"clock": f"timestamp de la corrida + {SCORING_DELAY_S}s", "bp_delta": "0 (sin _accumulated.json)",
-                   "scorer": "script_82_final_detection.score_token (código actual)"},
-        "reproducibility": {"exact_match": agree, "within_15": within15, "n": len(set_a),
-                            "note": "diferencias esperadas: bp_delta (±15) y reloj (±1 min en los cortes de edad)"},
+                   "scorer": f"script_82_final_detection.score_token (árbol actual, versión {version})"},
+        "current_scorer_version": version,
+        "reproducibility_vs_production": {"exact_match": agree, "within_15": within15, "n": len(set_a),
+                                          "note": "exacto esperado solo si el scorer actual es el de producción (v7.2)"},
         "set_a": {
-            "stored_production_score": {"histogram": histogram(stored), "rates": rate_table(stored),
-                                        "median": statistics.median(stored) if stored else None},
-            "recomputed_v72": {"histogram": histogram(recomp), "rates": rate_table(recomp),
-                               "median": statistics.median(recomp) if recomp else None},
+            "stored_production_score_v72": {"histogram": histogram(stored), "rates": rate_table(stored),
+                                            "median": statistics.median(stored) if stored else None},
+            f"recomputed_v{version}": {"histogram": histogram(recomp), "rates": rate_table(recomp),
+                                       "median": statistics.median(recomp) if recomp else None,
+                                       "fine_sweep_rates": fine_current},
             "per_run_stored": per_run,
             "by_age_bucket": by_age,
-            "alerts_70": {"n": len(alerts), "young_and_saturated_ratio": young_saturated,
-                          "mcap_bajo_y_volumen_bajo": low_fund, "top_reasons": reason_freq.most_common(12)},
+            "alerts_70_recomputed": {"n": len(alerts), "young_and_saturated_ratio": young_saturated,
+                                     "mcap_bajo_y_volumen_bajo": low_fund, "top_reasons": reason_freq.most_common(12)},
             "counterfactual_accel_gated_60m": {"rates": rate_table(gated), "histogram": histogram(gated),
-                                               "fine_sweep_rates": fine},
-            "rows": [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items() if k != "reasons"}
-                     for r in set_a],
+                                               "fine_sweep_rates": fine_cf},
+            "rows": [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items()
+                      if k not in ("reasons", "pool", "price", "t0")} for r in set_a],
         },
         "set_b_legacy_v71": {"histogram": histogram(legacy), "rates": rate_table(legacy),
                              "median": statistics.median(legacy) if legacy else None},
         "target_rate": list(TARGET_RATE),
     }
+    source = CandleSource(args.cache) if (args.outcomes_sample > 0 or args.outcomes_set_a) else None
+    if args.outcomes_set_a:
+        print(f"[INFO] métrica dual, Conjunto A (censurado): GeckoTerminal, {GT_INTERVAL_S}s entre llamadas", flush=True)
+        summary, rows = outcome_study_set_a(set_a, source, version)
+        report["outcomes_set_a"] = summary
+        report["outcome_rows_set_a"] = rows
     if args.outcomes_sample > 0:
-        print(f"[INFO] midiendo resultados a 48 h: hasta {args.outcomes_sample} tokens por bucket "
-              f"(GeckoTerminal, {GT_INTERVAL_S}s entre llamadas)", flush=True)
-        summary, rows = outcome_study(set_b, args.outcomes_sample)
+        print(f"[INFO] métrica dual, legado: hasta {args.outcomes_sample} tokens por bucket", flush=True)
+        summary, rows = outcome_study_legacy(set_b, args.outcomes_sample, source)
         report["outcomes_legacy_v71"] = summary
-        report["outcome_rows"] = rows
-    OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    OUT_FILE.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        report["outcome_rows_legacy"] = rows
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"[OK] {OUT_FILE}")
-    print(f"Conjunto A (v7.2 completo): n={len(set_a)} en {len(per_run)} corridas · Conjunto B (legado): n={len(set_b)}")
-    print(f"Reproducibilidad: exacto {agree}/{len(set_a)} · |Δ|<=15: {within15}/{len(set_a)}")
-    for name, sc in (("v7.2 producción (guardado)", stored), ("v7.2 recalculado", recomp),
-                     ("v7.2 con bonos gateados >=60m", gated), ("v7.1 legado", legacy)):
+    print(f"[OK] {out}")
+    print(f"Scorer actual: v{version} · Conjunto A: n={len(set_a)} en {len(per_run)} corridas · Legado: n={len(set_b)}")
+    print(f"Coincidencia con producción (v7.2): exacto {agree}/{len(set_a)} · |Δ|<=15: {within15}/{len(set_a)}")
+    for name, sc in (("v7.2 producción (guardado)", stored), (f"v{version} recalculado", recomp),
+                     ("contrafáctico gate (sobre recalculado)", gated), ("v7.1 legado", legacy)):
         rt = rate_table(sc)
-        print(f"  {name:<30} " + "  ".join(f">={t}: {rt[str(t)]['rate']:.1%}" for t in THRESHOLDS if rt[str(t)]['rate'] is not None))
-    print(f"ALERTAS>=70: {len(alerts)} · <60min y m5/h1>=0.9: {young_saturated} · 'MCap bajo'+'Volumen bajo': {low_fund}")
-    print("Por edad:", {k: f"{v['alerta_70']}/{v['n']}" for k, v in sorted(by_age.items())})
-    print("Gateado, barrido fino:", fine)
-    o = report.get("outcomes_legacy_v71")
-    if o:
-        print(f"Resultados 48h: con datos {o['with_data']}/{o['sampled']} · base (max) {o['base_rate_max_48h']} · "
-              f"base (cierre) {o['base_rate_close_48h']} · rug {o['rug_rate_48h']} · AUC max {o['auc_max_48h']} · "
-              f"AUC cierre {o['auc_close_48h']} · base poblacional ponderada {o['population_weighted_base_rate_max_48h']}")
-        for b, v in o["by_bucket"].items():
-            print(f"   score {b:<7} n={v['n']:<3} hit_max={v['hit_max_48h']} hit_close={v['hit_close_48h']} rugs={v['rug_48h']['k']}")
+        print(f"  {name:<40} " + "  ".join(f">={t}: {rt[str(t)]['rate']:.1%}" for t in THRESHOLDS if rt[str(t)]['rate'] is not None))
+    print(f"Barrido fino v{version}: {fine_current}")
+    print("Por edad:", {k: f"≥70 {v['alerta_70']} · ≥56 {v['emite_56']} / {v['n']}" for k, v in sorted(by_age.items())})
+    oa = report.get("outcomes_set_a")
+    if oa:
+        print(f"Conjunto A resultados: {oa['status_counts']} · 48h completas: {oa['complete_48h']}")
+        for lbl, key in (("v7.2 prod", "precision_v72_prod"), (f"v{version}", f"precision_v{version}")):
+            for t in ("all", "56", "70"):
+                print(f"   {lbl:<9} >= {t:<4} {fmt_prec(oa[key][t])}")
+    ol = report.get("outcomes_legacy_v71")
+    if ol:
+        print(f"Legado resultados: {ol['status_counts']} · rug {ol['rug_48h']} · primaria-hit con rug: {ol['primary_hit_and_rug']} · "
+              f"velas ambiguas: {ol['ambiguous_candles_total']} · AUC prim {ol['auc_primary']} · AUC sec {ol['auc_secondary']} · "
+              f"base poblacional primaria {ol['population_weighted_primary_rate']}")
+        for t in ("all", "50", "56", "70"):
+            print(f"   excl. sin velas >= {t:<4} {fmt_prec(ol['precision_excluding_no_candles'][t])}")
+            print(f"   sin velas=miss  >= {t:<4} {fmt_prec(ol['precision_no_candles_as_miss'][t])}")
     return 0
 
 
