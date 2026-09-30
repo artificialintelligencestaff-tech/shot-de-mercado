@@ -186,70 +186,113 @@ def send_telegram(text):
         print(f"[ERROR] Telegram exception: {e}")
         return False
 
-def format_alert_message(token, collisions=()):
-    # Symbol is in token.token.symbol, fallback to top-level
-    symbol = token.get("token", {}).get("symbol") or token.get("symbol") or "UNKNOWN"
-    # Mint is in token.token.mint, fallback to top-level
-    mint = token.get("token", {}).get("mint") or token.get("mint", "")
-    score = token.get("score", 55)
-    # solAmount is in token, fallback
-    sol_amt = token.get("solAmount", 85)
-    # marketCapSol is in token, fallback
-    mcap = token.get("marketCapSol", 411)
-    
-    # Get price/liq from dexscreener or ms_data if available
-    dx = token.get("dx", {})
-    liq = dx.get("liquidityUsd", 25000)
-    price = dx.get("priceUsd", 0.001)
-    vol = dx.get("volume24hUsd", 50000)
+def load_emission_calibration(path=None):
+    """Probabilidades VALIDADAS (métrica dual) del scorer/umbral que emiten.
 
-    # Confianza formula (50-69 score -> 50-65% confidence)
+    Archivo 02_Analisis/diagnostics/emission_calibration.json con validated=true. Sin archivo, ilegible
+    o sin validar -> None, y el mensaje dice "en validación": nunca se muestran cifras no validadas.
+    """
+    path = path or os.path.join(str(PROJECT_ROOT), "02_Analisis", "diagnostics", "emission_calibration.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("validated") is not True:
+        return None
+    try:
+        for key in ("primary", "secondary", "rug_after_primary_hit"):
+            float(data[key]["rate"])
+            float(data[key]["ci90"][0]), float(data[key]["ci90"][1])
+    except (KeyError, TypeError, ValueError, IndexError):
+        return None
+    return data
+
+
+def _num(value):
+    try:
+        return float(value) if value is not None and not isinstance(value, bool) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def market_snapshot(token):
+    """Datos reales del token al detectarlo: DexScreener (script_82) o el formato viejo 'dx'.
+    Lo que falta queda en None: el mensaje muestra "n/d", nunca un valor por defecto."""
+    dx = token.get("dexscreener") or token.get("dx") or {}
+    tok = token.get("token") or {}
+    return {"price": _num(dx.get("priceUsd")), "liquidity": _num(dx.get("liquidityUsd")),
+            "volume_24h": _num(dx.get("volume24hUsd")), "mcap_usd": _num(dx.get("marketCapUsd")),
+            "sol_amount": _num(tok.get("solAmount", token.get("solAmount")))}
+
+
+def format_alert_message(token, collisions=(), calibration=None):
+    # Symbol is in token.token.symbol, fallback to top-level
+    symbol = (token.get("token") or {}).get("symbol") or token.get("symbol") or "UNKNOWN"
+    # Mint is in token.token.mint, fallback to top-level
+    mint = (token.get("token") or {}).get("mint") or token.get("mint", "")
+    score = token.get("score", 0)
+
+    # Confianza heredada (solo se guarda en el registro para script_98; no se muestra: no está calibrada)
     confidence = min(65, 45 + int(score * 0.2))
+
+    snap = market_snapshot(token)
+
+    def show(value, fmt):
+        return fmt.format(value) if value is not None else "n/d"
+
+    def pct(x):
+        return f"{x * 100:.0f}%"
+
+    if calibration:
+        p, s, r = calibration["primary"], calibration["secondary"], calibration["rug_after_primary_hit"]
+        probabilities = (
+            f"🎯 *PROBABILIDADES* (scoring v{calibration.get('scoring_version', '?')}, "
+            f"score ≥ {calibration.get('threshold', '?')}, n={p.get('n', '?')})\n"
+            f"• Tocar +20% antes de caer −30% (≤48 h): {pct(p['rate'])} (IC90: {pct(p['ci90'][0])}–{pct(p['ci90'][1])})\n"
+            f"• Cerrar ≥ +20% a las 48 h (mantener): {pct(s['rate'])} (IC90: {pct(s['ci90'][0])}–{pct(s['ci90'][1])})\n"
+        )
+        rug_warning = (f"• De los tokens que tocaron +20%, el {pct(r['rate'])} cayó después −99% o más "
+                       f"dentro de las 48 h (n={r.get('n', '?')})\n")
+    else:
+        probabilities = "🎯 *PROBABILIDADES*: en validación (todavía no hay cifras calibradas para este scoring)\n"
+        rug_warning = "• En los datos históricos, la mayoría de los tokens que tocan +20% colapsan después\n"
 
     collision_warning = (
         f"• Ya alertamos OTRO token con el símbolo {symbol} (mint distinto): "
         f"verificá el mint antes de operar\n" if collisions else ""
     )
+    reasons = [r for r in token.get("reasons", []) if not str(r).startswith("v7.2.1:")][:4]
+    reasons_block = "".join(f"• {r}\n" for r in reasons) or "• n/d\n"
+    sol_line = f"• Compra inicial del creador: {snap['sol_amount']:.2f} SOL\n" if snap["sol_amount"] is not None else ""
 
     msg = f"""🚨 *SHOT DE MERCADO — {symbol}*
-Confianza: {confidence}% (MODERADA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📊 *DATOS*
-• Precio: ${price:.6f}
-• MCap: {mcap:.1f} SOL (${mcap * 140:,.0f})
-• Liquidez: ${liq:,.0f}
-• Volumen 24h: ${vol:,.0f}
-• Whale entry: {sol_amt:.1f} SOL
+{probabilities}
+⚠️ *ADVERTENCIA*
+{rug_warning}• Recomendación: tomar ganancia en +20%. NO mantener. Stop en −30%.
+{collision_warning}• No invertir más del 1-2% del capital
 
-🎯 *POR QUÉ LO DETECTAMOS*
-• Whale entry: {sol_amt:.1f} SOL (top 1%)
-• MCap respaldado por ballena
-• Liquidez activa en DEX
-• Sin señales de riesgo (mint/freeze revoked)
-
-📈 *NIVEL DE CONFIANZA: MODERADA ({confidence}%)*
-Este token cumple los criterios mínimos. No tiene señales de KOL accumulating ni trending masivo, por lo que la confianza es moderada.
-
+📊 *DATOS (DexScreener, al detectar)*
+• Precio: {show(snap['price'], '${:.8g}')}
+• MCap: {show(snap['mcap_usd'], '${:,.0f}')}
+• Liquidez: {show(snap['liquidity'], '${:,.0f}')}
+• Volumen 24h: {show(snap['volume_24h'], '${:,.0f}')}
+{sol_line}
+🔎 *POR QUÉ LO DETECTAMOS* (score {score})
+{reasons_block}
 🛒 *CÓMO ADQUIRIRLO (paso a paso)*
 1. Instalar Phantom: https://phantom.app
 2. Comprar SOL en Binance/Coinbase
 3. Enviar SOL a tu wallet Phantom
 4. Conectar a Jupiter: https://jup.ag
-5. Pegar mint: `{mint}`
+5. Pegar mint (verificá que coincida): `{mint}`
 6. Slippage: 5-10%
 7. Ejecutar swap
 
-⚠️ *ADVERTENCIAS*
-{collision_warning}• No invertir más del 1-2% del capital
-• Token de <6h de vida = alto riesgo
-• Confianza moderada, no segura
-• El sistema actualizará la confianza en 1h/6h/24h
-
 ⏱️ *SEGUIMIENTO*
-• t+1h: actualización de confianza
-• t+6h: actualización
-• t+24h: veredicto final (acierto/fallo/falso positivo)
+• t+1h, t+6h y t+24h: actualización del precio contra la entrada
 """
     return msg, confidence
 
@@ -284,6 +327,9 @@ def main():
     shadow = env_flag("SHADOW_MODE")
     if shadow:
         print("[INFO] SHADOW_MODE activo: alertas registradas con status=shadow, sin envío a Telegram.")
+    calibration = load_emission_calibration()
+    if calibration is None:
+        print("[INFO] Sin calibración validada: el mensaje muestra las probabilidades como 'en validación'.")
 
     if not os.path.exists(ACCUMULATED_FILE):
         print("[ERROR] _accumulated.json no encontrado.")
@@ -342,7 +388,7 @@ def main():
         # Get symbol from token.token.symbol or fallback
         symbol = (token.get("token") or {}).get("symbol") or token.get("symbol", "UNKNOWN")
         collisions = symbol_collisions(symbol, mint, all_alerts)
-        msg, confidence = format_alert_message(token, collisions)
+        msg, confidence = format_alert_message(token, collisions, calibration)
         alert_record = {
             "timestamp": timestamp,
             "mint": mint,
