@@ -1,0 +1,1864 @@
+{
+  "generated_at": "2026-09-30T06:01:06+00:00",
+  "runner": "local (Argentina)",
+  "burst_size": 8,
+  "results": [
+    {
+      "group": "h",
+      "id": "binance_klines_btc",
+      "method": "GET",
+      "url": "https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=0&limit=2",
+      "latency_ms": 1450,
+      "status": 200,
+      "bytes": 344,
+      "rate_limit_headers": {
+        "x-mbx-used-weight": "2",
+        "x-mbx-used-weight-1m": "2",
+        "cache-control": "no-cache, no-store, must-revalidate"
+      },
+      "content_type": "application/json;charset=UTF-8",
+      "shape": {
+        "type": "list",
+        "len": 2,
+        "item": {
+          "type": "list",
+          "len": 12,
+          "item": {
+            "type": "int"
+          }
+        }
+      },
+      "coverage": {
+        "first_day": "2017-08-17"
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 1345
+      }
+    },
+    {
+      "group": "h",
+      "id": "binance_futures_funding",
+      "method": "GET",
+      "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1567296000000&limit=1",
+      "latency_ms": 436,
+      "status": 200,
+      "bytes": 113,
+      "rate_limit_headers": {
+        "cache-control": "no-cache, no-store, must-revalidate"
+      },
+      "content_type": "application/json;charset=UTF-8",
+      "shape": {
+        "type": "list",
+        "len": 1,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "fundingRate",
+            "fundingTime",
+            "markPrice",
+            "rateType",
+            "symbol"
+          ]
+        }
+      },
+      "coverage": {
+        "first_funding": "2019-09-10"
+      }
+    },
+    {
+      "group": "h",
+      "id": "coinbase_candles_btc",
+      "method": "GET",
+      "url": "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400",
+      "latency_ms": 200,
+      "status": 200,
+      "bytes": 21515,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=300, must-revalidate",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "list",
+        "len": 350,
+        "item": {
+          "type": "list",
+          "len": 6,
+          "item": {
+            "type": "int"
+          }
+        }
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 103
+      }
+    },
+    {
+      "group": "h",
+      "id": "kraken_ohlc_btc",
+      "method": "GET",
+      "url": "https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440",
+      "latency_ms": 408,
+      "status": 200,
+      "bytes": 62291,
+      "rate_limit_headers": {
+        "cf-cache-status": "HIT",
+        "cache-control": "public, max-age=2"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "error",
+          "result"
+        ],
+        "result_shape": {
+          "type": "dict",
+          "keys": [
+            "XXBTZUSD",
+            "last"
+          ]
+        }
+      }
+    },
+    {
+      "group": "h",
+      "id": "deribit_dvol_btc",
+      "method": "GET",
+      "url": "https://www.deribit.com/api/v2/public/get_volatility_index_data?currency=BTC&start_timestamp=0&end_timestamp=1790747873000&resolution=86400",
+      "latency_ms": 919,
+      "status": 200,
+      "bytes": 39777,
+      "rate_limit_headers": {
+        "cache-control": "no-store",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "jsonrpc",
+          "result",
+          "testnet",
+          "usDiff",
+          "usIn",
+          "usOut"
+        ],
+        "result_shape": {
+          "type": "dict",
+          "keys": [
+            "continuation",
+            "data"
+          ]
+        }
+      },
+      "coverage": {
+        "first_day_in_page": "2024-01-05",
+        "rows": 1000,
+        "continuation": 1704326400000
+      }
+    },
+    {
+      "group": "h",
+      "id": "alternative_fng",
+      "method": "GET",
+      "url": "https://api.alternative.me/fng/?limit=0",
+      "latency_ms": 852,
+      "status": 200,
+      "bytes": 298117,
+      "rate_limit_headers": {},
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "data",
+          "metadata",
+          "name"
+        ],
+        "data_shape": {
+          "type": "list",
+          "len": 3160,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "time_until_update",
+              "timestamp",
+              "value",
+              "value_classification"
+            ]
+          }
+        }
+      },
+      "coverage": {
+        "first_day": "2018-02-01",
+        "rows": 3160
+      }
+    },
+    {
+      "group": "h",
+      "id": "coinpaprika_ticker_btc",
+      "method": "GET",
+      "url": "https://api.coinpaprika.com/v1/tickers/btc-bitcoin",
+      "latency_ms": 413,
+      "status": 200,
+      "bytes": 796,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=30, s-maxage=30, stale-while-revalidate=10, stale-if-error=600",
+        "ratelimit-limit": "20000",
+        "ratelimit-remaining": "19994",
+        "ratelimit-reset": "151341",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "beta_value",
+          "first_data_at",
+          "id",
+          "last_updated",
+          "max_supply",
+          "name",
+          "quotes",
+          "rank",
+          "symbol",
+          "total_supply"
+        ]
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 100
+      }
+    },
+    {
+      "group": "h",
+      "id": "mempool_fees",
+      "method": "GET",
+      "url": "https://mempool.space/api/v1/fees/recommended",
+      "latency_ms": 533,
+      "status": 200,
+      "bytes": 74,
+      "rate_limit_headers": {
+        "cache-control": "max-age=1, public"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "economyFee",
+          "fastestFee",
+          "halfHourFee",
+          "hourFee",
+          "minimumFee"
+        ]
+      }
+    },
+    {
+      "group": "h",
+      "id": "coingecko_simple_keyless",
+      "method": "GET",
+      "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd",
+      "latency_ms": 163,
+      "status": 200,
+      "bytes": 76,
+      "rate_limit_headers": {
+        "cf-cache-status": "DYNAMIC",
+        "age": "8",
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=60"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "bitcoin",
+          "ethereum",
+          "solana"
+        ]
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          429,
+          429,
+          429,
+          429
+        ],
+        "n_429": 4,
+        "median_ms": 102
+      }
+    },
+    {
+      "group": "f",
+      "id": "defillama_chains",
+      "method": "GET",
+      "url": "https://api.llama.fi/v2/chains",
+      "latency_ms": 136,
+      "status": 200,
+      "bytes": 64081,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=600",
+        "age": "266",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "list",
+        "len": 467,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "chainId",
+            "cmcId",
+            "gasTokenGeckoId",
+            "gecko_id",
+            "name",
+            "tokenSymbol",
+            "tvl"
+          ]
+        }
+      },
+      "coverage": {
+        "items": 467
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 125
+      }
+    },
+    {
+      "group": "f",
+      "id": "defillama_chain_tvl_base",
+      "method": "GET",
+      "url": "https://api.llama.fi/v2/historicalChainTvl/Base",
+      "latency_ms": 127,
+      "status": 200,
+      "bytes": 58737,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=1798",
+        "age": "265",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "list",
+        "len": 1734,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "date",
+            "tvl"
+          ]
+        }
+      },
+      "coverage": {
+        "first_day": "2022-01-01",
+        "last_day": "2026-09-30",
+        "rows": 1734,
+        "last_tvl": 6247507011
+      }
+    },
+    {
+      "group": "f",
+      "id": "defillama_chain_tvl_monad",
+      "method": "GET",
+      "url": "https://api.llama.fi/v2/historicalChainTvl/Monad",
+      "latency_ms": 104,
+      "status": 200,
+      "bytes": 11473,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=1798",
+        "age": "265",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "list",
+        "len": 320,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "date",
+            "tvl"
+          ]
+        }
+      },
+      "coverage": {
+        "first_day": "2025-10-25",
+        "last_day": "2026-09-30",
+        "rows": 320,
+        "last_tvl": 1030694953
+      }
+    },
+    {
+      "group": "f",
+      "id": "defillama_fees_base",
+      "method": "GET",
+      "url": "https://api.llama.fi/overview/fees/Base?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true",
+      "latency_ms": 199,
+      "status": 200,
+      "bytes": 787242,
+      "rate_limit_headers": {
+        "age": "263",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "allChains",
+          "breakdown24h",
+          "breakdown30d",
+          "chain",
+          "change_1d",
+          "change_1m",
+          "change_30dover30d",
+          "change_7d",
+          "change_7dover7d",
+          "protocols",
+          "total14dto7d",
+          "total1y",
+          "total24h",
+          "total30DaysAgo",
+          "total30d",
+          "total48hto24h",
+          "total60dto30d",
+          "total7DaysAgo",
+          "total7d",
+          "totalAllTime",
+          "totalDataChart",
+          "totalDataChartBreakdown"
+        ],
+        "protocols_shape": {
+          "type": "list",
+          "len": 473,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "annualized1y",
+              "average1y",
+              "breakdownMethodology",
+              "category",
+              "chains",
+              "change_1d",
+              "change_1m",
+              "change_30dover30d",
+              "change_7d",
+              "change_7dover7d",
+              "defillamaId",
+              "displayName",
+              "hasLabelBreakdown",
+              "id",
+              "linkedProtocols",
+              "logo",
+              "methodology",
+              "methodologyURL",
+              "module",
+              "monthlyAverage1y",
+              "name",
+              "parentProtocol",
+              "protocolType",
+              "slug",
+              "total14dto7d",
+              "total1y",
+              "total24h",
+              "total30DaysAgo",
+              "total30d",
+              "total48hto24h",
+              "total60dto30d",
+              "total7DaysAgo",
+              "total7d",
+              "totalAllTime"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "group": "f",
+      "id": "growthepie_master",
+      "method": "GET",
+      "url": "https://api.growthepie.xyz/v1/master.json",
+      "latency_ms": 252,
+      "status": 200,
+      "bytes": 161743,
+      "rate_limit_headers": {
+        "age": "262"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "app_metrics",
+          "blockspace_categories",
+          "chains",
+          "current_version",
+          "custom_logos",
+          "da_layers",
+          "da_metrics",
+          "default_chain_selection",
+          "default_chain_sorting",
+          "ethereum_events",
+          "fee_metrics",
+          "last_updated_utc",
+          "main_chart_config",
+          "maturity_levels",
+          "metrics",
+          "searchbar_items",
+          "sources"
+        ],
+        "chains_shape": {
+          "type": "dict",
+          "keys": [
+            "all_l2s",
+            "arbitrum",
+            "arbitrum_nova",
+            "base",
+            "celo",
+            "ethereum",
+            "fraxtal",
+            "gravity",
+            "ink",
+            "linea",
+            "lisk",
+            "manta",
+            "mantle",
+            "megaeth",
+            "metis",
+            "mode",
+            "multiple",
+            "optimism",
+            "plume",
+            "polygon_pos",
+            "robinhood",
+            "ronin",
+            "scroll",
+            "soneium",
+            "starknet",
+            "taiko",
+            "unichain",
+            "worldchain",
+            "zksync_era"
+          ]
+        }
+      }
+    },
+    {
+      "group": "f",
+      "id": "l2beat_summary",
+      "method": "GET",
+      "url": "https://l2beat.com/api/scaling/summary",
+      "latency_ms": 1963,
+      "status": 200,
+      "bytes": 274168,
+      "rate_limit_headers": {
+        "cf-cache-status": "DYNAMIC"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "chart",
+          "projects"
+        ]
+      }
+    },
+    {
+      "group": "f",
+      "id": "geckoterminal_networks",
+      "method": "GET",
+      "url": "https://api.geckoterminal.com/api/v2/networks?page=1",
+      "latency_ms": 263,
+      "status": 200,
+      "bytes": 11172,
+      "rate_limit_headers": {
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=60",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "data",
+          "links"
+        ],
+        "data_shape": {
+          "type": "list",
+          "len": 100,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "attributes",
+              "id",
+              "type"
+            ]
+          }
+        }
+      },
+      "coverage": {
+        "page_items": 100,
+        "sample_ids": [
+          "eth",
+          "bsc",
+          "polygon_pos",
+          "avax",
+          "movr",
+          "cro",
+          "one",
+          "boba",
+          "ftm",
+          "bch",
+          "aurora",
+          "metis"
+        ],
+        "total_pages": "https://api.geckoterminal.com/api/v2/networks?page=3"
+      }
+    },
+    {
+      "group": "e",
+      "id": "coingecko_category_depin",
+      "method": "GET",
+      "url": "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=depin&per_page=20",
+      "latency_ms": 371,
+      "status": 200,
+      "bytes": 16095,
+      "rate_limit_headers": {
+        "cf-cache-status": "DYNAMIC",
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=60"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "list",
+        "len": 20,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "ath",
+            "ath_change_percentage",
+            "ath_date",
+            "atl",
+            "atl_change_percentage",
+            "atl_date",
+            "circulating_supply",
+            "current_price",
+            "fully_diluted_valuation",
+            "high_24h",
+            "id",
+            "image",
+            "last_updated",
+            "low_24h",
+            "market_cap",
+            "market_cap_change_24h",
+            "market_cap_change_percentage_24h",
+            "market_cap_rank",
+            "max_supply",
+            "name",
+            "price_change_24h",
+            "price_change_percentage_24h",
+            "roi",
+            "symbol",
+            "total_supply",
+            "total_volume"
+          ]
+        }
+      },
+      "coverage": {
+        "items": 20
+      }
+    },
+    {
+      "group": "e",
+      "id": "coingecko_categories_list",
+      "method": "GET",
+      "url": "https://api.coingecko.com/api/v3/coins/categories/list",
+      "latency_ms": 311,
+      "status": 200,
+      "bytes": 67587,
+      "rate_limit_headers": {
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=300",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "list",
+        "len": 1040,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "category_id",
+            "name"
+          ]
+        }
+      },
+      "coverage": {
+        "items": 1040
+      }
+    },
+    {
+      "group": "e",
+      "id": "depinscan_projects",
+      "method": "GET",
+      "url": "https://api.depinscan.io/api/projects",
+      "latency_ms": 543,
+      "status": 404,
+      "bytes": 13,
+      "rate_limit_headers": {
+        "cf-cache-status": "BYPASS"
+      },
+      "content_type": "text/plain; charset=UTF-8",
+      "body_head": "404 Not Found"
+    },
+    {
+      "group": "c",
+      "id": "snapshot_graphql",
+      "method": "POST",
+      "url": "https://hub.snapshot.org/graphql",
+      "latency_ms": 308,
+      "status": 200,
+      "bytes": 981,
+      "rate_limit_headers": {
+        "ratelimit-policy": "100;w=60",
+        "ratelimit-limit": "100",
+        "ratelimit-remaining": "99",
+        "ratelimit-reset": "60",
+        "cache-control": "private",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "data"
+        ],
+        "data_shape": {
+          "type": "dict",
+          "keys": [
+            "proposals"
+          ]
+        }
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 312
+      }
+    },
+    {
+      "group": "c",
+      "id": "defillama_protocols",
+      "method": "GET",
+      "url": "https://api.llama.fi/protocols",
+      "latency_ms": 755,
+      "status": 200,
+      "bytes": 9006696,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=1798",
+        "age": "261",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "list",
+        "len": 8421,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "address",
+            "audits",
+            "category",
+            "chain",
+            "chainTvls",
+            "chains",
+            "change_1d",
+            "change_1h",
+            "change_7d",
+            "cmcId",
+            "description",
+            "gecko_id",
+            "id",
+            "listedAt",
+            "logo",
+            "mcap",
+            "methodology",
+            "misrepresentedTokens",
+            "module",
+            "name",
+            "slug",
+            "symbol",
+            "tokenBreakdowns",
+            "tvl",
+            "tvlCodePath",
+            "twitter",
+            "url"
+          ]
+        }
+      },
+      "coverage": {
+        "protocols": 8421,
+        "top_categories": [
+          [
+            "Dexs",
+            2120
+          ],
+          [
+            "Yield",
+            673
+          ],
+          [
+            "Lending",
+            651
+          ],
+          [
+            "Derivatives",
+            449
+          ],
+          [
+            "Launchpad",
+            309
+          ],
+          [
+            "Liquid Staking",
+            297
+          ],
+          [
+            "Farm",
+            249
+          ],
+          [
+            "CDP",
+            231
+          ],
+          [
+            "Yield Aggregator",
+            231
+          ],
+          [
+            "DEX Aggregator",
+            190
+          ],
+          [
+            "Interface",
+            189
+          ],
+          [
+            "RWA",
+            181
+          ],
+          [
+            "Bridge",
+            171
+          ],
+          [
+            "Reserve Currency",
+            137
+          ],
+          [
+            "Services",
+            128
+          ],
+          [
+            "Prediction Market",
+            126
+          ],
+          [
+            "Algo-Stables",
+            123
+          ],
+          [
+            "Gaming",
+            92
+          ],
+          [
+            "Canonical Bridge",
+            90
+          ],
+          [
+            "Risk Curators",
+            90
+          ],
+          [
+            "Chain",
+            86
+          ],
+          [
+            "SoFi",
+            85
+          ],
+          [
+            "Indexes",
+            83
+          ],
+          [
+            "Onchain Capital Allocator",
+            81
+          ],
+          [
+            "CEX",
+            80
+          ]
+        ],
+        "categories_of_interest": {
+          "Derivatives": 449,
+          "RWA": 181,
+          "Prediction Market": 126,
+          "Launchpad": 309,
+          "Governance Incentives": 15,
+          "Synthetics": 44,
+          "Algo-Stables": 123,
+          "Interest Rate Derivatives": 3,
+          "Partially Algorithmic Stablecoin": 7,
+          "Physical TCG": 21,
+          "NFT Launchpad": 1,
+          "DePIN": 9
+        },
+        "listed_last_90d": 536,
+        "first_listed": "2021-10-12"
+      }
+    },
+    {
+      "group": "c",
+      "id": "defillama_fees_overview",
+      "method": "GET",
+      "url": "https://api.llama.fi/overview/fees?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true",
+      "latency_ms": 320,
+      "status": 200,
+      "bytes": 4595781,
+      "rate_limit_headers": {
+        "age": "258",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "allChains",
+          "breakdown24h",
+          "breakdown30d",
+          "chain",
+          "change_1d",
+          "change_1m",
+          "change_30dover30d",
+          "change_7d",
+          "change_7dover7d",
+          "protocols",
+          "total14dto7d",
+          "total1y",
+          "total24h",
+          "total30DaysAgo",
+          "total30d",
+          "total48hto24h",
+          "total60dto30d",
+          "total7DaysAgo",
+          "total7d",
+          "totalAllTime",
+          "totalDataChart",
+          "totalDataChartBreakdown"
+        ],
+        "protocols_shape": {
+          "type": "list",
+          "len": 2796,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "annualized1y",
+              "average1y",
+              "breakdown24h",
+              "breakdown30d",
+              "category",
+              "chains",
+              "defillamaId",
+              "displayName",
+              "id",
+              "logo",
+              "methodology",
+              "methodologyURL",
+              "module",
+              "monthlyAverage1y",
+              "name",
+              "protocolType",
+              "slug",
+              "total14dto7d",
+              "total1y",
+              "total24h",
+              "total30DaysAgo",
+              "total30d",
+              "total48hto24h",
+              "total60dto30d",
+              "total7DaysAgo",
+              "total7d",
+              "totalAllTime"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "group": "c",
+      "id": "tally_graphql_keyless",
+      "method": "POST",
+      "url": "https://api.tally.xyz/query",
+      "latency_ms": 333,
+      "status": 401,
+      "bytes": 85,
+      "rate_limit_headers": {},
+      "content_type": "text/plain; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "data",
+          "errors"
+        ],
+        "data_shape": {
+          "type": "NoneType"
+        }
+      },
+      "body_head": "{\"errors\": [{\"message\": \"api key required\", \"extensions\": {\"code\": 16}}], \"data\": null}"
+    },
+    {
+      "group": "c",
+      "id": "defillama_emissions_unlocks",
+      "method": "GET",
+      "url": "https://api.llama.fi/emissions",
+      "latency_ms": 183,
+      "status": 402,
+      "bytes": 66,
+      "rate_limit_headers": {
+        "cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+      },
+      "content_type": "text/plain",
+      "body_head": "Upgrade to the paid API plan at https://defillama.com/subscription"
+    },
+    {
+      "group": "g",
+      "id": "coingecko_category_rwa",
+      "method": "GET",
+      "url": "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=real-world-assets-rwa&per_page=20",
+      "latency_ms": 1566,
+      "status": 200,
+      "bytes": 15948,
+      "rate_limit_headers": {
+        "cf-cache-status": "DYNAMIC",
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=60"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "list",
+        "len": 20,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "ath",
+            "ath_change_percentage",
+            "ath_date",
+            "atl",
+            "atl_change_percentage",
+            "atl_date",
+            "circulating_supply",
+            "current_price",
+            "fully_diluted_valuation",
+            "high_24h",
+            "id",
+            "image",
+            "last_updated",
+            "low_24h",
+            "market_cap",
+            "market_cap_change_24h",
+            "market_cap_change_percentage_24h",
+            "market_cap_rank",
+            "max_supply",
+            "name",
+            "price_change_24h",
+            "price_change_percentage_24h",
+            "roi",
+            "symbol",
+            "total_supply",
+            "total_volume"
+          ]
+        }
+      },
+      "coverage": {
+        "items": 20
+      }
+    },
+    {
+      "group": "g",
+      "id": "rwa_xyz_keyless",
+      "method": "GET",
+      "url": "https://api.rwa.xyz/v3/assets",
+      "latency_ms": 400,
+      "status": 404,
+      "bytes": 9880,
+      "rate_limit_headers": {
+        "cf-cache-status": "DYNAMIC",
+        "age": "1978",
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "content_type": "text/html; charset=utf-8",
+      "body_head": "<!DOCTYPE html><!--CIfDx8A3shHNGuai__AIa--><html lang=\"en\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"stylesheet\" href=\"/_next/static/"
+    },
+    {
+      "group": "b",
+      "id": "hyperliquid_meta_ctxs",
+      "method": "POST",
+      "url": "https://api.hyperliquid.xyz/info",
+      "latency_ms": 1042,
+      "status": 200,
+      "bytes": 72119,
+      "rate_limit_headers": {},
+      "content_type": "application/json",
+      "shape": {
+        "type": "list",
+        "len": 2,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "collateralToken",
+            "marginTables",
+            "universe"
+          ]
+        }
+      },
+      "coverage": {
+        "perps": 234,
+        "fields_universe": [
+          "isDelisted",
+          "marginMode",
+          "marginTableId",
+          "maxLeverage",
+          "name",
+          "onlyIsolated",
+          "szDecimals"
+        ],
+        "fields_ctx": [
+          "dayBaseVlm",
+          "dayNtlVlm",
+          "funding",
+          "impactPxs",
+          "markPx",
+          "midPx",
+          "openInterest",
+          "oraclePx",
+          "premium",
+          "prevDayPx"
+        ],
+        "delisted": 56
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 972
+      }
+    },
+    {
+      "group": "b",
+      "id": "aevo_markets_perp",
+      "method": "GET",
+      "url": "https://api.aevo.xyz/markets?instrument_type=PERPETUAL",
+      "latency_ms": 1526,
+      "status": 200,
+      "bytes": 40811,
+      "rate_limit_headers": {},
+      "content_type": "application/json",
+      "shape": {
+        "type": "list",
+        "len": 102,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "amount_step",
+            "index_price",
+            "instrument_id",
+            "instrument_name",
+            "instrument_type",
+            "is_active",
+            "is_rwa",
+            "mark_price",
+            "market_type",
+            "max_leverage",
+            "max_notional_value",
+            "max_order_value",
+            "min_order_value",
+            "price_band",
+            "price_step",
+            "quote_asset",
+            "underlying_asset"
+          ]
+        }
+      },
+      "coverage": {
+        "markets": 102,
+        "market_types": {
+          "crypto": 55,
+          "equity": 32,
+          "etf": 4,
+          "pre_ipo": 2,
+          "commodity": 5,
+          "fx": 3,
+          "compute": 1
+        },
+        "pre_market_assets": [
+          "ANTHROPIC",
+          "OPENAI"
+        ],
+        "fields": [
+          "amount_step",
+          "index_price",
+          "instrument_id",
+          "instrument_name",
+          "instrument_type",
+          "is_active",
+          "is_rwa",
+          "mark_price",
+          "market_type",
+          "max_leverage",
+          "max_notional_value",
+          "max_order_value",
+          "min_order_value",
+          "price_band",
+          "price_step",
+          "quote_asset",
+          "underlying_asset"
+        ]
+      }
+    },
+    {
+      "group": "b",
+      "id": "hyperliquid_perp_dexs_hip3",
+      "method": "POST",
+      "url": "https://api.hyperliquid.xyz/info",
+      "latency_ms": 700,
+      "status": 200,
+      "bytes": 21122,
+      "rate_limit_headers": {},
+      "content_type": "application/json",
+      "shape": {
+        "type": "list",
+        "len": 11,
+        "item": {
+          "type": "NoneType"
+        }
+      },
+      "coverage": {
+        "hip3_dexs": 10,
+        "names": [
+          "xyz",
+          "flx",
+          "vntl",
+          "hyna",
+          "km",
+          "abcd",
+          "cash",
+          "para",
+          "mkts",
+          "io"
+        ],
+        "assets_first_dex": 123
+      }
+    },
+    {
+      "group": "b",
+      "id": "coingecko_new_coins",
+      "method": "GET",
+      "url": "https://api.coingecko.com/api/v3/coins/list/new",
+      "latency_ms": 282,
+      "status": 401,
+      "bytes": 255,
+      "rate_limit_headers": {
+        "cache-control": "no-cache",
+        "cf-cache-status": "EXPIRED"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "status"
+        ]
+      },
+      "body_head": "{\"status\": {\"timestamp\": \"2026-09-30T06:00:30.297+00:00\", \"error_code\": 10005, \"error_message\": \"This request is limited to PRO API subscribers. Please visit https://www.coingecko.com/en/api/pricing to subscribe to our API plan to access exclusive endpoints.\"}}"
+    },
+    {
+      "group": "d",
+      "id": "defillama_stablecoins",
+      "method": "GET",
+      "url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+      "latency_ms": 168,
+      "status": 200,
+      "bytes": 555858,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=1798",
+        "age": "261",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "chains",
+          "peggedAssets"
+        ],
+        "peggedAssets_shape": {
+          "type": "list",
+          "len": 427,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "chainCirculating",
+              "chains",
+              "circulating",
+              "circulatingPrevDay",
+              "circulatingPrevMonth",
+              "circulatingPrevWeek",
+              "gecko_id",
+              "id",
+              "name",
+              "pegMechanism",
+              "pegType",
+              "price",
+              "priceSource",
+              "symbol"
+            ]
+          }
+        },
+        "chains_shape": {
+          "type": "list",
+          "len": 210,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "name",
+              "totalCirculatingUSD"
+            ]
+          }
+        }
+      },
+      "coverage": {
+        "assets": 427,
+        "peg_mechanism": {
+          "fiat-backed": 146,
+          "crypto-backed": 253,
+          "algorithmic": 27,
+          "crytpo-backed": 1
+        },
+        "algorithmic_names": [
+          "USDN",
+          "FRAX",
+          "BEAN",
+          "USDR",
+          "USDS",
+          "USDm",
+          "ALUSD",
+          "FEI",
+          "DJED",
+          "USN",
+          "PINA",
+          "UXD",
+          "USDL",
+          "SIGUSD",
+          "USDB",
+          "USE",
+          "HYUSD",
+          "HYDT",
+          "MyUSD",
+          "DCKUSD",
+          "ANONUSD",
+          "NEX",
+          "USTC",
+          "VOLT",
+          "FLOAT"
+        ]
+      }
+    },
+    {
+      "group": "d",
+      "id": "defillama_derivatives_overview",
+      "method": "GET",
+      "url": "https://api.llama.fi/overview/derivatives?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true",
+      "latency_ms": 90,
+      "status": 402,
+      "bytes": 66,
+      "rate_limit_headers": {
+        "cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+      },
+      "content_type": "text/plain",
+      "body_head": "Upgrade to the paid API plan at https://defillama.com/subscription"
+    },
+    {
+      "group": "d",
+      "id": "dydx_v4_markets",
+      "method": "GET",
+      "url": "https://indexer.dydx.trade/v4/perpetualMarkets",
+      "latency_ms": 1773,
+      "status": 200,
+      "bytes": 167289,
+      "rate_limit_headers": {
+        "ratelimit-remaining": "99",
+        "ratelimit-reset": "1790748045986",
+        "ratelimit-limit": "100",
+        "cache-control": "public, max-age=1",
+        "cf-cache-status": "EXPIRED"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "markets"
+        ],
+        "markets_shape": {
+          "type": "dict",
+          "keys": [
+            "1INCH-USD",
+            "2Z-USD",
+            "AAVE-USD",
+            "ACX-USD",
+            "ADA-USD",
+            "AERGO-USD",
+            "AERO-USD",
+            "AEVO-USD",
+            "AGIX-USD",
+            "AI16Z-USD",
+            "AITECH-USD",
+            "AIXBT-USD",
+            "AKT-USD",
+            "ALGO-USD",
+            "ALPACA-USD",
+            "ALT-USD",
+            "AMPL-USD",
+            "ANIME-USD",
+            "APE-USD",
+            "API3-USD",
+            "APT-USD",
+            "AR-USD",
+            "ARB-USD",
+            "ARKM-USD",
+            "ASTER-USD",
+            "ASTR-USD",
+            "ATH-USD",
+            "ATOM-USD",
+            "AURORA-USD",
+            "AVAX-USD",
+            "AVNT-USD",
+            "AXL-USD",
+            "AXS-USD",
+            "B3-USD",
+            "BABY-USD",
+            "BABYDOGE-USD",
+            "BADGER-USD",
+            "BANANA-USD",
+            "BCH-USD",
+            "BCUT-USD"
+          ]
+        }
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 142
+      }
+    },
+    {
+      "group": "d",
+      "id": "gmx_arbitrum_tickers",
+      "method": "GET",
+      "url": "https://arbitrum-api.gmxinfra.io/prices/tickers",
+      "latency_ms": 837,
+      "status": 200,
+      "bytes": 23150,
+      "rate_limit_headers": {
+        "cache-control": "public, max-age=1",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "list",
+        "len": 120,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "maxPrice",
+            "minPrice",
+            "timestamp",
+            "tokenAddress",
+            "tokenSymbol",
+            "updatedAt"
+          ]
+        }
+      },
+      "coverage": {
+        "items": 120
+      }
+    },
+    {
+      "group": "a",
+      "id": "goplus_token_base",
+      "method": "GET",
+      "url": "https://api.gopluslabs.io/api/v1/token_security/8453?contract_addresses=0x4ed4e862860bed51a9570b96d89af5e1b0efefed",
+      "latency_ms": 1195,
+      "status": 200,
+      "bytes": 22382,
+      "rate_limit_headers": {
+        "cf-cache-status": "DYNAMIC"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "code",
+          "message",
+          "result"
+        ],
+        "result_shape": {
+          "type": "dict",
+          "keys": [
+            "0x4ed4e862860bed51a9570b96d89af5e1b0efefed"
+          ]
+        }
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 447
+      }
+    },
+    {
+      "group": "a",
+      "id": "goplus_token_solana",
+      "method": "GET",
+      "url": "https://api.gopluslabs.io/api/v1/solana/token_security?contract_addresses=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "latency_ms": 433,
+      "status": 200,
+      "bytes": 7977,
+      "rate_limit_headers": {
+        "cf-cache-status": "DYNAMIC"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "code",
+          "message",
+          "result"
+        ],
+        "result_shape": {
+          "type": "dict",
+          "keys": [
+            "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+          ]
+        }
+      }
+    },
+    {
+      "group": "a",
+      "id": "rugcheck_summary",
+      "method": "GET",
+      "url": "https://api.rugcheck.xyz/v1/tokens/DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263/report/summary",
+      "latency_ms": 788,
+      "status": 200,
+      "bytes": 278,
+      "rate_limit_headers": {
+        "x-rate-limit-limit": "15",
+        "x-rate-limit-remaining": "14"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "lpLockedPct",
+          "risks",
+          "score",
+          "score_normalised",
+          "tokenProgram",
+          "tokenType"
+        ]
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 766
+      }
+    },
+    {
+      "group": "a",
+      "id": "honeypot_is_base",
+      "method": "GET",
+      "url": "https://api.honeypot.is/v2/IsHoneypot?address=0x4ed4e862860bed51a9570b96d89af5e1b0efefed&chainID=8453",
+      "latency_ms": 588,
+      "status": 200,
+      "bytes": 1352,
+      "rate_limit_headers": {
+        "cache-control": "no-cache, no-store, no-transform, must-revalidate, private, max-age=0",
+        "x-ratelimit-limit": "50",
+        "x-ratelimit-remaining": "50",
+        "x-ratelimit-reset": "1790748060",
+        "cf-cache-status": "DYNAMIC"
+      },
+      "content_type": "application/json",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "chain",
+          "contractCode",
+          "flags",
+          "honeypotResult",
+          "pair",
+          "pairAddress",
+          "router",
+          "simulationResult",
+          "simulationSuccess",
+          "summary",
+          "token",
+          "withToken"
+        ]
+      }
+    },
+    {
+      "group": "a",
+      "id": "dexscreener_profiles_latest",
+      "method": "GET",
+      "url": "https://api.dexscreener.com/token-profiles/latest/v1",
+      "latency_ms": 193,
+      "status": 200,
+      "bytes": 23411,
+      "rate_limit_headers": {
+        "age": "26",
+        "cache-control": "public, max-age=60",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "list",
+        "len": 30,
+        "item": {
+          "type": "dict",
+          "keys": [
+            "chainId",
+            "cto",
+            "description",
+            "header",
+            "icon",
+            "links",
+            "openGraph",
+            "tokenAddress",
+            "url"
+          ]
+        }
+      },
+      "coverage": {
+        "items": 30
+      },
+      "burst": {
+        "n": 8,
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "n_429": 0,
+        "median_ms": 111
+      }
+    },
+    {
+      "group": "a",
+      "id": "geckoterminal_new_pools_base",
+      "method": "GET",
+      "url": "https://api.geckoterminal.com/api/v2/networks/base/new_pools",
+      "latency_ms": 203,
+      "status": 200,
+      "bytes": 28721,
+      "rate_limit_headers": {
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=60",
+        "age": "14",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "data"
+        ],
+        "data_shape": {
+          "type": "list",
+          "len": 20,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "attributes",
+              "id",
+              "relationships",
+              "type"
+            ]
+          }
+        }
+      },
+      "coverage": {
+        "items": 20
+      }
+    },
+    {
+      "group": "a",
+      "id": "geckoterminal_new_pools_blast",
+      "method": "GET",
+      "url": "https://api.geckoterminal.com/api/v2/networks/blast/new_pools",
+      "latency_ms": 274,
+      "status": 200,
+      "bytes": 11,
+      "rate_limit_headers": {
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=60",
+        "cf-cache-status": "HIT"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "data"
+        ],
+        "data_shape": {
+          "type": "list",
+          "len": 0
+        }
+      },
+      "coverage": {
+        "items": 0
+      }
+    },
+    {
+      "group": "a",
+      "id": "geckoterminal_new_pools_monad",
+      "method": "GET",
+      "url": "https://api.geckoterminal.com/api/v2/networks/monad/new_pools",
+      "latency_ms": 408,
+      "status": 200,
+      "bytes": 6704,
+      "rate_limit_headers": {
+        "cache-control": "max-age=30, public, must-revalidate, s-maxage=60",
+        "cf-cache-status": "MISS"
+      },
+      "content_type": "application/json; charset=utf-8",
+      "shape": {
+        "type": "dict",
+        "keys": [
+          "data"
+        ],
+        "data_shape": {
+          "type": "list",
+          "len": 5,
+          "item": {
+            "type": "dict",
+            "keys": [
+              "attributes",
+              "id",
+              "relationships",
+              "type"
+            ]
+          }
+        }
+      },
+      "coverage": {
+        "items": 5
+      }
+    }
+  ]
+}
