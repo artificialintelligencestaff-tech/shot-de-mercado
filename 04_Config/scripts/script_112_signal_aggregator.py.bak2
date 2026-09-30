@@ -5,7 +5,6 @@ Agregador multimodal de señales por activo, identificado por (chain, mint).
 
 Capítulo II — Paso A: primera fuente real, Jupiter Tokens V2 (específica de Solana).
 Las demás fuentes del template siguen como placeholders hasta que se integren.
-Paso B: bloque "fusion" con lib_fusion (probabilidad declarada + IC 90%, heurístico no calibrado).
 
 Salida: 02_Analisis/signals/{chain}/{mint}.json  (schema 1.1, "chain" es campo raíz)
 NO modifica _all_alerts.json ni _accumulated.json.
@@ -31,10 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import lib_fusion  # noqa: E402
-
-ROOT =Path(os.environ.get("SHOT_ROOT") or Path(__file__).resolve().parents[2])
+ROOT = Path(os.environ.get("SHOT_ROOT") or Path(__file__).resolve().parents[2])
 SIGNALS_DIR = ROOT / "02_Analisis" / "signals"
 ALERTS_FILE = ROOT / "02_Analisis" / "alerts" / "_all_alerts.json"
 
@@ -117,7 +113,6 @@ SIGNAL_TEMPLATE = {
         }
     },
     "evidence": {},                           # por fuente: LLR heurístico + componentes
-    "fusion": None,                           # salida de lib_fusion.fuse + historial usado
     "metadata": {
         "schema_version": SCHEMA_VERSION,
         "collection_mode": "dry_run",
@@ -506,95 +501,6 @@ def alert_targets(alerts: List[Dict[str, Any]], legacy_chain: Optional[str]) -> 
     return targets
 
 
-# ---------------------------------------------------------------------------
-# Fusión (lib_fusion) con historial de alertas cerradas
-# ---------------------------------------------------------------------------
-
-# Label canónico actual del resultado de una alerta cerrada
-CLOSED_VERDICTS = {"ACIERTO": True, "FALSO POSITIVO": False}
-EVENT_DEFINITION = "final_verdict == 'ACIERTO' en _all_alerts.json (label canónico actual)"
-
-
-def parse_ts(value: Any) -> Optional[float]:
-    """Epoch UTC desde '2026-09-29_165149' (timestamp de alertas) o ISO 8601 (collected_at)."""
-    if not isinstance(value, str) or not value:
-        return None
-    for parse in (lambda s: datetime.strptime(s, "%Y-%m-%d_%H%M%S"), datetime.fromisoformat):
-        try:
-            dt = parse(value)
-        except ValueError:
-            continue
-        return (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)).timestamp()
-    return None
-
-
-def evidence_llrs(signal: Dict[str, Any], sources: List[str]) -> Dict[str, Optional[float]]:
-    evidence = signal.get("evidence") or {}
-    return {s: (evidence.get(s) or {}).get("llr_raw") for s in sources}
-
-
-def load_snapshot(alert: Dict[str, Any], chain: str) -> Optional[Dict[str, Any]]:
-    """Señales vigentes al emitir la alerta.
-
-    Prioridad: snapshot embebido en la alerta ("signals_snapshot", contrato pendiente de
-    script_97); si no existe, el archivo de señales en disco. replay_trust descarta el
-    snapshot si fue capturado después de la alerta.
-    """
-    if isinstance(alert.get("signals_snapshot"), dict):
-        return alert["signals_snapshot"]
-    path = SIGNALS_DIR / chain / f"{alert.get('mint')}.json"
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return None
-
-
-def build_history(alerts: List[Dict[str, Any]], chain: str, legacy_chain: Optional[str],
-                  sources: List[str]) -> Tuple[List[bool], List[Dict[str, Any]], int]:
-    """(resultados, registros de replay, cerradas sin chain) de las alertas cerradas de `chain`.
-
-    Debe llamarse antes de sobrescribir archivos de señales de esa chain.
-    """
-    outcomes, records, without_chain = [], [], 0
-    for alert in alerts:
-        outcome = CLOSED_VERDICTS.get(alert.get("final_verdict"))
-        if outcome is None:
-            continue
-        alert_chain = alert.get("chain") or legacy_chain
-        if not alert_chain:
-            without_chain += 1
-            continue
-        if alert_chain != chain:
-            continue
-        outcomes.append(outcome)
-        snap = load_snapshot(alert, chain)
-        records.append({
-            "id": f"{alert.get('mint')}@{alert.get('timestamp')}",
-            "alert_ts": parse_ts(alert.get("timestamp")),
-            "snapshot_ts": parse_ts(snap.get("collected_at")) if snap else None,
-            "llrs": evidence_llrs(snap, sources) if snap else {},
-            "outcome": outcome,
-        })
-    return outcomes, records, without_chain
-
-
-def fuse_signal(signal: Dict[str, Any], history: Tuple[List[bool], List[Dict[str, Any]], int]) -> Dict[str, Any]:
-    sources = signal["metadata"]["sources_registry"]
-    outcomes, records, without_chain = history
-    trust, replay_stats = lib_fusion.replay_trust(sources, records)
-    fused = lib_fusion.fuse(signal["chain"], signal["mint"], evidence_llrs(signal, sources),
-                            trust=trust, base_prior=lib_fusion.base_rate_posterior(outcomes))
-    fused["event"] = EVENT_DEFINITION
-    fused["history"] = {
-        "closed_alerts": len(outcomes),
-        "hits": sum(outcomes),
-        "closed_alerts_without_chain_ignored": without_chain,
-        "trust_replay": replay_stats,
-    }
-    return fused
-
-
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Agregador multimodal de señales por (chain, mint).")
     p.add_argument("--chain", help="chain de los --mint (slug: solana, ethereum, base, ...)")
@@ -620,32 +526,20 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
-    alerts = load_alerts()
     targets = [(args.chain, mint, "") for mint in args.mint]
     if args.from_alerts:
-        targets += alert_targets(alerts, args.legacy_chain)
+        targets += alert_targets(load_alerts(), args.legacy_chain)
     print(f"[INFO] {len(targets)} activos a procesar")
 
-    histories: Dict[str, Tuple[List[bool], List[Dict[str, Any]], int]] = {}
     for chain, mint, symbol in targets:
         if not (CHAIN_RE.fullmatch(chain) and MINT_RE.fullmatch(mint)):
             print(f"[WARN] par inválido ignorado: {chain!r} / {mint!r}")
             continue
-        if chain not in histories:
-            # antes de sobrescribir archivos de señales de esta chain
-            histories[chain] = build_history(alerts, chain, args.legacy_chain, sources_for_chain(chain))
-            if histories[chain][2]:
-                print(f"[WARN] {histories[chain][2]} alertas cerradas sin campo 'chain' fuera del "
-                      f"historial (usar --legacy-chain)")
         signals = collect_signals(chain, mint, symbol, dry_run=args.dry_run)
-        signals["fusion"] = fuse_signal(signals, histories[chain])
         out_file = save_signals(signals)
-        meta, fusion = signals["metadata"], signals["fusion"]
+        meta = signals["metadata"]
         status = "ok: " + ",".join(meta["sources_succeeded"]) if meta["sources_succeeded"] else "sin fuentes"
         print(f"[OK] {chain}/{signals['symbol'] or '?'} ({mint[:12]}...) -> {out_file} [{status}]")
-        print(f"     P={fusion['probability']} IC90={fusion['ci_90']} "
-              f"fuentes={fusion['sources_active']}/{fusion['sources_total']} "
-              f"base={fusion['base_rate']['mean']} (n={fusion['history']['closed_alerts']})")
         for fail in meta["sources_failed"]:
             print(f"     [FALLA] {fail['source']}: {fail['status']} — {fail['detail']}")
     return 0

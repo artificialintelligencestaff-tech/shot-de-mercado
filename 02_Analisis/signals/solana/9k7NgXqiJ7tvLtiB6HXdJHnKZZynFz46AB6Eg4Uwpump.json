@@ -2,7 +2,7 @@
   "chain": "solana",
   "mint": "9k7NgXqiJ7tvLtiB6HXdJHnKZZynFz46AB6Eg4Uwpump",
   "symbol": "INUINK",
-  "collected_at": "2026-09-30T00:08:17.531821+00:00",
+  "collected_at": "2026-09-30T00:15:06.367564+00:00",
   "signals": {
     "onchain": {
       "holder_distribution": {
@@ -47,7 +47,7 @@
       "jupiter": {
         "source": "jupiter",
         "endpoint": "https://api.jup.ag/tokens/v2/search",
-        "fetched_at": "2026-09-30T00:08:18.766744+00:00",
+        "fetched_at": "2026-09-30T00:15:07.727696+00:00",
         "http_status": 200,
         "status": "ok",
         "detail": "match exacto por id",
@@ -70,16 +70,6 @@
           "usdPrice": 4.012368821814797e-06,
           "priceBlockId": 451798116,
           "liquidity": 1299.6378303551721,
-          "stats5m": {
-            "priceChange": 0.3847206131024229,
-            "holderChange": 0.3546099290780142,
-            "liquidityChange": 0.5958516836494163,
-            "volumeChange": -33.814381319880745,
-            "buyVolume": 6.421951278040023,
-            "numBuys": 4,
-            "numTraders": 3,
-            "numNetBuyers": 3
-          },
           "stats1h": {
             "priceChange": 3.666280637266622,
             "holderChange": 0.7117437722419928,
@@ -323,6 +313,123 @@
           "rule": "informativo, sin dirección clara"
         }
       ]
+    }
+  },
+  "fusion": {
+    "chain": "solana",
+    "mint": "9k7NgXqiJ7tvLtiB6HXdJHnKZZynFz46AB6Eg4Uwpump",
+    "asset": "solana:9k7NgXqiJ7tvLtiB6HXdJHnKZZynFz46AB6Eg4Uwpump",
+    "probability": 0.205,
+    "ci_90": [
+      0.0134,
+      0.5832
+    ],
+    "sources_active": 1,
+    "sources_total": 5,
+    "max_individual_contribution": 1.0,
+    "breakdown": {
+      "jupiter": 0.2,
+      "geckoterminal": 0.2,
+      "dexpaprika": 0.2,
+      "goplus": 0.2,
+      "dexscreener": 0.2
+    },
+    "contributions": {
+      "jupiter": {
+        "llr": -1.2832,
+        "llr_clipped": -1.2832,
+        "weight": 0.2,
+        "weighted_llr": -0.2566,
+        "delta_p_loo": -0.045
+      },
+      "geckoterminal": {
+        "llr": null,
+        "llr_clipped": null,
+        "weight": 0.2,
+        "weighted_llr": 0.0,
+        "delta_p_loo": 0.0
+      },
+      "dexpaprika": {
+        "llr": null,
+        "llr_clipped": null,
+        "weight": 0.2,
+        "weighted_llr": 0.0,
+        "delta_p_loo": 0.0
+      },
+      "goplus": {
+        "llr": null,
+        "llr_clipped": null,
+        "weight": 0.2,
+        "weighted_llr": 0.0,
+        "delta_p_loo": 0.0
+      },
+      "dexscreener": {
+        "llr": null,
+        "llr_clipped": null,
+        "weight": 0.2,
+        "weighted_llr": 0.0,
+        "delta_p_loo": 0.0
+      }
+    },
+    "base_rate": {
+      "mean": 0.25,
+      "alpha": 1.0,
+      "beta": 3.0
+    },
+    "trust": {
+      "jupiter": {
+        "alpha": 1.0,
+        "beta": 1.0,
+        "mean": 0.5
+      },
+      "geckoterminal": {
+        "alpha": 1.0,
+        "beta": 1.0,
+        "mean": 0.5
+      },
+      "dexpaprika": {
+        "alpha": 1.0,
+        "beta": 1.0,
+        "mean": 0.5
+      },
+      "goplus": {
+        "alpha": 1.0,
+        "beta": 1.0,
+        "mean": 0.5
+      },
+      "dexscreener": {
+        "alpha": 1.0,
+        "beta": 1.0,
+        "mean": 0.5
+      }
+    },
+    "params": {
+      "llr_clip": 2.0,
+      "fixed_share_gamma": 0.3,
+      "max_weight": 0.35,
+      "mc_samples": 4000,
+      "mc_seed": 20260930,
+      "ci_level": 0.9
+    },
+    "label": "HEURISTICA_NO_CALIBRADA",
+    "event": "final_verdict == 'ACIERTO' en _all_alerts.json (label canónico actual)",
+    "history": {
+      "closed_alerts": 2,
+      "hits": 0,
+      "closed_alerts_without_chain_ignored": 0,
+      "trust_replay": {
+        "applied": 0,
+        "rejected": [
+          {
+            "id": "DegeC37wePGYLFD2RXuc2TNEFK2qCGJsMDxHCpSppump@2026-09-24_004501",
+            "reason": "sin snapshot de señales"
+          },
+          {
+            "id": "2KxuxnmyySXTFU1BZvrKTYwvbAzncSKR6YkAP1Sqpump@2026-09-24_004501",
+            "reason": "sin snapshot de señales"
+          }
+        ]
+      }
     }
   },
   "metadata": {
