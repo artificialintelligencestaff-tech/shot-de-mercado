@@ -9,8 +9,10 @@ Resume las últimas 24 h:
   - salud (último chequeo de _health_log.json) y acciones de reparación
   - modo de emisión (SHADOW_MODE / PAUSE_EMISSIONS en pipeline_t0.yml)
 Guarda una entrada por día en 02_Analisis/_daily_summary.json y la envía al chat de operaciones.
+Idempotente: si `last_sent_date` del archivo ya es hoy (UTC), no reenvía (el cron atrasado y un
+dispatch manual el mismo día mandaban el resumen dos veces). `--force` reenvía igual.
 
-Uso: python 04_Config/scripts/bot_daily_summary.py [--dry-run]
+Uso: python 04_Config/scripts/bot_daily_summary.py [--dry-run] [--force]
 """
 import argparse
 import glob
@@ -188,26 +190,34 @@ def render(s):
     return "\n".join(lines)
 
 
-def run(now=None, dry_run=False, notify=lib_ops.send_ops_telegram):
+def run(now=None, dry_run=False, notify=lib_ops.send_ops_telegram, force=False):
     now = now or datetime.now(timezone.utc)
     summary = build(now)
     text = render(summary)
+    print(text)
+    data = lib_ops.read_json(OUT, {}) or {}
+    if data.get("last_sent_date") == summary["date"] and not force:
+        summary["notified"] = "skipped_already_sent"
+        print(f"[daily] El resumen del {summary['date']} ya se envió ({data.get('last_sent_at')}): no se reenvía.")
+        return summary
     summary["notified"] = notify(text, dry_run=dry_run)
     if not dry_run:
-        data = lib_ops.read_json(OUT, {}) or {}
         days = [d for d in data.get("days", []) if d.get("date") != summary["date"]]
         data["days"] = (days + [summary])[-365:]
+        if summary["notified"] == "sent":                 # solo un envío confirmado bloquea el reenvío
+            data["last_sent_date"] = summary["date"]
+            data["last_sent_at"] = summary["generated_at"]
         data["last_updated"] = lib_ops.now_iso()
         lib_ops.write_json_atomic(OUT, data)
-    print(text)
     return summary
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--dry-run", action="store_true", help="no escribe ni envía")
+    ap.add_argument("--force", action="store_true", help="enviar aunque el resumen de hoy ya se haya enviado")
     args = ap.parse_args(argv)
-    run(dry_run=args.dry_run)
+    run(dry_run=args.dry_run, force=args.force)
     return 0
 
 

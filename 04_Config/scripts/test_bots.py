@@ -215,6 +215,32 @@ class TestDaily(Base):
         s["dual_metric"]["7.2.1"]["young_share"] = 0.8333
         self.assertIn("• Exposición a <60 min: 83% ⚠️\n", daily.render(s))
 
+    def test_idempotencia_un_envio_por_dia(self):
+        self.write_alerts()
+        daily.run(now=NOW, notify=self.notify)
+        s = daily.run(now=NOW + timedelta(minutes=1), notify=self.notify)       # cron atrasado / dispatch
+        self.assertEqual(s["notified"], "skipped_already_sent")
+        self.assertEqual(len(self.sent), 1)
+        data = lib_ops.read_json(daily.OUT)
+        self.assertEqual(data["last_sent_date"], "2026-09-30")
+        self.assertEqual(data["last_sent_at"], NOW.isoformat(timespec="seconds"))
+        daily.run(now=NOW, notify=self.notify, force=True)                        # --force reenvía
+        self.assertEqual(len(self.sent), 2)
+        daily.run(now=NOW + timedelta(days=1), notify=self.notify)                # día nuevo: envía
+        self.assertEqual(len(self.sent), 3)
+
+    def test_envio_fallido_no_bloquea_el_reintento(self):
+        self.write_alerts()
+        daily.run(now=NOW, notify=lambda text, dry_run=False: "error:timeout")
+        self.assertNotIn("last_sent_date", lib_ops.read_json(daily.OUT))
+        daily.run(now=NOW, notify=self.notify)
+        self.assertEqual(len(self.sent), 1)
+
+    def test_dry_run_no_marca_envio(self):
+        self.write_alerts()
+        daily.run(now=NOW, notify=lambda text, dry_run=False: "dry_run", dry_run=True)
+        self.assertFalse(daily.OUT.exists())
+
 
 class TestMonitorBot(Base):
     def test_incremental_y_tope_de_llamadas(self):
