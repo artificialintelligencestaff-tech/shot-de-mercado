@@ -33,8 +33,9 @@ CANDIDATE_MAX_AGE_MIN = 60
 # Edad mínima del par para emitir (Dirección, 30/09): la exposición a tokens recién nacidos debe ser
 # < 20%. Sin edad conocida (sin pairCreatedAt) no se emite.
 EMIT_MIN_AGE_MIN = 30
-# Advertencia de rug que se muestra SIEMPRE. Hasta que exista calibración validada del scorer que emite,
-# se usa la cifra histórica medida (21_INSIGHT_84_RUG.md: legado v7.1, score >= 56, 16/21).
+# Métrica post +20% que se muestra SIEMPRE como dato, junto a primaria y secundaria (sin advertencia ni
+# consejo: el proyecto informa, el usuario decide). Hasta que exista calibración validada del scorer que
+# emite, se usa la cifra histórica medida (21_INSIGHT_84_RUG.md: legado v7.1, score >= 56, 16/21).
 HISTORICAL_RUG_AFTER_HIT = {"rate": 0.762, "n": 21, "source": "histórico v7.1, score ≥ 56"}
 
 
@@ -275,19 +276,17 @@ def format_alert_message(token, collisions=(), calibration=None):
             f"score ≥ {calibration.get('threshold', '?')}, n={p.get('n', '?')})\n"
             f"• Tocar +20% antes de caer −30% (≤48 h): {pct(p['rate'])} (IC90: {pct(p['ci90'][0])}–{pct(p['ci90'][1])})\n"
             f"• Cerrar ≥ +20% a las 48 h (mantener): {pct(s['rate'])} (IC90: {pct(s['ci90'][0])}–{pct(s['ci90'][1])})\n"
+            f"• Después de tocar +20%, llegar a ≤ −99% (≤48 h): {pct(r['rate'])} "
+            f"(IC90: {pct(r['ci90'][0])}–{pct(r['ci90'][1])}, n={r.get('n', '?')})\n"
         )
-        rug_source = f"n={r.get('n', '?')}, scoring v{calibration.get('scoring_version', '?')}"
     else:
         probabilities = "🎯 *PROBABILIDADES*: en validación (todavía no hay cifras calibradas para este scoring)\n"
         r = HISTORICAL_RUG_AFTER_HIT
-        rug_source = f"{r['source']}, n={r['n']}"
-    # Advertencia crítica: SIEMPRE presente (Dirección, 30/09), con la cifra validada o la histórica rotulada
-    rug_warning = (f"• El {pct(r['rate'])} de los tokens que alcanzan +20% cae −99% o más después ({rug_source}).\n"
-                   f"• Este activo es de altísimo riesgo.\n")
+        probabilities += f"• Histórico ({r['source']}, n={r['n']}): después de tocar +20%, el {pct(r['rate'])} llegó a ≤ −99% dentro de las 48 h\n"
 
-    collision_warning = (
-        f"• Ya alertamos OTRO token con el símbolo {symbol} (mint distinto): "
-        f"verificá el mint antes de operar\n" if collisions else ""
+    # Dato de identificación (no advertencia): otro token ya alertado comparte el símbolo
+    collision_line = (
+        f"• Símbolo compartido: ya se alertó OTRO token {symbol} con mint distinto\n" if collisions else ""
     )
     reasons = [r for r in token.get("reasons", []) if not str(r).startswith("v7.2.1:")][:4]
     reasons_block = "".join(f"• {r}\n" for r in reasons) or "• n/d\n"
@@ -296,17 +295,12 @@ def format_alert_message(token, collisions=(), calibration=None):
     msg = f"""🚨 *SHOT DE MERCADO — {symbol}*
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{probabilities}
-⚠️ *ADVERTENCIA CRÍTICA*
-{rug_warning}• Plan sugerido: tomar ganancia en +20%. NO mantener. Stop en −30%.
-{collision_warning}• No invertir más del 1-2% del capital
-
-📊 *DATOS (DexScreener, al detectar)*
+{probabilities}📊 *DATOS (DexScreener, al detectar)*
 • Precio: {show(snap['price'], '${:.8g}')}
 • MCap: {show(snap['mcap_usd'], '${:,.0f}')}
 • Liquidez: {show(snap['liquidity'], '${:,.0f}')}
 • Volumen 24h: {show(snap['volume_24h'], '${:,.0f}')}
-{sol_line}
+{sol_line}{collision_line}
 🔎 *POR QUÉ LO DETECTAMOS* (score {score})
 {reasons_block}
 🛒 *CÓMO ADQUIRIRLO (paso a paso)*

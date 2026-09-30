@@ -86,7 +86,7 @@ class TestDedup(Script97TestCase):
         alerts = self.read(self.alerts_file)
         self.assertEqual([a["mint"] for a in alerts], [PARASITE_A, PARASITE_B])
         self.assertEqual(alerts[1]["symbol_collision"], [PARASITE_A])
-        self.assertIn("OTRO token con el símbolo PARASITE", self.sent[0])
+        self.assertIn("Símbolo compartido: ya se alertó OTRO token PARASITE con mint distinto", self.sent[0])
         events = self.dedup_events()
         self.assertEqual(events[0]["type"], "symbol_collision")
         self.assertEqual(events[0]["other_mints"], [PARASITE_A])

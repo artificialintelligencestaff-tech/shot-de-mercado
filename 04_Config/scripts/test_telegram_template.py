@@ -22,7 +22,6 @@ TOKEN = {"token": {"symbol": "PARASITE", "mint": "8ed8xX8TVRDdeyyUwq7Kyo8VwxMWZ6
          "dexscreener": {"priceUsd": 0.009848, "liquidityUsd": 141632.8, "volume24hUsd": 201003.7,
                          "marketCapUsd": 9844684.6}}
 
-
 class TemplateTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="tg_")
@@ -41,8 +40,7 @@ class TemplateTest(unittest.TestCase):
         msg, _ = self.m.format_alert_message(TOKEN, (), CALIB)
         self.assertIn("Tocar +20% antes de caer −30% (≤48 h): 60% (IC90: 46%–72%)", msg)
         self.assertIn("Cerrar ≥ +20% a las 48 h (mantener): 9% (IC90: 3%–20%)", msg)
-        self.assertIn("El 76% de los tokens que alcanzan +20% cae −99% o más después (n=21, scoring v7.2.1)", msg)
-        self.assertIn("Plan sugerido: tomar ganancia en +20%. NO mantener. Stop en −30%.", msg)
+        self.assertIn("Después de tocar +20%, llegar a ≤ −99% (≤48 h): 76% (IC90: 58%–88%, n=21)", msg)
         self.assertIn("scoring v7.2.1, score ≥ 56, n=35", msg)
 
     def test_sin_calibracion_no_inventa_cifras(self):
@@ -67,9 +65,14 @@ class TemplateTest(unittest.TestCase):
         self.assertNotIn("v7.2.1: bonos temporales", msg)
         self.assertIn("(score 72)", msg)
 
-    def test_colision_de_simbolo_se_mantiene(self):
+    def test_colision_de_simbolo_como_dato(self):
         msg, _ = self.m.format_alert_message(TOKEN, ["otro_mint"], None)
-        self.assertIn("OTRO token con el símbolo PARASITE", msg)
+        self.assertIn("• Símbolo compartido: ya se alertó OTRO token PARASITE con mint distinto", msg)
+        # Va en el bloque de datos: después del mercado y antes de los motivos
+        self.assertLess(msg.index("Volumen 24h"), msg.index("Símbolo compartido"))
+        self.assertLess(msg.index("Símbolo compartido"), msg.index("POR QUÉ LO DETECTAMOS"))
+        msg, _ = self.m.format_alert_message(TOKEN, (), None)
+        self.assertNotIn("Símbolo compartido", msg)
 
     def test_carga_de_calibracion(self):
         self.assertIsNone(self.m.load_emission_calibration(str(self.calib_path)))            # no existe
@@ -81,18 +84,19 @@ class TemplateTest(unittest.TestCase):
         self.assertEqual(self.m.load_emission_calibration(str(self.calib_path))["threshold"], 56)
         self.assertEqual(self.m.load_emission_calibration()["threshold"], 56)                # ruta por defecto
 
-    def test_advertencia_critica_siempre(self):
+    def test_metrica_post_hit_siempre_sin_consejo(self):
         bare = {"token": {"symbol": "X"}, "score": 60, "dexscreener": None}
         for token, calib in ((TOKEN, CALIB), (TOKEN, None), (bare, None), (bare, CALIB)):
-            msg, _ = self.m.format_alert_message(token, (), calib)
-            self.assertIn("⚠️ *ADVERTENCIA CRÍTICA*", msg)
-            self.assertIn("cae −99% o más después", msg)
-            self.assertIn("Este activo es de altísimo riesgo.", msg)
-            self.assertIn("Plan sugerido: tomar ganancia en +20%. NO mantener.", msg)
+            msg, _ = self.m.format_alert_message(token, ["otro_mint"], calib)
+            self.assertIn("≤ −99%", msg)
+            for text in ("ADVERTENCIA", "altísimo riesgo", "Plan sugerido", "NO mantener", "Stop en −30%",
+                         "No invertir más"):
+                self.assertNotIn(text, msg)
 
     def test_sin_calibracion_usa_cifra_historica_rotulada(self):
         msg, _ = self.m.format_alert_message(TOKEN, (), None)
-        self.assertIn("El 76% de los tokens que alcanzan +20% cae −99% o más después (histórico v7.1, score ≥ 56, n=21)", msg)
+        self.assertIn("• Histórico (histórico v7.1, score ≥ 56, n=21): después de tocar +20%, "
+                      "el 76% llegó a ≤ −99% dentro de las 48 h", msg)
 
 
 if __name__ == "__main__":
