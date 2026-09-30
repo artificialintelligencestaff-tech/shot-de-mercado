@@ -24,6 +24,9 @@ CYCLE_LOG = os.path.join(ALERTS_DIR, "_cycle_log.json")
 
 EVM_ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
 TRUTHY = {"1", "true", "yes", "on"}
+# v7.2.1 (19_CALIBRACION_V72.md): con el gate de edad la distribución es bimodal; 56 es el primer
+# umbral que deja afuera el grupo de tokens jóvenes (heurístico, pendiente de validar con la métrica dual).
+EMIT_MIN_SCORE = 56
 # R1: antigüedad máxima del scoring de un candidato. Evita que el modo sombra/emisión recorra el
 # atraso de _accumulated.json (269 candidatos v7.2 el 30/09) con precios de detección viejos.
 CANDIDATE_MAX_AGE_MIN = 60
@@ -91,7 +94,7 @@ def is_fresh(token, now, max_age_min):
     return now - detected <= max_age_min * 60
 
 
-def select_candidates(accumulated, all_alerts, min_score=50, max_age_min=CANDIDATE_MAX_AGE_MIN, now=None):
+def select_candidates(accumulated, all_alerts, min_score=EMIT_MIN_SCORE, max_age_min=CANDIDATE_MAX_AGE_MIN, now=None):
     """Candidatos con score >= min_score, frescos, cuyo mint no fue alertado nunca (activas y cerradas)."""
     alerted = {normalize_mint(a.get("mint")) for a in all_alerts if isinstance(a, dict)} - {""}
     now = time.time() if now is None else now
@@ -306,7 +309,7 @@ def main():
         log_cycle_event({"key": "existing_duplicates:" + ",".join(sorted(existing_dups)),
                          "type": "existing_duplicates", "timestamp": timestamp, "mints": existing_dups})
 
-    # Filter score >= 50 and not already alerted (dedup por mint normalizado, activas y cerradas)
+    # Filter score >= EMIT_MIN_SCORE and not already alerted (dedup por mint normalizado, activas y cerradas)
     candidates, stats = select_candidates(accumulated, all_alerts)
     if stats["intra_cycle_duplicates"]:
         dups = sorted(stats["intra_cycle_duplicates"])
@@ -316,7 +319,7 @@ def main():
 
     # Max 3 alerts per cycle
     to_emit = candidates[:3]
-    print(f"[INFO] Candidatos con score >= 50 pendientes de emitir: {len(candidates)} "
+    print(f"[INFO] Candidatos con score >= {EMIT_MIN_SCORE} pendientes de emitir: {len(candidates)} "
           f"(ya alertados y omitidos: {stats['already_alerted']}; "
           f"sin scoring en los últimos {CANDIDATE_MAX_AGE_MIN} min: {stats['stale_or_undated']})")
     print(f"[INFO] Emitiendo {len(to_emit)} alertas en este ciclo.")

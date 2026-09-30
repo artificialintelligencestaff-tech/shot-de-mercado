@@ -16,8 +16,11 @@ OUTPUT_DIR = "03_Informes/shot_de_mercado"
 RAW_DIR = "01_Datos_Crudos/final_detection"
 ACCUMULATED_FILE = "02_Analisis/shadow_v4/_accumulated.json"
 
-# Versión del scorer que se registra en cada token enriquecido (R1). v7.2.1 la sube a "7.2.1".
-SCORING_VERSION = "7.2"
+# v7.2.1: los bonos temporales (m5/h1, buy pressure, momentum, edge, vol_m5) solo cuentan con la
+# ventana h1 completa. En tokens de < 60 min, vol_m5/vol_h1 ≈ 1 por construcción: premiaban la
+# juventud, no la aceleración (19_CALIBRACION_V72.md: 182/186 ALERTAS eran tokens < 60 min).
+SCORING_VERSION = "7.2.1"
+ACCEL_GATE_MIN_AGE = 60
 
 import os
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -123,6 +126,12 @@ def score_token(token_data, dexscreener_data=None):
         derivs["buy_pressure"] = 0.5
         derivs["age_min"] = None
 
+    # v7.2.1: gate de edad para los bonos temporales (sin edad conocida = no maduro)
+    age_min = derivs.get("age_min")
+    mature = age_min is not None and age_min >= ACCEL_GATE_MIN_AGE
+    if dexscreener_data and not mature:
+        reasons.append("v7.2.1: bonos temporales omitidos (<60 min, ventana h1 incompleta)")
+
     # Dynamic buy_pressure comparison with previous state
     # Read previous buy_pressure from _accumulated.json if available
     try:
@@ -146,7 +155,7 @@ def score_token(token_data, dexscreener_data=None):
     if bp_delta <= -0.10:
         score -= 15
         reasons.append("Buy pressure cayendo")
-    elif bp_delta >= 0.10:
+    elif bp_delta >= 0.10 and mature:
         score += 15
         reasons.append("Buy pressure subiendo")
 
@@ -189,55 +198,53 @@ def score_token(token_data, dexscreener_data=None):
     else:
         reasons.append("Volumen bajo")
 
-    # Acceleration bonuses (temporal derivatives)
-    if derivs["vol_ratio"] > 0.5:
-        score += 25
-        reasons.append("Volumen acelerado (5m/1h > 50%)")
-    elif derivs["vol_ratio"] > 0.25:
-        score += 15
-        reasons.append("Volumen en aceleración (5m/1h > 25%)")
-    if derivs["trades_ratio"] > 0.5:
-        score += 20
-        reasons.append("Trades acelerados (5m/1h > 50%)")
-    elif derivs["trades_ratio"] > 0.25:
-        score += 10
-        reasons.append("Trades en aceleración (5m/1h > 25%)")
+    # Acceleration bonuses (temporal derivatives) — v7.2.1: solo con edad >= 60 min
+    if mature:
+        if derivs["vol_ratio"] > 0.5:
+            score += 25
+            reasons.append("Volumen acelerado (5m/1h > 50%)")
+        elif derivs["vol_ratio"] > 0.25:
+            score += 15
+            reasons.append("Volumen en aceleración (5m/1h > 25%)")
+        if derivs["trades_ratio"] > 0.5:
+            score += 20
+            reasons.append("Trades acelerados (5m/1h > 50%)")
+        elif derivs["trades_ratio"] > 0.25:
+            score += 10
+            reasons.append("Trades en aceleración (5m/1h > 25%)")
 
-    # === SCORING v7.2: Buy pressure & temporal signals ===
-    # Buy pressure bonus
-    if derivs.get("buy_pressure", 0.5) > 0.6:
-        score += 25
-        reasons.append("Buy pressure >60%")
-    elif derivs.get("buy_pressure", 0.5) > 0.55:
-        score += 15
-        reasons.append("Buy pressure >55%")
+    # === SCORING v7.2: Buy pressure & temporal signals === (v7.2.1: gate de edad)
+    if mature:
+        # Buy pressure bonus
+        if derivs.get("buy_pressure", 0.5) > 0.6:
+            score += 25
+            reasons.append("Buy pressure >60%")
+        elif derivs.get("buy_pressure", 0.5) > 0.55:
+            score += 15
+            reasons.append("Buy pressure >55%")
 
-    # Momentum corto+medio positivo
-    pc_m5 = derivs.get("price_change_m5", 0)
-    pc_h1 = derivs.get("price_change_h1", 0)
-    if pc_m5 > 0 and pc_h1 > 0:
-        score += 20
-        reasons.append("Momentum corto+medio positivo")
-    elif pc_m5 > 0 and pc_h1 > -5:
-        score += 10
-        reasons.append("Momentum corto positivo")
+        # Momentum corto+medio positivo
+        pc_m5 = derivs.get("price_change_m5", 0)
+        pc_h1 = derivs.get("price_change_h1", 0)
+        if pc_m5 > 0 and pc_h1 > 0:
+            score += 20
+            reasons.append("Momentum corto+medio positivo")
+        elif pc_m5 > 0 and pc_h1 > -5:
+            score += 10
+            reasons.append("Momentum corto positivo")
 
-    # Edge temprano (<60 min)
-    age_min = derivs.get("age_min")
-    if age_min is not None and age_min < 60:
-        score += 15
-        reasons.append("Edge temprano (<60 min)")
-    elif age_min is not None and age_min < 240:
-        score += 8
-        reasons.append("Edge temprano (<4h)")
+        # Edge temprano: con el gate, el tramo "<60 min" (+15) ya no puede aplicar; queda "<4h" (+8)
+        if age_min < 240:
+            score += 8
+            reasons.append("Edge temprano (<4h)")
 
-    # Volumen activo m5
-    if derivs.get("vol_m5", 0) > 1000:
-        score += 10
-        reasons.append("Volumen activo m5 (>$1K)")
-    elif derivs.get("vol_m5", 0) > 500:
-        score += 5
-        reasons.append("Volumen moderado m5")
+        # Volumen activo m5
+        if derivs.get("vol_m5", 0) > 1000:
+            score += 10
+            reasons.append("Volumen activo m5 (>$1K)")
+        elif derivs.get("vol_m5", 0) > 500:
+            score += 5
+            reasons.append("Volumen moderado m5")
 
     # Penalizaciones v7.2
     # Detección tardía (sin datos m5 y >4h)
