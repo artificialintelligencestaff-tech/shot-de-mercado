@@ -1,0 +1,52 @@
+{
+  "schema_version": "0.1",
+  "updated_at": "2026-09-30",
+  "notes": "Registro curado narrativa -> activos. Cada vínculo declara su evidencia con rótulo [V]/[I]. link_type: direct (el activo ES de la narrativa, p.ej. el token oficial de un juego) · thematic (mismo sector; vínculo por atención, no económico) · name_match (solo por nombre: se genera en tiempo de ejecución, nunca se cura acá).",
+  "narratives": {
+    "gta6": {
+      "title": "Lanzamiento de Grand Theft Auto VI",
+      "sector": "gaming",
+      "keywords": ["GTA 6", "GTA VI", "GTA6", "Grand Theft Auto VI", "Grand Theft Auto 6"],
+      "name_keywords": ["gta6", "gtavi", "gta", "grandtheftauto"],
+      "wikidata_items": ["Q23648408"],
+      "wikipedia_articles": ["Grand_Theft_Auto_VI"],
+      "gdelt_query": "(\"GTA 6\" OR \"GTA VI\")",
+      "direct_link_note": "[V] Rockstar Games / Take-Two no emiten token: no existe vínculo 'direct'. Todo token 'GTA' on-chain es de terceros.",
+      "link_weight_overrides": {
+        "thematic": 0.0,
+        "evidence": "[V] Piloto H1 (pilot_event_study_gaming.json, 2026-09-30): n=75 picos de atención 2022-2026, canasta IMX/AXS/SAND/MANA/GALA vs BTC, ventana operable 48h: hit 46.7% (IC90 37.3-56.0%) vs placebo 42.5%, AR medio -0.50%. H1 rechazada -> la atención sobre videojuegos no mueve tokens gaming establecidos.",
+        "prior_heuristic": 0.5
+      },
+      "tokens": [
+        {
+          "chain": "ethereum",
+          "address": "0xf57e7e7c23978c3caec3c3548e3d615c346e79ff",
+          "symbol": "IMX",
+          "link_type": "thematic",
+          "evidence": ["[V] CoinGecko categories: Gaming (GameFi), Play To Earn (2026-09-30)", "[V] CoinGecko platforms.ethereum (2026-09-30)"]
+        },
+        {
+          "chain": "base",
+          "address": "0xfa980ced6895ac314e7de34ef1bfae90a5add21b",
+          "symbol": "PRIME",
+          "link_type": "thematic",
+          "evidence": ["[V] CoinGecko categories: Gaming (GameFi), Gaming Utility Token (2026-09-30)", "[V] CoinGecko platforms.base (2026-09-30)"]
+        },
+        {
+          "chain": "ethereum",
+          "address": "0xb23d80f5fefcddaa212212f028021b41ded428cf",
+          "symbol": "PRIME",
+          "link_type": "thematic",
+          "evidence": ["[V] CoinGecko platforms.ethereum (2026-09-30)"]
+        },
+        {
+          "chain": "solana",
+          "address": "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx",
+          "symbol": "ATLAS",
+          "link_type": "thematic",
+          "evidence": ["[V] CoinGecko categories: Gaming (GameFi), MMO (2026-09-30)", "[V] CoinGecko platforms.solana (2026-09-30)"]
+        }
+      ]
+    }
+  }
+}
