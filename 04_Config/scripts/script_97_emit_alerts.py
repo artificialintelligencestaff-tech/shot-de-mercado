@@ -23,6 +23,12 @@ ALL_ALERTS_FILE = os.path.join(ALERTS_DIR, "_all_alerts.json")
 CYCLE_LOG = os.path.join(ALERTS_DIR, "_cycle_log.json")
 
 EVM_ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
+TRUTHY = {"1", "true", "yes", "on"}
+
+
+def env_flag(name):
+    """PAUSE_EMISSIONS / SHADOW_MODE: se leen en cada corrida (no al importar)."""
+    return os.getenv(name, "").strip().lower() in TRUTHY
 
 
 class CorruptStateError(Exception):
@@ -249,7 +255,16 @@ def get_current_price(token):
 
 def main():
     print("[YIN] Iniciando emisión de alertas reales (Script 97)...")
-    
+
+    # Defensa en profundidad: la pausa se respeta aunque el workflow ejecute el step.
+    if env_flag("PAUSE_EMISSIONS"):
+        print("[INFO] PAUSE_EMISSIONS activo: no se procesa ni se envía nada.")
+        return 0
+    # Modo sombra: se registran las alertas (status=shadow) exactamente como se emitirían, sin Telegram.
+    shadow = env_flag("SHADOW_MODE")
+    if shadow:
+        print("[INFO] SHADOW_MODE activo: alertas registradas con status=shadow, sin envío a Telegram.")
+
     if not os.path.exists(ACCUMULATED_FILE):
         print("[ERROR] _accumulated.json no encontrado.")
         return
@@ -314,7 +329,7 @@ def main():
             "score": token["score"],
             "confidence": confidence,
             "initial_price": initial_price,
-            "status": "active_tracking",
+            "status": "shadow" if shadow else "active_tracking",
             "trust_updates": []
         }
         if collisions:
@@ -333,7 +348,7 @@ def main():
         all_alerts.append(alert_record)
         write_json_atomic(ALL_ALERTS_FILE, all_alerts)
 
-        alert_record["telegram_sent"] = send_telegram(msg)
+        alert_record["telegram_sent"] = False if shadow else send_telegram(msg)
         write_json_atomic(ALL_ALERTS_FILE, all_alerts)
         emitted_count += 1
         time.sleep(1) # rate limit telegram

@@ -183,5 +183,61 @@ class TestRobustez(Script97TestCase):
         self.assertEqual(sorted(p.name for p in self.alerts_file.parent.glob("*.tmp")), [])
 
 
+class TestModos(Script97TestCase):
+    def setUp(self):
+        super().setUp()
+        self._env = {k: os.environ.pop(k) for k in ("SHADOW_MODE", "PAUSE_EMISSIONS") if k in os.environ}
+
+    def tearDown(self):
+        for k in ("SHADOW_MODE", "PAUSE_EMISSIONS"):
+            os.environ.pop(k, None)
+        os.environ.update(self._env)
+        super().tearDown()
+
+    def test_shadow_registra_sin_telegram(self):
+        os.environ["SHADOW_MODE"] = "true"
+        self.write(self.alerts_file, [])
+        self.write(self.accumulated, {OTHER: token("Fartcoin"), PARASITE_A: token("PARASITE")})
+        self.assertEqual(self.m.main(), 0)
+        self.assertEqual(self.sent, [])
+        alerts = self.read(self.alerts_file)
+        self.assertEqual({a["status"] for a in alerts}, {"shadow"})
+        self.assertEqual({a["telegram_sent"] for a in alerts}, {False})
+
+    def test_shadow_false_envia_normal(self):
+        os.environ["SHADOW_MODE"] = "false"
+        self.write(self.alerts_file, [])
+        self.write(self.accumulated, {OTHER: token("Fartcoin")})
+        self.m.main()
+        self.assertEqual(len(self.sent), 1)
+        self.assertEqual(self.read(self.alerts_file)[0]["status"], "active_tracking")
+
+    def test_pause_no_procesa_nada_aunque_haya_shadow(self):
+        os.environ["PAUSE_EMISSIONS"] = "true"
+        os.environ["SHADOW_MODE"] = "true"
+        self.write(self.accumulated, {OTHER: token("Fartcoin")})
+        self.assertEqual(self.m.main(), 0)
+        self.assertEqual(self.sent, [])
+        self.assertFalse(self.alerts_file.exists())
+
+    def test_reactivacion_shadow_queda_historico_y_nuevas_van_a_activo(self):
+        os.environ["SHADOW_MODE"] = "true"
+        self.write(self.alerts_file, [])
+        self.write(self.accumulated, {OTHER: token("Fartcoin")})
+        self.m.main()
+        os.environ["SHADOW_MODE"] = "false"
+        self.write(self.accumulated, {OTHER: token("Fartcoin"), PARASITE_A: token("PARASITE")})
+        self.m.main()
+        alerts = self.read(self.alerts_file)
+        self.assertEqual([(a["mint"], a["status"]) for a in alerts],
+                         [(OTHER, "shadow"), (PARASITE_A, "active_tracking")])
+        self.assertEqual(len(self.sent), 1)   # solo el nuevo; el mint en sombra no se re-emite
+
+    def test_valores_de_flag(self):
+        for v, expected in (("TRUE", True), ("1", True), ("yes", True), ("false", False), ("", False), ("0", False)):
+            os.environ["SHADOW_MODE"] = v
+            self.assertIs(self.m.env_flag("SHADOW_MODE"), expected, v)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

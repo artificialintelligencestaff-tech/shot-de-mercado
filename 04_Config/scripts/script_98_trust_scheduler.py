@@ -54,6 +54,10 @@ def main():
     now = datetime.utcnow()
 
     for alert in all_alerts:
+        # Solo alertas en seguimiento activo. Las "shadow" (modo sombra) nunca se notificaron:
+        # procesarlas enviaría a Telegram actualizaciones de alertas que el usuario no recibió.
+        if alert.get("status", "active_tracking") != "active_tracking":
+            continue
         mint = alert["mint"]
         symbol = alert["symbol"]
         initial_score = alert["score"]
