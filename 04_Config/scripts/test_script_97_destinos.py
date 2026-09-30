@@ -30,9 +30,11 @@ class DestinosTest(unittest.TestCase):
         self.m.TELEGRAM_CHAT_ID = "111"
         self.m.TELEGRAM_PUBLIC_CHAT_ID = None
         self.posted, self.status = [], {}
-        patcher = mock.patch.object(self.m.requests, "post", self.fake_post)   # se restaura solo
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.slept = []
+        for target, attr, fake in ((self.m.requests, "post", self.fake_post), (self.m.time, "sleep", self.slept.append)):
+            patcher = mock.patch.object(target, attr, fake)                    # se restaura solo
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -74,6 +76,35 @@ class DestinosTest(unittest.TestCase):
         self.m.TELEGRAM_BOT_TOKEN = None
         self.m.TELEGRAM_PUBLIC_CHAT_ID = "-100222"
         self.assertFalse(self.m.send_telegram("hola"))
+        self.assertEqual(self.posted, [])
+
+    def test_pausa_entre_destinos(self):
+        self.m.TELEGRAM_PUBLIC_CHAT_ID = "-100222"
+        self.m.send_telegram("hola")
+        self.assertEqual(self.slept, [0.5])                    # una pausa entre los dos envíos
+        self.slept.clear()
+        self.m.TELEGRAM_PUBLIC_CHAT_ID = None
+        self.m.send_telegram("hola")
+        self.assertEqual(self.slept, [])                       # un solo destino: sin pausa
+
+    def test_test_send_a_ambos_destinos(self):
+        self.m.TELEGRAM_PUBLIC_CHAT_ID = "-100222"
+        sent = []
+        orig = self.m.send_telegram_to
+        self.m.send_telegram_to = lambda label, cid, text: sent.append((label, text)) or orig(label, cid, text)
+        self.assertEqual(self.m.main(["--test-send"]), 0)
+        self.assertEqual(self.posted, ["111", "-100222"])
+        self.assertTrue(all("PRUEBA DE ENVÍO" in text and "No es una alerta" in text for _, text in sent))
+        self.assertIn("Destinos configurados: personal, grupo", sent[0][1])
+        self.assertFalse(os.path.exists(self.m.ALL_ALERTS_FILE))   # no toca alertas
+
+    def test_test_send_falla_si_un_destino_falla_o_no_hay_credenciales(self):
+        self.m.TELEGRAM_PUBLIC_CHAT_ID = "-100222"
+        self.status = {"-100222": 403}
+        self.assertEqual(self.m.test_send(), 1)
+        self.m.TELEGRAM_BOT_TOKEN = None
+        self.posted.clear()
+        self.assertEqual(self.m.test_send(), 1)
         self.assertEqual(self.posted, [])
 
     def test_ops_chat_nunca_es_destino(self):

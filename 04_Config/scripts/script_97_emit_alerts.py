@@ -200,6 +200,9 @@ def telegram_destinations():
     return dests
 
 
+TELEGRAM_PAUSE_S = 0.5   # pausa entre destinos (rate limit de Telegram)
+
+
 def send_telegram_to(label, chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
@@ -211,7 +214,7 @@ def send_telegram_to(label, chat_id, text):
     try:
         r = requests.post(url, json=payload, timeout=15)
         if r.status_code == 200:
-            print(f"[INFO] Alerta enviada a Telegram ({label}).")
+            print(f"[INFO] Mensaje enviado a Telegram ({label}).")
             return True
         print(f"[ERROR] Telegram API error ({label}): {r.status_code} - {r.text}")
         return False
@@ -220,16 +223,48 @@ def send_telegram_to(label, chat_id, text):
         return False
 
 
+def send_to_destinations(text):
+    """Envía `text` a cada destino, con una pausa entre envíos. Devuelve [(destino, ok)]; [] sin credenciales."""
+    dests = telegram_destinations()
+    if not TELEGRAM_BOT_TOKEN or not dests:
+        return []
+    results = []
+    for i, (label, chat_id) in enumerate(dests):
+        if i:
+            time.sleep(TELEGRAM_PAUSE_S)
+        results.append((label, send_telegram_to(label, chat_id, text)))
+    return results
+
+
 def send_telegram(text):
     """Envía la alerta a todos los destinos. True si al menos uno la recibió: así el mint queda registrado
     como enviado y no se reintenta en cada ciclo (la falla de un destino queda en el log del workflow)."""
-    dests = telegram_destinations()
-    if not TELEGRAM_BOT_TOKEN or not dests:
+    results = send_to_destinations(text)
+    if not results:
         print("[WARN] Telegram credentials missing, printing to console instead.")
         print(text)
         return False
-    results = [send_telegram_to(label, chat_id, text) for label, chat_id in dests]
-    return any(results)
+    return any(ok for _, ok in results)
+
+
+def test_send():
+    """--test-send: UN mensaje marcado como prueba a cada destino configurado. No es una alerta: no lee
+    candidatos ni toca archivos. 0 si todos los destinos lo recibieron, 1 si no."""
+    labels = [label for label, _ in telegram_destinations()]
+    text = ("🧪 *PRUEBA DE ENVÍO — Shot de Mercado*\n"
+            "Mensaje de prueba de destinos. No es una alerta de mercado.\n"
+            f"• Destinos configurados: {', '.join(labels) or 'ninguno'}\n"
+            f"• {datetime.now(timezone.utc):%d/%m/%Y %H:%M UTC}")
+    results = send_to_destinations(text)
+    if not results:
+        print("[TEST-SEND] Sin token o sin destinos configurados: no se envió nada.")
+        return 1
+    for label, ok in results:
+        print(f"[TEST-SEND] {label}: {'OK' if ok else 'FALLO'}")
+    missing = [label for label in ("personal", "grupo") if label not in labels]
+    if missing:
+        print(f"[TEST-SEND] Sin configurar: {', '.join(missing)}")
+    return 0 if all(ok for _, ok in results) else 1
 
 def load_emission_calibration(path=None):
     """Probabilidades VALIDADAS (métrica dual) del scorer/umbral que emiten.
@@ -436,7 +471,11 @@ def get_current_price(token):
         return float(price)
     return None
 
-def main():
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if "--test-send" in argv:
+        print("[YIN] Script 97 --test-send: prueba de destinos de Telegram (no emite alertas).")
+        return test_send()
     print("[YIN] Iniciando emisión de alertas reales (Script 97)...")
 
     # Defensa en profundidad: la pausa se respeta aunque el workflow ejecute el step.
