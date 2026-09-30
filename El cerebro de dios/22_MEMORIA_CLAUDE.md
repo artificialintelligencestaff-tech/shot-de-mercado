@@ -13,7 +13,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 
 ---
 
-## 1. Estado (al 2026-09-30 ~06:00 UTC)
+## 1. Estado (cierre de sesión 2026-09-30 ~06:20 UTC)
 
 | Componente | Estado | Rótulo |
 |---|---|---|
@@ -22,9 +22,11 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 | Filtros de emisión (script_97) | umbral `EMIT_MIN_SCORE = 56` · frescura R1 `CANDIDATE_MAX_AGE_MIN = 60` · **edad mínima del par `EMIT_MIN_AGE_MIN = 30`** (edad desconocida → no emite) · dedup PARASITE. | [V] |
 | Plantilla Telegram | Dual (probabilidades "en validación" hasta que `emission_calibration.json` tenga `validated: true`), "n/d" para datos faltantes, **ADVERTENCIA CRÍTICA siempre presente** (76% cae −99% después de +20%, take-profit +20%, NO holdear, stop −30%). | [V] |
 | Trust loop (script_98) | Solo procesa `status == "active_tracking"` (ignora sombra). | [V] |
-| Bots gemelos | `monitor_shadow_bot` (6 h), `health_check_bot` (2 h), `autorepair_bot` (4 h), `daily_summary_bot` (06:00 UTC). Tres verificados con workflow_dispatch el 2026-09-30 05:50 UTC (success + commit de su log). | [V] |
-| Telegram de operaciones | Los bots escriben SOLO a `TELEGRAM_OPS_CHAT_ID` (grupo "La mano de Dios"). Secret cargado por Dirección el 2026-09-30 06:05 UTC; primer envío (resumen diario por dispatch, run 36677130640) a las 06:13 UTC con `notified: sent`. | [V] envío aceptado por la API · [P] recepción en el grupo la confirma Dirección |
+| Bots gemelos | `monitor_shadow_bot` (6 h), `health_check_bot` (2 h), `autorepair_bot` (4 h), `daily_summary_bot` (06:00 UTC). Los 4 verificados con workflow_dispatch el 2026-09-30 05:50 UTC (success + commit de su log). | [V] |
+| Telegram de operaciones | Los bots escriben SOLO a `TELEGRAM_OPS_CHAT_ID` (grupo "La mano de Dios"). Secret cargado por Dirección el 2026-09-30 06:05 UTC; primer envío (resumen diario por dispatch, run 36677130640) a las 06:13 UTC con `notified: sent`. | [V] API · **recepción confirmada por Dirección** |
 | Tests | 128/128 (9 archivos `04_Config/scripts/test_*.py`, unittest, sin red). | [V] |
+| Alertas acumuladas (`_all_alerts.json` en `d47a265`) | 33 en total: **24 `shadow`** (de 2026-09-30 03:55 a 06:15 UTC), **7 `active_tracking`**, 2 `DESCARTAR_NOPAR`. `telegram_sent: true` = 0. | [V] |
+| Hashes de cierre | main antes del push de docs: `d47a265`. Código de la sesión: T3 `26ce5b7` · T4 `3ef7b50` · bots `daf9cc4`. Docs 22/23 + probe: rama `claude/investigacion-grupos`, push autorizado por Dirección. | [V] |
 
 ### 1.1 Criterios de validación de v7.2.1 (Dirección)
 
@@ -156,16 +158,22 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | El monitor en Actions no tiene cache persistente de velas (reusa filas definitivas; el tope es 80 llamadas por corrida) | bots | P3 |
 | Hallazgo #17 (defaults heurísticos de fusión) sin calibrar | Cap. II | P2 |
 | Rutas `signals/{chain}/{mint}.json` multi-chain sin productores | Cap. II | P2 |
+| **A-c) Hay alertas `active_tracking` estando en SHADOW.** El resumen diario de 24 h reportó 4; el histórico tiene 7. En modo sombra no debería haber ninguna nueva. No investigado. [H] podrían ser anteriores al cambio a SHADOW (03:42 UTC), pero no está verificado. | resumen diario 06:13 | **P0** |
+| **A-a) Resumen diario duplicado** (llegó 03:13 y 03:14 hora AR). Hipótesis de Dirección: reintento sin idempotencia. Dato [V] sin investigar: en main hay dos commits del bot, `22fb807` (06:13:29, dispatch manual) y `9e39038` (06:14:44, [H] el cron de las 06:00 corrido con atraso). Falta decidir si el bot debe saltear el envío cuando ya existe la entrada del día. | resumen diario | P1 |
+| **A-b) 83% de las alertas en tokens < 60 min** (`0.8333`). Hay que desagregar por versión del scorer (v7.2 vs v7.2.1). Dato [V]: en el monitor ese 0.8333 corresponde a la fila v7.2 (5/6). Todavía no hay alertas v7.2.1 para medir. | resumen diario | P1 |
+| **A-d) 1343 tokens sin `scoring_version`** en las detecciones de 24 h. Esperado: son anteriores a R1 y se completa en 24 h. | resumen diario | P3 |
 
 ---
 
 ## 8. Próximos pasos
 
-1. Confirmar con Dirección que el resumen de las 06:13 UTC llegó al grupo "La mano de Dios".
-2. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
-3. Con n ≥ 20 primarias resueltas → veredicto automático al chat de operaciones → decisión de Dirección.
-4. Si la primaria < 20% → gate a 30 min (rama aparte, sin merge sin validar).
-5. Expansión por fases según el doc 23 (Fase 1 = Universo A con `arch`), más las propuestas P1 del doc 23 §8: I-1 rug-después-del-hit en vivo, I-2 enriquecimiento de riesgo en sombra, I-3 guardia de sombra.
+1. **P0: investigar las alertas `active_tracking` en modo sombra (A-c)**: cuándo se crearon, por qué ruta de código y si el trust loop las está procesando.
+2. **Medir la exposición a tokens < 60 min después de v7.2.1 (A-b)**: separada por versión, sobre alertas de v7.2.1 únicamente (criterio < 20%).
+3. Idempotencia del resumen diario (A-a).
+4. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
+5. Con n ≥ 20 primarias resueltas → veredicto automático al chat de operaciones → decisión de Dirección.
+6. Si la primaria < 20% → gate a 30 min (rama aparte, sin merge sin validar).
+7. Expansión por fases según el doc 23 (Fase 1 = Universo A con `arch`), más las propuestas P1 del doc 23 §8: I-1 rug-después-del-hit en vivo, I-2 enriquecimiento de riesgo en sombra, I-3 guardia de sombra.
 
 ---
 
@@ -173,4 +181,4 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 | Fecha | Sesión | Resultado |
 |---|---|---|
-| 2026-09-30 | Directiva ampliada (máximo aprovechamiento) | T1 v7.2.1 en main (sombra) · T2 fase2-p1 en main · T3 gate de edad 30 min · T4 advertencia crítica · bots gemelos desplegados y verificados (4/4 success) · 1.ª corrida v7.2.1 verificada (35/35 tokens 7.2.1, ≥56: 2/35) · doc 22 creado · doc 23 (8 grupos, 42 fuentes, 12 propuestas de innovación) |
+| 2026-09-30 | Directiva ampliada (máximo aprovechamiento) | T1 v7.2.1 en main (sombra) · T2 fase2-p1 en main · T3 gate de edad 30 min · T4 advertencia crítica · bots gemelos desplegados y verificados (4/4 success) · 1.ª corrida v7.2.1 verificada (35/35 tokens 7.2.1, ≥56: 2/35) · doc 22 creado · doc 23 (8 grupos, 42 fuentes, 12 propuestas de innovación) · ops chat "La mano de Dios" operativo (confirmado) · 4 anomalías del primer resumen registradas en §7 (A-c P0) |
