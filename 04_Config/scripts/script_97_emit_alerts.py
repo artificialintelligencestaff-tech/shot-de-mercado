@@ -33,6 +33,9 @@ CANDIDATE_MAX_AGE_MIN = 60
 # Edad mínima del par para emitir (Dirección, 30/09): la exposición a tokens recién nacidos debe ser
 # < 20%. Sin edad conocida (sin pairCreatedAt) no se emite.
 EMIT_MIN_AGE_MIN = 30
+# Advertencia de rug que se muestra SIEMPRE. Hasta que exista calibración validada del scorer que emite,
+# se usa la cifra histórica medida (21_INSIGHT_84_RUG.md: legado v7.1, score >= 56, 16/21).
+HISTORICAL_RUG_AFTER_HIT = {"rate": 0.762, "n": 21, "source": "histórico v7.1, score ≥ 56"}
 
 
 def env_flag(name):
@@ -273,11 +276,14 @@ def format_alert_message(token, collisions=(), calibration=None):
             f"• Tocar +20% antes de caer −30% (≤48 h): {pct(p['rate'])} (IC90: {pct(p['ci90'][0])}–{pct(p['ci90'][1])})\n"
             f"• Cerrar ≥ +20% a las 48 h (mantener): {pct(s['rate'])} (IC90: {pct(s['ci90'][0])}–{pct(s['ci90'][1])})\n"
         )
-        rug_warning = (f"• De los tokens que tocaron +20%, el {pct(r['rate'])} cayó después −99% o más "
-                       f"dentro de las 48 h (n={r.get('n', '?')})\n")
+        rug_source = f"n={r.get('n', '?')}, scoring v{calibration.get('scoring_version', '?')}"
     else:
         probabilities = "🎯 *PROBABILIDADES*: en validación (todavía no hay cifras calibradas para este scoring)\n"
-        rug_warning = "• En los datos históricos, la mayoría de los tokens que tocan +20% colapsan después\n"
+        r = HISTORICAL_RUG_AFTER_HIT
+        rug_source = f"{r['source']}, n={r['n']}"
+    # Advertencia crítica: SIEMPRE presente (Dirección, 30/09), con la cifra validada o la histórica rotulada
+    rug_warning = (f"• El {pct(r['rate'])} de los tokens que alcanzan +20% cae −99% o más después ({rug_source}).\n"
+                   f"• Este activo es de altísimo riesgo.\n")
 
     collision_warning = (
         f"• Ya alertamos OTRO token con el símbolo {symbol} (mint distinto): "
@@ -291,8 +297,8 @@ def format_alert_message(token, collisions=(), calibration=None):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {probabilities}
-⚠️ *ADVERTENCIA*
-{rug_warning}• Recomendación: tomar ganancia en +20%. NO mantener. Stop en −30%.
+⚠️ *ADVERTENCIA CRÍTICA*
+{rug_warning}• Plan sugerido: tomar ganancia en +20%. NO mantener. Stop en −30%.
 {collision_warning}• No invertir más del 1-2% del capital
 
 📊 *DATOS (DexScreener, al detectar)*

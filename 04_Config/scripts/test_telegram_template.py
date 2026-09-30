@@ -41,8 +41,8 @@ class TemplateTest(unittest.TestCase):
         msg, _ = self.m.format_alert_message(TOKEN, (), CALIB)
         self.assertIn("Tocar +20% antes de caer −30% (≤48 h): 60% (IC90: 46%–72%)", msg)
         self.assertIn("Cerrar ≥ +20% a las 48 h (mantener): 9% (IC90: 3%–20%)", msg)
-        self.assertIn("el 76% cayó después −99% o más", msg)
-        self.assertIn("tomar ganancia en +20%. NO mantener. Stop en −30%", msg)
+        self.assertIn("El 76% de los tokens que alcanzan +20% cae −99% o más después (n=21, scoring v7.2.1)", msg)
+        self.assertIn("Plan sugerido: tomar ganancia en +20%. NO mantener. Stop en −30%.", msg)
         self.assertIn("scoring v7.2.1, score ≥ 56, n=35", msg)
 
     def test_sin_calibracion_no_inventa_cifras(self):
@@ -80,6 +80,19 @@ class TemplateTest(unittest.TestCase):
         self.calib_path.write_text(json.dumps(CALIB), encoding="utf-8")
         self.assertEqual(self.m.load_emission_calibration(str(self.calib_path))["threshold"], 56)
         self.assertEqual(self.m.load_emission_calibration()["threshold"], 56)                # ruta por defecto
+
+    def test_advertencia_critica_siempre(self):
+        bare = {"token": {"symbol": "X"}, "score": 60, "dexscreener": None}
+        for token, calib in ((TOKEN, CALIB), (TOKEN, None), (bare, None), (bare, CALIB)):
+            msg, _ = self.m.format_alert_message(token, (), calib)
+            self.assertIn("⚠️ *ADVERTENCIA CRÍTICA*", msg)
+            self.assertIn("cae −99% o más después", msg)
+            self.assertIn("Este activo es de altísimo riesgo.", msg)
+            self.assertIn("Plan sugerido: tomar ganancia en +20%. NO mantener.", msg)
+
+    def test_sin_calibracion_usa_cifra_historica_rotulada(self):
+        msg, _ = self.m.format_alert_message(TOKEN, (), None)
+        self.assertIn("El 76% de los tokens que alcanzan +20% cae −99% o más después (histórico v7.1, score ≥ 56, n=21)", msg)
 
 
 if __name__ == "__main__":
