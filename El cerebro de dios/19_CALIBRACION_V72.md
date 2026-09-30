@@ -95,6 +95,16 @@ Muestra estratificada por score, con semilla fija. Se usó el OHLCV de 15 min de
 2. **No reactivar las emisiones** hasta tener la precisión del v7.2 medida sobre el evento definido. El modo sombra (§3 de la directiva) registra esas alertas; `calibrate_threshold_v72.py --outcomes-sample` las mide cuando pasan 48h (desde el **2026-10-02 01:10 UTC** para el Conjunto A).
 3. **Operacionalizar el evento.** ">20% en ≤48h" medido por el máximo premia el bombeo y descarga (86% termina en rug). Propongo medir el **cierre a 48h ≥ +20%** o "tocar +20% antes de caer −X%". Es una decisión de Dirección (ver PREGUNTAS ABIERTAS del reporte).
 
+### 4.1 Actualización con más corridas (2026-09-30 03:09 UTC) [V]
+
+Con 7 corridas de producción (n=282, reproducibilidad 282/282) se repite el mismo patrón, algo más marcado:
+
+- **v7.2:** ≥50 91,5% · ≥60 88,3% · **≥70 66,0%** · ≥80 47,2% · **≥90 35,1%**.
+- **Juventud:** de 186 ALERTAS, 182 (97,8%) son tokens de < 60 min con m5/h1 ≥ 0,9; 169 tienen "MCap bajo + Volumen bajo".
+- **Con el gate de 60 min:** ≥50 33,7% · ≥55 28,0% · **≥56 1,4%**. Sigue bimodal, y la recomendación de umbral 56 no cambia.
+
+El JSON versionado conserva la corrida de n=169 porque incluye los resultados a 48 h. Para regenerar con los datos del día hay que correr el script de nuevo.
+
 ## 5. Limitaciones
 
 - El Conjunto A tiene n=169, sale de 4 corridas en 1 hora (un solo régimen de mercado) y son solo tokens de Solana.
