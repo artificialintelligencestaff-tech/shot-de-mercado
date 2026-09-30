@@ -1,0 +1,61 @@
+name: autorepair_bot
+
+# Bot gemelo: reparación (cada 4 h). NO toca código ni hace pushes de recovery.
+# Relanza UNA vez un run de producción caído en un step transitorio (choque de push, checkout, pip) y
+# abre/comenta un issue si el mismo step falla en >= 3 de los últimos 5 runs.
+# Registra en _autorepair_log.json; avisa al chat de OPERACIONES.
+
+on:
+  schedule:
+    - cron: '30 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: ops-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  autorepair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Run autorepair
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+          GITHUB_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OPS_CHAT_ID: ${{ secrets.TELEGRAM_OPS_CHAT_ID }}
+        run: |
+          python 04_Config/scripts/bot_autorepair.py
+
+      - name: Commit bot state
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          git add -- 02_Analisis/_autorepair_log.json
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "autorepair bot: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear _autorepair_log.json tras 4 intentos"
+          exit 1

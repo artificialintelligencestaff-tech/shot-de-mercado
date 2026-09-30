@@ -1,0 +1,74 @@
+name: monitor_shadow_bot
+
+# Bot gemelo: métrica dual rolling de las alertas en sombra (cada 6 h).
+# Mide con GeckoTerminal (gratis, con tope de llamadas), actualiza shadow_monitor.json, registra el DÍA N
+# en _cycle_log.json y avisa el veredicto de v7.2.1 UNA vez (n >= 20) al chat de OPERACIONES.
+# Nunca usa TELEGRAM_CHAT_ID (chat público de alertas).
+
+on:
+  schedule:
+    - cron: '15 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ops-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Measure shadow alerts
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python 04_Config/scripts/monitor_shadow.py --incremental --max-calls 80
+
+      - name: Commit bot state
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OPS_CHAT_ID: ${{ secrets.TELEGRAM_OPS_CHAT_ID }}
+        run: |
+          # _cycle_log.json también lo escribe script_97 (pipeline): en cada intento se parte de origin/main
+          # fresco y se vuelve a registrar el DÍA N encima, así nunca hay conflicto de rebase.
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          cp 02_Analisis/diagnostics/shadow_monitor.json "$RUNNER_TEMP/shadow_monitor.json"
+          git checkout -- 02_Analisis/diagnostics/shadow_monitor.json
+          for i in 1 2 3 4; do
+            git fetch -q origin main
+            git checkout -q -B ops-monitor origin/main
+            cp "$RUNNER_TEMP/shadow_monitor.json" 02_Analisis/diagnostics/shadow_monitor.json
+            if [ "$i" = "1" ]; then FLAG="--notify"; else FLAG="--notified-previous"; fi
+            python 04_Config/scripts/monitor_shadow.py --record-only --cycle-log $FLAG
+            git add -- 02_Analisis/diagnostics/shadow_monitor.json 02_Analisis/alerts/_cycle_log.json
+            if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+            git commit -q -m "monitor_shadow bot: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear el estado del monitor tras 4 intentos"
+          exit 1
