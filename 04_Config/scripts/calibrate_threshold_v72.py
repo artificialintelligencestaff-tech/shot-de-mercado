@@ -169,8 +169,9 @@ def precision_by_threshold(rows, score_key):
 # ---------------------------------------------------------------------------
 
 class CandleSource:
-    def __init__(self, cache_path=None):
+    def __init__(self, cache_path=None, offline=False):
         self.cache_path = Path(cache_path) if cache_path else None
+        self.offline = offline
         self.cache = {}
         if self.cache_path and self.cache_path.exists():
             self.cache = json.loads(self.cache_path.read_text(encoding="utf-8"))
@@ -179,6 +180,8 @@ class CandleSource:
     def get(self, pool, t0):
         key = f"{pool}@{int(t0)}"
         hit = self.cache.get(key)
+        if self.offline:                     # solo caché: mismo resultado que la corrida que la llenó, sin red
+            return (hit["status"], hit.get("candles", [])) if hit else ("no_cacheado", [])
         # Se reutiliza solo lo descargado bien: completo, o censurado de hace < 6 h. Los errores se reintentan.
         if hit and hit["status"] == "ok" and (hit.get("complete") or time.time() - hit["fetched_at"] < CACHE_MAX_AGE_S):
             return hit["status"], hit.get("candles", [])
@@ -358,6 +361,7 @@ def main(argv=None):
     ap.add_argument("--outcomes-set-a", action="store_true", help="medir la métrica dual en el Conjunto A (censurado)")
     ap.add_argument("--out", default=str(OUT_FILE), help="ruta del reporte JSON")
     ap.add_argument("--cache", default=None, help="caché de velas (JSON) para no repetir llamadas")
+    ap.add_argument("--offline", action="store_true", help="usar solo la caché (sin red); faltantes = 'no_cacheado'")
     args = ap.parse_args(argv)
     files = sorted(glob.glob(DETECTION_GLOB))
     set_a, set_b, per_run = [], [], {}
@@ -457,7 +461,7 @@ def main(argv=None):
                              "median": statistics.median(legacy) if legacy else None},
         "target_rate": list(TARGET_RATE),
     }
-    source = CandleSource(args.cache) if (args.outcomes_sample > 0 or args.outcomes_set_a) else None
+    source = CandleSource(args.cache, offline=args.offline) if (args.outcomes_sample > 0 or args.outcomes_set_a) else None
     if args.outcomes_set_a:
         print(f"[INFO] métrica dual, Conjunto A (censurado): GeckoTerminal, {GT_INTERVAL_S}s entre llamadas", flush=True)
         summary, rows = outcome_study_set_a(set_a, source, version)

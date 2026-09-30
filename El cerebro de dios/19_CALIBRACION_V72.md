@@ -93,7 +93,7 @@ Muestra estratificada por score, con semilla fija. Se usó el OHLCV de 15 min de
    - **Recomiendo corregir el feature, no solo el umbral:** que los bonos de aceleración cuenten solo con la ventana h1 completa (edad ≥ 60 min), y usar un **umbral de ALERTA de 56**. En la muestra da 1,8% (3/169): por debajo del objetivo, pero es el único corte con sentido en una distribución bimodal.
    - Si se prefiere estar dentro del objetivo en volumen, hay que rediseñar también "Edge temprano", "Buy pressure" y el momentum para tokens jóvenes (H a probar en un v7.3).
 2. **No reactivar las emisiones** hasta tener la precisión del v7.2 medida sobre el evento definido. El modo sombra (§3 de la directiva) registra esas alertas; `calibrate_threshold_v72.py --outcomes-sample` las mide cuando pasan 48h (desde el **2026-10-02 01:10 UTC** para el Conjunto A).
-3. **Operacionalizar el evento.** ">20% en ≤48h" medido por el máximo premia el bombeo y descarga (86% termina en rug). Propongo medir el **cierre a 48h ≥ +20%** o "tocar +20% antes de caer −X%". Es una decisión de Dirección (ver PREGUNTAS ABIERTAS del reporte).
+3. **Operacionalizar el evento.** ">20% en ≤48h" medido por el máximo premia el bombeo y descarga (86% termina en rug). **Decidido por Dirección (30/09): métrica dual**, ver §4.2.
 
 ### 4.1 Actualización con más corridas (2026-09-30 03:09 UTC) [V]
 
@@ -103,7 +103,52 @@ Con 7 corridas de producción (n=282, reproducibilidad 282/282) se repite el mis
 - **Juventud:** de 186 ALERTAS, 182 (97,8%) son tokens de < 60 min con m5/h1 ≥ 0,9; 169 tienen "MCap bajo + Volumen bajo".
 - **Con el gate de 60 min:** ≥50 33,7% · ≥55 28,0% · **≥56 1,4%**. Sigue bimodal, y la recomendación de umbral 56 no cambia.
 
-El JSON versionado conserva la corrida de n=169 porque incluye los resultados a 48 h. Para regenerar con los datos del día hay que correr el script de nuevo.
+El JSON versionado se regeneró el 2026-09-30 04:4x UTC con 8 corridas (n=297, coincidencia 297/297) y la métrica dual (§4.2).
+
+### 4.2 Métrica dual de precisión (decisión de Dirección, 30/09) [V]
+
+| Métrica | Definición | Uso |
+|---|---|---|
+| **Primaria** | Tocar **+20% antes de caer −30%** desde la entrada, dentro de las 48 h | Calibración (operativa) |
+| **Secundaria** | **Cierre ≥ +20%** a las 48 h | Reporte al público (honestidad) |
+
+Implementación (`calibrate_threshold_v72.py`):
+- `event_primary` y `event_secondary` siguen la definición literal de Dirección.
+- Velas OHLC de 15 min con orden **conservador** open → low → high → close: si una vela toca las dos barreras, cuenta primero la caída.
+- **Velas ambiguas en el legado: 39**, así que la primaria está levemente subestimada.
+- **Censura:** en el Conjunto A (menos de 48 h) la primaria queda decidida al tocar una barrera; si no, figura pendiente.
+- Tests: `test_calibrate_dual.py` 8/8.
+
+**Legado v7.1** (muestra estratificada, n=75 con velas; 71 dieron HTTP 429 y 19 no tenían velas):
+
+| Score v7.1 | n | Primaria | Secundaria | Rug (−90%) |
+|---|---|---|---|---|
+| 0-29 | 11 | 1 (9,1%) | 0 | 0 |
+| 30-49 | 27 | 16 (59,3%) | 0 | 27 |
+| 50-69 | 29 | 18 (62,1%) | 3 | 25 |
+| 70-100 | 8 | 3 (37,5%) | 0 | 1 |
+| **Total** | 75 | **38 (50,7%, IC90 41,3-60,0)** | **3 (4,0%, IC90 1,6-9,6)** | 53 (70,7%) |
+
+- **Por umbral:**
+
+  | Umbral | Primaria | Secundaria |
+  |---|---|---|
+  | ≥ 50 | 21/37 = 56,8% (IC90 43,4-69,2) | 3/37 = 8,1% |
+  | **≥ 56** | **21/35 = 60,0% (IC90 46,1-72,4)** | **3/35 = 8,6% (IC90 3,5-19,6)** |
+  | ≥ 70 | 3/8 = 37,5% | 0/8 |
+
+- **Tasa base poblacional (primaria), ponderada por bucket: 10,5%.** Si los tokens sin velas cuentan como fallo, la primaria total baja a 40,4%.
+- **AUC del score:** primaria 0,61 · secundaria 0,76 (solo 3 positivos).
+- **De los 38 aciertos primarios, 32 (84%) terminan en rug en 48 h.**
+
+**Conjunto A v7.2 en producción** (censurado; 292 tokens: 68 con velas, 99 sin velas todavía, 125 con 429):
+- Primaria resuelta en 23 casos: **8/23 = 34,8% (IC90 20,9-51,9)**, con 144 pendientes. La secundaria queda toda pendiente hasta el 2026-10-02 01:10 UTC.
+- **Sesgo de la censura:** los que se resuelven primero son los de movimiento rápido.
+
+**Interpretación:**
+- La primaria mide si una alerta **daba la oportunidad de salir con +20% antes de un −30%**. El score v7.1 ≥ 30 multiplica esa probabilidad por unas 6 veces respecto del bucket 0-29 (59-62% contra 9%).
+- Pero el 84% de esos aciertos termina en rug. La oportunidad existe **solo con disciplina de salida**: tomar ganancia en +20% y no mantener.
+- La secundaria (mantener 48 h) casi nunca se cumple: 4% en total, 8,6% con score ≥ 56. **Es la cifra honesta para el público:** "si comprás y mantenés 48 h, menos de 1 de cada 10 alertas cierra arriba de +20%".
 
 ## 5. Limitaciones
 
@@ -119,4 +164,6 @@ El JSON versionado conserva la corrida de n=169 porque incluye los resultados a 
 ```bash
 python 04_Config/scripts/calibrate_threshold_v72.py                       # tasas por umbral (sin red)
 python 04_Config/scripts/calibrate_threshold_v72.py --outcomes-sample 50  # + resultados a 48 h (~20 min, GeckoTerminal)
+python 04_Config/scripts/calibrate_threshold_v72.py --outcomes-set-a --outcomes-sample 50 --cache velas.json            # métrica dual, llena la caché
+python 04_Config/scripts/calibrate_threshold_v72.py --outcomes-set-a --outcomes-sample 50 --cache velas.json --offline  # mismo resultado, sin red
 ```
