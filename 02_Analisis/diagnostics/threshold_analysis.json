@@ -1,0 +1,3894 @@
+{
+  "generated_at": "2026-09-30T02:36:16+00:00",
+  "hypotheses": {
+    "H1": "umbral desactualizado tras bonos v7.2",
+    "H2": "inflación por tokens < 60 min con vol_m5/vol_h1 ≈ 1 por construcción"
+  },
+  "data": {
+    "files": 236,
+    "set_a_v72_complete": 169,
+    "set_a_runs": [
+      "2026-09-30_010937",
+      "2026-09-30_013126",
+      "2026-09-30_014936",
+      "2026-09-30_020830"
+    ],
+    "set_b_legacy": 10484,
+    "set_b_with_dex": 8918
+  },
+  "method": {
+    "clock": "timestamp de la corrida + 330s",
+    "bp_delta": "0 (sin _accumulated.json)",
+    "scorer": "script_82_final_detection.score_token (código actual)"
+  },
+  "reproducibility": {
+    "exact_match": 169,
+    "within_15": 169,
+    "n": 169,
+    "note": "diferencias esperadas: bp_delta (±15) y reloj (±1 min en los cortes de edad)"
+  },
+  "set_a": {
+    "stored_production_score": {
+      "histogram": {
+        "10-19": 1,
+        "40-49": 18,
+        "50-59": 8,
+        "60-69": 43,
+        "70-79": 31,
+        "80-89": 18,
+        "90-99": 10,
+        "100-100": 40
+      },
+      "rates": {
+        "50": {
+          "n_alerta": 150,
+          "rate": 0.8876
+        },
+        "60": {
+          "n_alerta": 142,
+          "rate": 0.8402
+        },
+        "70": {
+          "n_alerta": 99,
+          "rate": 0.5858
+        },
+        "80": {
+          "n_alerta": 68,
+          "rate": 0.4024
+        },
+        "90": {
+          "n_alerta": 50,
+          "rate": 0.2959
+        }
+      },
+      "median": 70
+    },
+    "recomputed_v72": {
+      "histogram": {
+        "10-19": 1,
+        "40-49": 18,
+        "50-59": 8,
+        "60-69": 43,
+        "70-79": 31,
+        "80-89": 18,
+        "90-99": 10,
+        "100-100": 40
+      },
+      "rates": {
+        "50": {
+          "n_alerta": 150,
+          "rate": 0.8876
+        },
+        "60": {
+          "n_alerta": 142,
+          "rate": 0.8402
+        },
+        "70": {
+          "n_alerta": 99,
+          "rate": 0.5858
+        },
+        "80": {
+          "n_alerta": 68,
+          "rate": 0.4024
+        },
+        "90": {
+          "n_alerta": 50,
+          "rate": 0.2959
+        }
+      },
+      "median": 70
+    },
+    "per_run_stored": {
+      "2026-09-30_010937": {
+        "n": 53,
+        "50": 51,
+        "60": 48,
+        "70": 38,
+        "80": 25,
+        "90": 21
+      },
+      "2026-09-30_013126": {
+        "n": 35,
+        "50": 33,
+        "60": 30,
+        "70": 17,
+        "80": 13,
+        "90": 8
+      },
+      "2026-09-30_014936": {
+        "n": 35,
+        "50": 31,
+        "60": 31,
+        "70": 21,
+        "80": 13,
+        "90": 10
+      },
+      "2026-09-30_020830": {
+        "n": 46,
+        "50": 35,
+        "60": 33,
+        "70": 23,
+        "80": 17,
+        "90": 11
+      }
+    },
+    "by_age_bucket": {
+      ">24h": {
+        "n": 4,
+        "alerta_70": 2
+      },
+      "4-24h": {
+        "n": 1,
+        "alerta_70": 1
+      },
+      "5-60m": {
+        "n": 21,
+        "alerta_70": 12
+      },
+      "<5m": {
+        "n": 143,
+        "alerta_70": 84
+      }
+    },
+    "alerts_70": {
+      "n": 99,
+      "young_and_saturated_ratio": 96,
+      "mcap_bajo_y_volumen_bajo": 88,
+      "top_reasons": [
+        [
+          "Volumen acelerado (5m/1h > 50%)",
+          96
+        ],
+        [
+          "Trades acelerados (5m/1h > 50%)",
+          96
+        ],
+        [
+          "Edge temprano (<60 min)",
+          96
+        ],
+        [
+          "Volumen bajo",
+          93
+        ],
+        [
+          "MCap bajo",
+          89
+        ],
+        [
+          "Liquidez baja",
+          89
+        ],
+        [
+          "Volumen activo m5 (>$1K)",
+          70
+        ],
+        [
+          "Momentum corto+medio positivo",
+          53
+        ],
+        [
+          "Buy pressure >60%",
+          41
+        ],
+        [
+          "Pump 24h",
+          23
+        ],
+        [
+          "Buy pressure >55%",
+          22
+        ],
+        [
+          "Volumen moderado m5",
+          11
+        ]
+      ]
+    },
+    "counterfactual_accel_gated_60m": {
+      "rates": {
+        "50": {
+          "n_alerta": 49,
+          "rate": 0.2899
+        },
+        "60": {
+          "n_alerta": 3,
+          "rate": 0.0178
+        },
+        "70": {
+          "n_alerta": 3,
+          "rate": 0.0178
+        },
+        "80": {
+          "n_alerta": 2,
+          "rate": 0.0118
+        },
+        "90": {
+          "n_alerta": 1,
+          "rate": 0.0059
+        }
+      },
+      "histogram": {
+        "0-9": 24,
+        "10-19": 18,
+        "20-29": 52,
+        "30-39": 16,
+        "40-49": 10,
+        "50-59": 46,
+        "70-79": 1,
+        "80-89": 1,
+        "100-100": 1
+      },
+      "fine_sweep_rates": {
+        "50": 0.2899,
+        "51": 0.2544,
+        "52": 0.2544,
+        "53": 0.2544,
+        "54": 0.2544,
+        "55": 0.2485,
+        "56": 0.0178,
+        "57": 0.0178,
+        "58": 0.0178,
+        "59": 0.0178,
+        "60": 0.0178
+      }
+    },
+    "rows": [
+      {
+        "run": "2026-09-30_010937",
+        "mint": "9cRCn9rGT8V2imeM2BaKs13yhMEais3ruM3rPvTGpump",
+        "source": "trending",
+        "stored": 77,
+        "recomputed": 77,
+        "age_min": 151449.317,
+        "vol_ratio": 0.01,
+        "mcap": 140989393.0,
+        "liq": 2429027.86,
+        "gated": 77
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "3kmygWKZBkCYrgZHKfiuB9UFKTcDLTFFsKo3BWpmpump",
+        "source": "trending",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1437.683,
+        "vol_ratio": 0.037,
+        "mcap": 899859.0,
+        "liq": 107720.19,
+        "gated": 100
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "9Ymr8sqQCEjdCf6cUqxcPKo3ph7qqqGA8KAmTy2KC2Ku",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 5.417,
+        "vol_ratio": 1.0,
+        "mcap": 3948.68,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "3N6uCqWycNbgQedzcuehvWynMAMwWUCJb7Vp7rCcpump",
+        "source": "pumpportal",
+        "stored": 50,
+        "recomputed": 50,
+        "age_min": 5.4,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 5
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "9HYz5VwMVghAuoi1HyWT333Fp5HxSLnLoH7exNYYpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 5.267,
+        "vol_ratio": 1.0,
+        "mcap": 7509.06,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "FaXNd2rwujsU2bTdEEEKc1BhC4NLm8PwkgvMYNt6BSp8",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 5.233,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "F11bQ67uSYv5R8ipGXz9nGqwj4etbQFM3GpxiGtLCXvD",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 5.233,
+        "vol_ratio": 1.0,
+        "mcap": 3662.91,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "7k21jxHb8dMMaaEggsuAJiTspLmoSn9uAB8AEmeybfYp",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 5.217,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "CnP8r7eZU16XCZacUGMEZ3uu67taY8ZcjUi21K2phLE1",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 5.217,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "2ghSYCjMV5tHbBkUSxSfXzLdmiTSCC4aGRhRBFLFpump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 5.167,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "CD24AiKe9EhTz3frmpqukjnagawgBLq7o8gwnCNvpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 5.05,
+        "vol_ratio": 1.0,
+        "mcap": 3604.87,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "BqDJfnuBHJ6Jb8gYgxF6nzsBg8ypDkYhAGZoEBg41Mzt",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 5.017,
+        "vol_ratio": 1.0,
+        "mcap": 3341.75,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "LzBH3Coijcsmo4keJf76Rj2SBV9tTYgRkLS5gk2pump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.967,
+        "vol_ratio": 1.0,
+        "mcap": 3727.16,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "kXc5FHqj5sj2C4sDMYsXxa4aqtQywbDeai53GvRpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.933,
+        "vol_ratio": 1.0,
+        "mcap": 3331.05,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "FDJEvs8qbmAjRwzBJFCEDBfM7ZbQ86i37UHK8Pp8pump",
+        "source": "pumpportal",
+        "stored": 90,
+        "recomputed": 90,
+        "age_min": 4.883,
+        "vol_ratio": 1.0,
+        "mcap": 4085.98,
+        "liq": 0.0,
+        "gated": 45
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "DyrtauNe2e37Ti5KkwyN1YWEQo5vku62H7JNZctdpump",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 4.867,
+        "vol_ratio": 1.0,
+        "mcap": 3354.18,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "5dMgzKPSLT3wwpWGyXEX5iB8ok1bigrscEjnT2sbpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.85,
+        "vol_ratio": 1.0,
+        "mcap": 3358.42,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "HJroLXRuQhwd7DLXY2Spy979g9uXeNi6DKnff7yspump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.85,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "2MSnrj6WzZiE2qzK29BHBEhxwjnJr6n3pAezydjQuw5E",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 4.817,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "H1ahMizH4P548YLpEsLprEHh3e4bEdEfCvP79KDhpump",
+        "source": "pumpportal",
+        "stored": 40,
+        "recomputed": 40,
+        "age_min": 4.817,
+        "vol_ratio": 1.0,
+        "mcap": 485.0,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "8yYyoQctGs6CwYmznyZL5DiX2kVAwHaZnipg9AhPpump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 4.783,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "4HLT6RepmGubhfUx1ZHzZsMq2y2wGmwtKhQYbN96SL83",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.717,
+        "vol_ratio": 1.0,
+        "mcap": 3351.71,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "89WkYfqu8FiHS5i647uVhPTb1hVQVf8NT4FXtXXYuwwV",
+        "source": "pumpportal",
+        "stored": 95,
+        "recomputed": 95,
+        "age_min": 4.533,
+        "vol_ratio": 1.0,
+        "mcap": 5620.82,
+        "liq": 0.0,
+        "gated": 50
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "31Hov4Q6frerKb9QMQk4cZoo4xfXyz8AYwwJegcjvcMF",
+        "source": "pumpportal",
+        "stored": 40,
+        "recomputed": 40,
+        "age_min": 4.5,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "8J6Hf9MeqZkzSb9n5J6MTn6jMercZikPJotVkA92F9rG",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.483,
+        "vol_ratio": 1.0,
+        "mcap": 3326.28,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "36NyFEmfNdWJEEXupd2i83TvUJ96Ehv1yCjY3YnJu1v9",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.433,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "54uyxwrWqTVyyWy23ATA4weVE6dKVv76fYQ6Fq5maJ7e",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.433,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "6e9Ndo51LVCw9zMEG7A89B1FS3sibXngBMirjmEmpump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.3,
+        "vol_ratio": 1.0,
+        "mcap": 1736.61,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "7Kqmv2TchkNBGcumnbpCA56cfu5GRHoykezE75Zpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 4.017,
+        "vol_ratio": 1.0,
+        "mcap": 5486.01,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "EweT2P1XAbYVuSXhEY699SCP4YRCVgqB9uFYWzkMpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.85,
+        "vol_ratio": 1.0,
+        "mcap": 8055.43,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "Hh3nQoR3JjG97iEfHeRxr35AmSNq9wVACVPRoX4pump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 3.617,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "2KqhSC6rAnj41tmy57ybHzhLdDmTKGvwkZiMfRfftDDZ",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 3.567,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "4JeGNNdbHdy8Wq8Q6zAKaBxv1gbrvYsGneqXcaUYpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 3.483,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "2Hh9AK14aYNAUGU8391sPxP2TSRoKHq7X7bV6Eb5pump",
+        "source": "pumpportal",
+        "stored": 50,
+        "recomputed": 50,
+        "age_min": 3.467,
+        "vol_ratio": 1.0,
+        "mcap": 3650.0,
+        "liq": 0.0,
+        "gated": 5
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "AtYtHMAUEc6gU5CHoW8uAPJNMZ2tET4iD4WgVpbepump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.45,
+        "vol_ratio": 1.0,
+        "mcap": 3687.92,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "A6i9VuQ79Erh2ehYy8gnwQ87uNwZKDrzHamtpTC7pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.233,
+        "vol_ratio": 1.0,
+        "mcap": 6322.5,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "FsQ8iozccTUDX2KRyxsdiBhDr7oK27rk9Q1VpHmQpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.017,
+        "vol_ratio": 1.0,
+        "mcap": 7920.8,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "7EthCXVPUPgCojktbgekucVuyC3iP7moVyAXx6wgpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.817,
+        "vol_ratio": 1.0,
+        "mcap": 3705.78,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "FapJR9t6o56kFYNztwiZkDGtiihGLVBCZZJCfgDxpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.483,
+        "vol_ratio": 1.0,
+        "mcap": 3795.06,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "FGsTLMh5mnUMm653UH9DDu3DZdbDdSTYW7FKxmp6pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.05,
+        "vol_ratio": 1.0,
+        "mcap": 4472.81,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "3nNG2BRQMxdFdDGVDrRJiju1PqScbxjs8ptM4MwLpump",
+        "source": "pumpportal",
+        "stored": 50,
+        "recomputed": 50,
+        "age_min": 1.967,
+        "vol_ratio": 1.0,
+        "mcap": 3331.03,
+        "liq": 0.0,
+        "gated": 5
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "CLepcgqZJWKju83Ep7Sru6SQqBxquBpErAWq3fXJpump",
+        "source": "pumpportal",
+        "stored": 85,
+        "recomputed": 85,
+        "age_min": 1.867,
+        "vol_ratio": 1.0,
+        "mcap": 3435.91,
+        "liq": 0.0,
+        "gated": 40
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "9UekWjYsAAbJfV1m4C4s6EQj95SYpy1ovMepYLSipump",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 1.8,
+        "vol_ratio": 1.0,
+        "mcap": 3901.92,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "9aVejKQAxNrRjBzJCU7fd1NUPEGLVeuf5pRXvtbpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 1.783,
+        "vol_ratio": 1.0,
+        "mcap": 3374.75,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "4yd4NURxkwYy7gA9iSwFNMxPrMZuqVgfYjNZCD52pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.7,
+        "vol_ratio": 1.0,
+        "mcap": 3555.38,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "q1vUGwaQCtoR5rAR9sBZWLKBy5UNeY69rfgHPx6pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.55,
+        "vol_ratio": 1.0,
+        "mcap": 7948.54,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "rxPh4Ju8aBiX5h7QfT1uvwxsE3ub1DfUMSPLcP2pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.467,
+        "vol_ratio": 1.0,
+        "mcap": 3618.25,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "47t5ULrhKNYSYQiTtHPE3Z7HpoN8G3HGnJarfe2Jpump",
+        "source": "pumpportal",
+        "stored": 75,
+        "recomputed": 75,
+        "age_min": 1.417,
+        "vol_ratio": 1.0,
+        "mcap": 3431.68,
+        "liq": 0.0,
+        "gated": 30
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "KHBK7tV4TUXnKFH8hcMcAKxMJX1xz84S45LSJg1KeFV",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.283,
+        "vol_ratio": 1.0,
+        "mcap": 11637.75,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "5bf1AtsrS5JSmZPekVnXUNRJWDxaK2xoyDhWGjcpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 1.25,
+        "vol_ratio": 1.0,
+        "mcap": 3370.18,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "FWEW9zJoFDbsad6uY4bF2UH28rUZMV3HV2xm6vFCpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.133,
+        "vol_ratio": 1.0,
+        "mcap": 437523.0,
+        "liq": 58502.89,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "2T4oWViNvtkpuw36rLHfUDrWV6hxng5XKuNNa7EHs83g",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.05,
+        "vol_ratio": 1.0,
+        "mcap": 372220.0,
+        "liq": 53790.46,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_010937",
+        "mint": "B6m1BBNwioRrA4SbYL4nZSHH4Yxvjbua1AwrXMWspump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.05,
+        "vol_ratio": 1.0,
+        "mcap": 370232.0,
+        "liq": 53640.95,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+        "source": "trending",
+        "stored": 54,
+        "recomputed": 54,
+        "age_min": 1025007.15,
+        "vol_ratio": 0.011,
+        "mcap": 180748620.0,
+        "liq": 8919463.81,
+        "gated": 54
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "FgpEtLCk9VDpSsPwpJwSZTDD3eARm3JA1Qs8CvuWpump",
+        "source": "pumpportal",
+        "stored": 95,
+        "recomputed": 95,
+        "age_min": 5.417,
+        "vol_ratio": 1.0,
+        "mcap": 21522.19,
+        "liq": 0.0,
+        "gated": 50
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "F98JZf4AtDdQrZ6dE1ixWQ1nNjYNEwTXA3nDbo1k1AS2",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 5.067,
+        "vol_ratio": 1.0,
+        "mcap": 1085.8,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "B7n3hS78mr46ofJ54NozzicyRqExnxChSy5m2o6nXMvn",
+        "source": "pumpportal",
+        "stored": 95,
+        "recomputed": 95,
+        "age_min": 4.95,
+        "vol_ratio": 1.0,
+        "mcap": 5618.25,
+        "liq": 0.0,
+        "gated": 50
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "6rynSPWvqSFioDv4esHDmmWyseA6Q7Bi27d1MHigpump",
+        "source": "pumpportal",
+        "stored": 85,
+        "recomputed": 85,
+        "age_min": 4.933,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 40
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "8MX428ydjsNgT7eiAd6Jm4z8SjrLRzFhYYB5Eyjmpump",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 4.767,
+        "vol_ratio": 1.0,
+        "mcap": 36291.67,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "AxuQYEpQ6TdgwUUcm4piHwSoctp4bdzfqb1dZ5maFcvz",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 4.733,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "28EvUAZKfBTwY1JyTPJw9n3Y55NApNdCeXcMPgNVpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 4.6,
+        "vol_ratio": 1.0,
+        "mcap": 4171.43,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "FvdwFoB8s6BmGXsfYegjeqgWcCvcv42B9CyTV8UYpump",
+        "source": "pumpportal",
+        "stored": 85,
+        "recomputed": 85,
+        "age_min": 4.567,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 40
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "FS9HjJzQL1aRzV91cixZ86W9ge6vzkRMQVf4vpUipump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.383,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "5wydwF3PqtaH2MymkvEZPxpVMbBkcjxUkp6ibA1Rpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 3.917,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "BFbbE5VuJ2vdWPiGbDc18MwTaT2qfMxqi357ZM8im8DZ",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 3.867,
+        "vol_ratio": 1.0,
+        "mcap": 2331.76,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "5GD2nPhydFN7gaq4eAD4sS9Bbky5Axhg64HYbNe8pump",
+        "source": "pumpportal",
+        "stored": 50,
+        "recomputed": 50,
+        "age_min": 3.7,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 5
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "CpAGkYzJm2EprgJDuEfdMQ5ptq5znuPp1YNzmWACGEpM",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 3.667,
+        "vol_ratio": 1.0,
+        "mcap": 1851.11,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "3RAKX1Yj5Ui85Q3oghnYyuCDYUqKE5iQq5aZHk81pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.55,
+        "vol_ratio": 1.0,
+        "mcap": 3882.29,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "2HCHCxVewZfbEcHStQjCB2V7S5hVHcXgdoRcpPb4pump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 3.533,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "B8BTRXHncwDEhnrqeEQ8dGvxdCHM8u74aFRNi9X3v9zs",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 3.5,
+        "vol_ratio": 1.0,
+        "mcap": 3327.68,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "9ysb2DabXPn6bbvj2wZ3a6jc9VU4Q1fugB1sdPnfwPEA",
+        "source": "pumpportal",
+        "stored": 40,
+        "recomputed": 40,
+        "age_min": 3.417,
+        "vol_ratio": 1.0,
+        "mcap": 1097.28,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "E9PVBvJjLXfJgJPPrYNVgQyttCHj2VZApQg7JfWLNVkY",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 3.317,
+        "vol_ratio": 1.0,
+        "mcap": 1811.54,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "3CPTtkoRKXpyAEfzrjC4zQVDdSW1em1N7TpBZKBhpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 3.317,
+        "vol_ratio": 1.0,
+        "mcap": 4001.57,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "3tZ9yonGHGQ5ZhC5MEgtKUhkUagnVBEm8sYb62xDpump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 3.2,
+        "vol_ratio": 1.0,
+        "mcap": 3401.13,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "5SAFUuEbEwJTqtG7rTK9xrvLX2CGR8aNfNsodUSpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 3.133,
+        "vol_ratio": 1.0,
+        "mcap": 3383.19,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "66iJeW28P8pUSiRVfpPh5SJDChyB6u6RQSbu4SUnpump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 2.95,
+        "vol_ratio": 1.0,
+        "mcap": 3367.54,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "6iMjh4PL5tKQApBD2dTEtbGJBSyXQzSqudDzzn1kpump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 2.95,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "CVCyBxtLmsXtT4okYLr9vEEWdjr5dh3BdKxSStz8pump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 2.883,
+        "vol_ratio": 1.0,
+        "mcap": 2827.03,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "GPxLHnoF3LMEDs5YjZdFMqbQRKtdMvJLvu2Mowtpump",
+        "source": "pumpportal",
+        "stored": 85,
+        "recomputed": 85,
+        "age_min": 2.6,
+        "vol_ratio": 1.0,
+        "mcap": 3555.96,
+        "liq": 0.0,
+        "gated": 40
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "4KqJBgxqbMRr3LP89tNXq3LXdGT1wJgU7T9aJyyppump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 2.5,
+        "vol_ratio": 1.0,
+        "mcap": 3332.43,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "EK7zriYVyRQ4JuXH3rjznEfrdkZng7NBpjKSt6eCpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.283,
+        "vol_ratio": 1.0,
+        "mcap": 3797.96,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "6iKd7k9sBEchjokbf9onDiYAZe34T8xsutmn1caspump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.2,
+        "vol_ratio": 1.0,
+        "mcap": 6419.4,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "CSTwSwtj5mMyFPZytEutNkCwTY8ejueRwWPxzwwdpump",
+        "source": "pumpportal",
+        "stored": 55,
+        "recomputed": 55,
+        "age_min": 1.883,
+        "vol_ratio": 1.0,
+        "mcap": 1604.46,
+        "liq": 0.0,
+        "gated": 10
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "79thTfcaQBydG3jHSQ8g8x6nvXoFzaAeFentspDfpump",
+        "source": "pumpportal",
+        "stored": 85,
+        "recomputed": 85,
+        "age_min": 1.683,
+        "vol_ratio": 1.0,
+        "mcap": 3531.08,
+        "liq": 0.0,
+        "gated": 40
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "FQNAnRLahLmZhrieNAoZEKSAZjFzP4Xn1AarcE9cpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.6,
+        "vol_ratio": 1.0,
+        "mcap": 9883.35,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "4Vsj2my7sjrjaj2BXfLs72UfdyLvPa659V9moJUZoyGb",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 1.45,
+        "vol_ratio": 1.0,
+        "mcap": 589.69,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "DGvWySoyBgKQ7RgCVHdkxpEWj5Q14ochRaydVB9apump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.117,
+        "vol_ratio": 1.0,
+        "mcap": 438226.0,
+        "liq": 58517.01,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_013126",
+        "mint": "D8fPbm5GoACicsfLC3fT9uvestH6UwFj2J6wgLauTcLE",
+        "source": "pumpportal",
+        "stored": 40,
+        "recomputed": 40,
+        "age_min": 1.083,
+        "vol_ratio": 1.0,
+        "mcap": 975.24,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+        "source": "trending",
+        "stored": 87,
+        "recomputed": 87,
+        "age_min": 1025025.317,
+        "vol_ratio": 0.054,
+        "mcap": 181308271.0,
+        "liq": 8945248.66,
+        "gated": 87
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "7ueYvMJpyWWZHtHw7GdcaSPgFJ3sL7MuK6HJhLhRpump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 5.467,
+        "vol_ratio": 1.0,
+        "mcap": 3339.98,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "8jvUWuSCzPVbKk5jAEkWpwWTiTUUkQxGEwQxo7ZxBQZc",
+        "source": "pumpportal",
+        "stored": 75,
+        "recomputed": 75,
+        "age_min": 5.4,
+        "vol_ratio": 1.0,
+        "mcap": 3343.63,
+        "liq": 0.0,
+        "gated": 30
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "CKTh2T1Qta2tJR4UMRKKP5oSzNhJRu9WEY6CWcg2pump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 5.333,
+        "vol_ratio": 1.0,
+        "mcap": 4008.6,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "B4hRMn7ioZ3vH4We1wwVeQggVC1VzJmVvmYTr1Qq61uD",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 4.983,
+        "vol_ratio": 1.0,
+        "mcap": 1013.83,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "8a6P3q1Y6vVYrqMLwNXxKNtyPb6d65jKabetBNRxShGL",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.883,
+        "vol_ratio": 1.0,
+        "mcap": 1700.51,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "eXcV2fb8NdDwMBXmGknbAZH8kGUEpJ4Y7Ep3Nkapump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.833,
+        "vol_ratio": 1.0,
+        "mcap": 3521.16,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "5ciYi628wVDm78btPSxDZkSVR9u7TRaQT4eMtENQpump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 4.733,
+        "vol_ratio": 1.0,
+        "mcap": 3341.38,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "5xoZKPeMLH8KpsTVD8WfKMiE6uhnVjSE39imS86istHH",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.667,
+        "vol_ratio": 1.0,
+        "mcap": 2654.61,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "8XkTipHQzTuR4cFRK6X26MufdeaveuW2zAGxA5kGnmh1",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 4.467,
+        "vol_ratio": 1.0,
+        "mcap": 2521.77,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "9mg2zfWSkRBvmJvdexGjaxAxC9sb8MVfUeEBFVQpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.183,
+        "vol_ratio": 1.0,
+        "mcap": 3411.35,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "4EEidY1ag2gkL9wviX9DfXjWFptbFd7xdpkYZWJH1Hu2",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.117,
+        "vol_ratio": 1.0,
+        "mcap": 772.66,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "8RFpACUVHhvzKXTURZag2pFJs95w4XffPVYLKNHdpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 4.0,
+        "vol_ratio": 1.0,
+        "mcap": 4618.36,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "5TrgU7c5AVgrmZTDUinFRZ4i3LCcxzv9T6hvL4jLpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.933,
+        "vol_ratio": 1.0,
+        "mcap": 3700.04,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "3HB7SpNuajHoszr2cBKJxknZ7Vvw8zBWk6AThn8rpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 3.883,
+        "vol_ratio": 1.0,
+        "mcap": 3534.08,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "JAEwQnEtA1F8Zpe9fF949EtTjAae6N8shJLdB2tcpump",
+        "source": "pumpportal",
+        "stored": 95,
+        "recomputed": 95,
+        "age_min": 3.85,
+        "vol_ratio": 1.0,
+        "mcap": 4589.58,
+        "liq": 0.0,
+        "gated": 50
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "BXAHCvimGP8EDjDKPtFmENqAeZe5mrYGpVvnJNjPpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.817,
+        "vol_ratio": 1.0,
+        "mcap": 3997.9,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "683FahoVuubggqcd7McCGrhbX1GiR81oJp6fUB1c6ZuV",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 3.733,
+        "vol_ratio": 1.0,
+        "mcap": 3341.38,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "HzqFii73YeBrtPCzCfDQW2RVa7U8NGxLWmJhVaukmPpe",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 3.667,
+        "vol_ratio": 1.0,
+        "mcap": 2195.33,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "6SsuhSnfSo1ktVw1gm1617Sbk3CCS9rrNkj4XgPupump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.567,
+        "vol_ratio": 1.0,
+        "mcap": 6923.78,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "33bJceYxPHjKvWqTbmhzhEkh8qgBAtJSEX1892EiFPG6",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 3.517,
+        "vol_ratio": 1.0,
+        "mcap": 1474.66,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "ABCfosYHDNHyCW34ucGVmKyozQfjmr4Ak2mhzH5upump",
+        "source": "pumpportal",
+        "stored": 90,
+        "recomputed": 90,
+        "age_min": 3.3,
+        "vol_ratio": 1.0,
+        "mcap": 3850.55,
+        "liq": 0.0,
+        "gated": 45
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "j2RE6p8yVNsQUuWg7SESQEXo62EkxGdgMnqNegvpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.217,
+        "vol_ratio": 1.0,
+        "mcap": 7298.36,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "5RzuToWCZsBTc39j2UndUUcYHmrG8dy5fzsTCY6ormy4",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 2.95,
+        "vol_ratio": 1.0,
+        "mcap": 2822.81,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "4Pk1E6XqAhwKNjkQyByfdE7BgN8W5FwZLgD6KzyZpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.9,
+        "vol_ratio": 1.0,
+        "mcap": 8004.85,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "BJmLE193VkLsDP54haaGiBUWr5Af4qbSQuoyKMfTUtMD",
+        "source": "pumpportal",
+        "stored": 90,
+        "recomputed": 90,
+        "age_min": 2.633,
+        "vol_ratio": 1.0,
+        "mcap": 1721.49,
+        "liq": 0.0,
+        "gated": 45
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "4FrV5zTHg7Bi2NNipAG3enoVZ4DX3AAVE23JTPv6pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.55,
+        "vol_ratio": 1.0,
+        "mcap": 7954.28,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "GwQKWUevYo2CCrct1BpXBmhjGMQwesiESSHzVtr6DAuL",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 2.5,
+        "vol_ratio": 1.0,
+        "mcap": 1479.92,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "5osvbYR3m7h5kpyhyof3NNnSLDVVEsi7gTiq18yLYCe7",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 2.35,
+        "vol_ratio": 1.0,
+        "mcap": 1982.87,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "33KXLhfmDASWKgyrAVbuookKEZ8xUAFcdTGSNpGGMjuu",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 1.95,
+        "vol_ratio": 1.0,
+        "mcap": 650.85,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "3THUWHzLtCyzUq7Z7iyYQyEyRu8Z3xG1xV9GQXGEpump",
+        "source": "pumpportal",
+        "stored": 75,
+        "recomputed": 75,
+        "age_min": 1.883,
+        "vol_ratio": 1.0,
+        "mcap": 3565.51,
+        "liq": 0.0,
+        "gated": 30
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "HNbx6e6GjDgrbFxSagCGF6U2DENUccMQxKM6JjbkmYrb",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 1.8,
+        "vol_ratio": 1.0,
+        "mcap": 1235.29,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "4TD62Xv8wkLAsYeBEFccj2VMzgM8KuwAZ9L12WYdAgRp",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 1.65,
+        "vol_ratio": 1.0,
+        "mcap": 4115.13,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "6c82CUeFheNmdZF5ncZyFWfR7Lq9NjiPHPhXWcjKbKW7",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 1.533,
+        "vol_ratio": 1.0,
+        "mcap": 2498.87,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_014936",
+        "mint": "DkMjKypTM7bzTEHvSBB6AFLAVdVELoDRhZoJbVbbWWqv",
+        "source": "pumpportal",
+        "stored": 75,
+        "recomputed": 75,
+        "age_min": 1.317,
+        "vol_ratio": 1.0,
+        "mcap": 7150.37,
+        "liq": 0.0,
+        "gated": 30
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+        "source": "trending",
+        "stored": 13,
+        "recomputed": 13,
+        "age_min": 1025044.217,
+        "vol_ratio": 0.0,
+        "mcap": 181115845.0,
+        "liq": 8949864.94,
+        "gated": 13
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "HPYdh5St5nyA2gBayiVoVFi8UT8KdUzdqhqpJMwZpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 5.383,
+        "vol_ratio": 1.0,
+        "mcap": 3515.23,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "5bNHnmGqRQmLmhWPcJ7Rs7gXqYBbXsC7tjCATohVPrMW",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 5.367,
+        "vol_ratio": 1.0,
+        "mcap": 2009.1,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "E6PfpEeEKRCUaCBctzCubsUKc9VDkNsotwhS5Cwqpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 5.35,
+        "vol_ratio": 1.0,
+        "mcap": 3665.67,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "8gJY4rJd2jDytH2ZPfF5sR5crvpBFMeMUUc1Eatqpump",
+        "source": "pumpportal",
+        "stored": 85,
+        "recomputed": 85,
+        "age_min": 5.25,
+        "vol_ratio": 1.0,
+        "mcap": 3360.12,
+        "liq": 0.0,
+        "gated": 40
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "8gHG5vx4QjFDEEb6zv7ySJp7xZxdsxu81d4uQuJ1b6CJ",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 5.233,
+        "vol_ratio": 1.0,
+        "mcap": 3346.69,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "6cZ8ruqxojttfsoFKT1ZwgGqGXU3mazMWWZsVBoHdgQ9",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 5.05,
+        "vol_ratio": 1.0,
+        "mcap": 1697.7,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "EaKBjyWLCG3FYunuVVfHdxuYyJFWnV8RTAUpGTB5Ch1e",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.883,
+        "vol_ratio": 1.0,
+        "mcap": 1663.42,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "g8RqVBSmo6zTVvSLnUymkUTVQoRFsyeXVC4k4cupump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 4.6,
+        "vol_ratio": 1.0,
+        "mcap": 3348.37,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "5wVUxCatga6R1JtgXGNVHt8QkjcxiiG4jzz2QkxS1ZLT",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.6,
+        "vol_ratio": 1.0,
+        "mcap": 1604.47,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "7kEJy7vcZfHuzZRVpqftyqjA7BPUV3urPSwK58qLpump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.533,
+        "vol_ratio": 1.0,
+        "mcap": 268.79,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "B5X9eSj78DLB8uVhiisrzrm3bz9rvkQAhj5ByQC1FDU8",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.45,
+        "vol_ratio": 1.0,
+        "mcap": 3833.01,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "EhGWNUFwp5cqyLtTh6SHrXiBALycd9Dt9xsqi2xvFMtP",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 4.333,
+        "vol_ratio": 1.0,
+        "mcap": 1280.73,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "974Rp4sef15NZTYpq6H6p96FVqqtP81DGvRktAjGM3U9",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.233,
+        "vol_ratio": 1.0,
+        "mcap": 3346.69,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "DSaDu9w9HkbPanNQgoem9Sob2HGbuvkGZCqv2XLpump",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 4.067,
+        "vol_ratio": 1.0,
+        "mcap": 3378.21,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "77moNAkFYECZaiC4gwDCc22CZpAAqR2ZBfcpEZGGpump",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 4.067,
+        "vol_ratio": 1.0,
+        "mcap": 3348.37,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "2EXDU2pA1Wnt7piVjtA1KWxr3tvytJ38E6ChpnzxD5pM",
+        "source": "pumpportal",
+        "stored": 75,
+        "recomputed": 75,
+        "age_min": 3.95,
+        "vol_ratio": 1.0,
+        "mcap": 7707.78,
+        "liq": 0.0,
+        "gated": 30
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "2QcTmJGrN7g3yKrphn6gWv8FWyYQMV1jUhfox8CzhKGS",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 3.617,
+        "vol_ratio": 1.0,
+        "mcap": 1857.62,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "8bric7V6qXd23zMcrErhshJz2FviKBaMjgGi6qKTpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 3.583,
+        "vol_ratio": 1.0,
+        "mcap": 3573.02,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "4uDkmK3Ex7EPHrGgMCbECF5euDSpbo6mDZAsKZsECX4N",
+        "source": "pumpportal",
+        "stored": 65,
+        "recomputed": 65,
+        "age_min": 3.5,
+        "vol_ratio": 1.0,
+        "mcap": 1213.48,
+        "liq": 0.0,
+        "gated": 20
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "JBvbhCesacxoXePFo77KYyCNMggMk9Tu7H4STzAGAvR9",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 3.3,
+        "vol_ratio": 1.0,
+        "mcap": 1546.4,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "HWau9zq81aEVouxPcaNEY5FKemZGHoF9sX4RAZFArAaQ",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 3.133,
+        "vol_ratio": 1.0,
+        "mcap": 676.48,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "4UV8YyiVZR42skXjUqvwvPJhBCt2Lnfbqh7YNUcdpump",
+        "source": "pumpportal",
+        "stored": 95,
+        "recomputed": 95,
+        "age_min": 3.05,
+        "vol_ratio": 1.0,
+        "mcap": 3405.97,
+        "liq": 0.0,
+        "gated": 50
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "Fwm99MtXEei7KcGPvnfv7CeCAuVZWdKJp63ZPBPchsJf",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 2.967,
+        "vol_ratio": 1.0,
+        "mcap": 974.2,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "6vL5Ct2nB3DjhhGDVLHJ4cpaaL7A3ajzwom8EyxWpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.867,
+        "vol_ratio": 1.0,
+        "mcap": 3716.41,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "4XtHMJcanTBvQCQ7LdZPDPibB3MsTR9fUcXUpHEF3zg4",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 2.75,
+        "vol_ratio": 1.0,
+        "mcap": 17642.4,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "5izrahKmJebspuPozvNc6o6iMv9XmmMH1TPdzu1RbBk9",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 2.467,
+        "vol_ratio": 1.0,
+        "mcap": 3350.27,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "EJqTz9PsUmHaSU3qvT14YFSWaBNNC5RHP1rHcMNBJ3Fg",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 2.45,
+        "vol_ratio": 1.0,
+        "mcap": 3348.37,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "4JwJFCN4HQBAxLgdzaVWo7rPLAfJF8ED8pMfnWERKqH7",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 2.383,
+        "vol_ratio": 1.0,
+        "mcap": 2188.91,
+        "liq": 0.0,
+        "gated": 35
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "EVgREgjWwoBrveahdAbHFPfDVcFhDcTCg9i1XxSrUrTv",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 2.283,
+        "vol_ratio": 1.0,
+        "mcap": 2241.49,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "CRR4xvRGS1cgQm5KxbJqh7uqYsuQvtCmYYN93eACpump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 2.233,
+        "vol_ratio": 1.0,
+        "mcap": 3825.81,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "5CQfJ2asp1YRcxwadkZd7CgsZDaLiwkp2tzkznoUBesA",
+        "source": "pumpportal",
+        "stored": 50,
+        "recomputed": 50,
+        "age_min": 2.017,
+        "vol_ratio": 1.0,
+        "mcap": 5639.48,
+        "liq": 0.0,
+        "gated": 5
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "8iXrfieoPsk8zgD9DWkuJ6oyXqgVE5maJ2W3dSpspump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.933,
+        "vol_ratio": 1.0,
+        "mcap": 8888.38,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "CC8AJvhrr1ueUBoCVPYfNURhYMA68oboDwF9AnjRA5yq",
+        "source": "pumpportal",
+        "stored": 70,
+        "recomputed": 70,
+        "age_min": 1.75,
+        "vol_ratio": 1.0,
+        "mcap": 3795.99,
+        "liq": 0.0,
+        "gated": 25
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "2Bkcv1paoqRQywJSbkincnQ2YPJZ7Uixa2qy9jfn4gxZ",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 1.75,
+        "vol_ratio": 1.0,
+        "mcap": 1887.6,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "4sr8XdZqXP8Wod8gboDffifVaD3VdtwPnFYmFW9f1kD5",
+        "source": "pumpportal",
+        "stored": 50,
+        "recomputed": 50,
+        "age_min": 1.617,
+        "vol_ratio": 1.0,
+        "mcap": 4450.57,
+        "liq": 0.0,
+        "gated": 5
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "CDAZnf4EZymMARJDAG5XLyTL2GPtKujWmRZY54gJRwct",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 1.467,
+        "vol_ratio": 1.0,
+        "mcap": 1627.67,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "oj7csbypyUbg2XxdXhoYKcmoRqExRKtp6JfjrC4pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.433,
+        "vol_ratio": 1.0,
+        "mcap": 2978207.0,
+        "liq": 156422.26,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "Cx136cGz48JVHRgKZKo4uMxKugcbU6V3XJFHKjXZyzvu",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 1.333,
+        "vol_ratio": 1.0,
+        "mcap": 1487.57,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "F9n8x55ezCxBAvaV5fy8zDAQ7ctUH3WcvRvf8HYfpump",
+        "source": "pumpportal",
+        "stored": 90,
+        "recomputed": 90,
+        "age_min": 1.317,
+        "vol_ratio": 1.0,
+        "mcap": 3694.84,
+        "liq": 0.0,
+        "gated": 45
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "5Lr9pJDWddvkFHVPkahdEyVBmXxVcDusuXwYajC6pump",
+        "source": "pumpportal",
+        "stored": 95,
+        "recomputed": 95,
+        "age_min": 1.2,
+        "vol_ratio": 1.0,
+        "mcap": 3560.54,
+        "liq": 0.0,
+        "gated": 50
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "BWY31rrwjRUedL9r7yNosiwYXPDP6oqHPQroY966pump",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 1.2,
+        "vol_ratio": 1.0,
+        "mcap": 429888.0,
+        "liq": 58110.57,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "ATHMnHVH7F3Bb1eucXMVpkMNyfak45VyQ74wTXUdpump",
+        "source": "pumpportal",
+        "stored": 60,
+        "recomputed": 60,
+        "age_min": 1.2,
+        "vol_ratio": 1.0,
+        "mcap": 3348.37,
+        "liq": 0.0,
+        "gated": 15
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "23KtPDtDi9QKzmwnvWuGzbiSis8DAhaFMjdzQYoCNXCE",
+        "source": "pumpportal",
+        "stored": 45,
+        "recomputed": 45,
+        "age_min": 1.167,
+        "vol_ratio": 1.0,
+        "mcap": 2323.45,
+        "liq": 0.0,
+        "gated": 0
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "5phiz7zFKHy1bepFHxxCXYuJorQJjaAEG8sPeJChpRz5",
+        "source": "pumpportal",
+        "stored": 100,
+        "recomputed": 100,
+        "age_min": 0.9,
+        "vol_ratio": 1.0,
+        "mcap": 6386.94,
+        "liq": 0.0,
+        "gated": 55
+      },
+      {
+        "run": "2026-09-30_020830",
+        "mint": "SifFsfz8oor1DeJWU6mSAjqqjQ1eGkQdNEvdzw8pump",
+        "source": "pumpportal",
+        "stored": 80,
+        "recomputed": 80,
+        "age_min": 0.75,
+        "vol_ratio": 1.0,
+        "mcap": 172720183.0,
+        "liq": 1205289.97,
+        "gated": 35
+      }
+    ]
+  },
+  "set_b_legacy_v71": {
+    "histogram": {
+      "0-9": 9083,
+      "10-19": 774,
+      "20-29": 33,
+      "30-39": 184,
+      "40-49": 41,
+      "50-59": 6,
+      "60-69": 60,
+      "70-79": 75,
+      "80-89": 191,
+      "90-99": 37
+    },
+    "rates": {
+      "50": {
+        "n_alerta": 369,
+        "rate": 0.0352
+      },
+      "60": {
+        "n_alerta": 363,
+        "rate": 0.0346
+      },
+      "70": {
+        "n_alerta": 303,
+        "rate": 0.0289
+      },
+      "80": {
+        "n_alerta": 228,
+        "rate": 0.0217
+      },
+      "90": {
+        "n_alerta": 37,
+        "rate": 0.0035
+      }
+    },
+    "median": 0.0
+  },
+  "target_rate": [
+    0.05,
+    0.15
+  ],
+  "outcomes_legacy_v71": {
+    "eligible_unique_tokens": 5840,
+    "sampled": 164,
+    "with_data": 78,
+    "status_counts": {
+      "ok": 78,
+      "sin_velas": 19,
+      "http_429": 67
+    },
+    "by_bucket": {
+      "0-29": {
+        "n": 13,
+        "hit_max_48h": {
+          "k": 3,
+          "ci90": [
+            0.0962,
+            0.4581
+          ]
+        },
+        "hit_close_48h": {
+          "k": 0,
+          "ci90": [
+            -0.0,
+            0.1723
+          ]
+        },
+        "rug_48h": {
+          "k": 0
+        }
+      },
+      "30-49": {
+        "n": 28,
+        "hit_max_48h": {
+          "k": 21,
+          "ci90": [
+            0.5975,
+            0.8584
+          ]
+        },
+        "hit_close_48h": {
+          "k": 0,
+          "ci90": [
+            0.0,
+            0.0881
+          ]
+        },
+        "rug_48h": {
+          "k": 28
+        }
+      },
+      "50-69": {
+        "n": 29,
+        "hit_max_48h": {
+          "k": 24,
+          "ci90": [
+            0.6858,
+            0.9135
+          ]
+        },
+        "hit_close_48h": {
+          "k": 2,
+          "ci90": [
+            0.0231,
+            0.1884
+          ]
+        },
+        "rug_48h": {
+          "k": 27
+        }
+      },
+      "70-100": {
+        "n": 8,
+        "hit_max_48h": {
+          "k": 3,
+          "ci90": [
+            0.1612,
+            0.652
+          ]
+        },
+        "hit_close_48h": {
+          "k": 1,
+          "ci90": [
+            0.0284,
+            0.4112
+          ]
+        },
+        "rug_48h": {
+          "k": 3
+        }
+      }
+    },
+    "by_threshold": {
+      "50": {
+        "n": 37,
+        "precision_max": 0.7297,
+        "ci90_max": [
+          0.5971,
+          0.8311
+        ],
+        "precision_close": 0.0811,
+        "ci90_close": [
+          0.0329,
+          0.1864
+        ]
+      },
+      "60": {
+        "n": 36,
+        "precision_max": 0.75,
+        "ci90_max": [
+          0.6167,
+          0.8483
+        ],
+        "precision_close": 0.0833,
+        "ci90_close": [
+          0.0338,
+          0.1911
+        ]
+      },
+      "70": {
+        "n": 8,
+        "precision_max": 0.375,
+        "ci90_max": [
+          0.1612,
+          0.652
+        ],
+        "precision_close": 0.125,
+        "ci90_close": [
+          0.0284,
+          0.4112
+        ]
+      },
+      "80": {
+        "n": 7,
+        "precision_max": 0.4286,
+        "ci90_max": [
+          0.1864,
+          0.7105
+        ],
+        "precision_close": 0.1429,
+        "ci90_close": [
+          0.0325,
+          0.4523
+        ]
+      },
+      "90": {
+        "n": 0,
+        "precision_max": null,
+        "ci90_max": null,
+        "precision_close": null,
+        "ci90_close": null
+      }
+    },
+    "base_rate_max_48h": {
+      "k": 51,
+      "n": 78,
+      "rate": 0.6538,
+      "ci90": [
+        0.5614,
+        0.736
+      ]
+    },
+    "auc_max_48h": 0.6304,
+    "base_rate_close_48h": {
+      "k": 3,
+      "n": 78,
+      "rate": 0.0385,
+      "ci90": [
+        0.0155,
+        0.0924
+      ]
+    },
+    "auc_close_48h": 0.8156,
+    "rug_rate_48h": {
+      "k": 58,
+      "n": 78,
+      "rate": 0.7436,
+      "ci90": [
+        0.6551,
+        0.8158
+      ]
+    },
+    "note": "Muestra estratificada: las tasas por umbral NO son la tasa poblacional (los buckets altos están sobre-representados). La base poblacional se estima ponderando por bucket.",
+    "population_weighted_base_rate_max_48h": 0.2458,
+    "population_bucket_counts": {
+      "0-29": 5668,
+      "30-49": 108,
+      "50-69": 50,
+      "70-100": 14
+    }
+  },
+  "outcome_rows": [
+    {
+      "mint": "DBna9ELqah9BvJddWrZPyUL2MyPNmaxmGtvA8RFcDpQ3",
+      "run": "2026-09-27_072939",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": -0.0494,
+      "close_ret": -0.0863,
+      "min_ret": -0.0863
+    },
+    {
+      "mint": "GnsUaqLyAUoM8iGzv9oDz6x9NR8dNFsXCcgM5JVJpump",
+      "run": "2026-09-27_013026",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "4qXVnA2NjKSVDGA2Pd7CVFPcfUDgAqyGt3C8imG9pump",
+      "run": "2026-09-27_212914",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 2,
+      "coverage": 0.01,
+      "max_ret": -0.2709,
+      "close_ret": -0.3158,
+      "min_ret": -0.3158
+    },
+    {
+      "mint": "6bkyQ7bzPP7pkQjZRZGCSqDmBH83HvNAZfvLGRvK3f79",
+      "run": "2026-09-26_134525",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": 0.0092,
+      "close_ret": 0.0055,
+      "min_ret": 0.0055
+    },
+    {
+      "mint": "j87K6UJDMX6RUQYWKd1W3rgTMohXtFTmtBeTwYypump",
+      "run": "2026-09-28_001145",
+      "score": 5,
+      "status": "ok",
+      "n_candles": 35,
+      "coverage": 0.182,
+      "max_ret": 0.5201,
+      "close_ret": 0.0483,
+      "min_ret": -0.2343
+    },
+    {
+      "mint": "CMKQ2bNeeUEUqWEo9tiHJM36Q4pv1vnSwuUJrKyVpump",
+      "run": "2026-09-26_184852",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "A8KCtGkghtikAGM9Guq1awbeYoSmqcSXm9vapdCy4nQS",
+      "run": "2026-09-27_220737",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": -0.0054,
+      "close_ret": -0.014,
+      "min_ret": -0.014
+    },
+    {
+      "mint": "B39w8mBTxkYL4hKtxDirv6g5CiKyo7vaR8jZEKApump",
+      "run": "2026-09-27_130711",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "B4yV3P1eWFZtcdFrWLciv92dxZTZzGc4rX6p1ZywZzbC",
+      "run": "2026-09-27_220737",
+      "score": 5,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "AiTzDNrUnPpJ47CeWvCy25ywiTVHWGT1cQEv1gnApump",
+      "run": "2026-09-27_023044",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "FmTbGRKaFfi1vHbo4hrJ1MxiAmPAP8ut7u5Ek9PLpump",
+      "run": "2026-09-26_001007",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "FVKLSFMhg6imcVixf25FMEhiWBAoyq4T15H4mWohahsn",
+      "run": "2026-09-26_012816",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "BUGpzjF1shvvgNnaqxwUweXzSSTF5WNHx3fVNgf8pump",
+      "run": "2026-09-27_174610",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "rLrxdyZMZvmvHmA6fd9vLAKJYmiY2PJutxgy6XCpump",
+      "run": "2026-09-26_164703",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": 0.0023,
+      "close_ret": -0.002,
+      "min_ret": -0.002
+    },
+    {
+      "mint": "9Whcg8GXhESmTimUdbEA2pKfJgDicnbYUGZsk3A4pump",
+      "run": "2026-09-27_083031",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "8pwPbUtVKDjV6k4VZpdN79V2UhJEM96NZZEqFW4M55Fs",
+      "run": "2026-09-27_184902",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "DXV1sNCq1tZ1UidoCrdHNqUPq5FyxAupmxwE7gWH9dZv",
+      "run": "2026-09-27_033045",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "CjfNLENYJvMcHyrGbzHrE1USWZZd2agqibuKZhyJXDHg",
+      "run": "2026-09-26_003621",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "DefGbPF2JknN2mUN9T2RJwkdhk8avJ635FR1YHEip9ka",
+      "run": "2026-09-26_010633",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "9WpRPsHgrvwD8LtZe3QUUGtBixH5Qm6FtGZ5BQubpump",
+      "run": "2026-09-27_125055",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": -0.0056,
+      "close_ret": -0.0077,
+      "min_ret": -0.0116
+    },
+    {
+      "mint": "Fwf3RdQtVSCjdJCuGwQEjKQV8Wg6rZKLmSo3eK1Nart6",
+      "run": "2026-09-26_030718",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "3unuv9M1fVoyj9xJxf81a1349cxFhfncxtXb9mt4pump",
+      "run": "2026-09-26_102844",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "BLD85CYAbPsBMovBRam2uJZF1NL1yTWyJbrjcigSvP9f",
+      "run": "2026-09-27_204613",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 2,
+      "coverage": 0.01,
+      "max_ret": 0.0002,
+      "close_ret": -0.0991,
+      "min_ret": -0.0991
+    },
+    {
+      "mint": "5kBXRYWqVpSkdS5eqMVUkBT7xjRs4sUJ1xg9v3xkALuA",
+      "run": "2026-09-27_152916",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "GrmQuqjDFEmxRq3xoCMcKKYyQJPyuTwjTQRX6FDZdJSS",
+      "run": "2026-09-26_212904",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": -0.1761,
+      "close_ret": -0.178,
+      "min_ret": -0.178
+    },
+    {
+      "mint": "2hE6nkWWjvJ11GfoCpQR2TDrQTfDWq9GttwTScqqWmz1",
+      "run": "2026-09-26_024650",
+      "score": 10,
+      "status": "http_429"
+    },
+    {
+      "mint": "EFnYztpVhkEf2QnjoLSpzQNjb2jnJL72zjqbdhdKS8NX",
+      "run": "2026-09-26_232752",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "A9FdF7dtxKfBpHWZp5a5GKZVGiAbqo6Kup6uM1f1pump",
+      "run": "2026-09-28_001145",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "3uSf7UhyCZ2C1XG4EBv1FXGcAUHeeuciaSRGvFwPURYr",
+      "run": "2026-09-26_194500",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "HW7dnCjaYJDE34R3xNVy4959FynFeLa9PxJB567Cpump",
+      "run": "2026-09-26_020741",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": 0.0002,
+      "close_ret": -0.0022,
+      "min_ret": -0.0022
+    },
+    {
+      "mint": "Gt8wkRJqHvU62uc8Vy1ergTVnstQ8SJJoio6Qyjmpump",
+      "run": "2026-09-27_010808",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "DaYaKwiLfV9XKtSbD2y46hJVHYe9V7idi5tBsSvXvoT7",
+      "run": "2026-09-26_012816",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "E8zGTd25oZcQFzdcognXb7ktNMgLdNa9ycraK69V1osv",
+      "run": "2026-09-26_144641",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "DWmk7JkAc5T5nNnDdEv12njW85QxuVZjVYh9tEdwpump",
+      "run": "2026-09-25_052918",
+      "score": 5,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "AQndSQv7p8pERXKyzSkJh6JBi2fgxiZm3J12Cj5ppump",
+      "run": "2026-09-27_132833",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "7xSAJhFEUE5tUfz7SiMn4h6EwQKLPWj1yUVDkCtJmQcv",
+      "run": "2026-09-26_170655",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "HKQTNzjjYxhCsrUPcE6g8nfmmf9R8oaHj2Fiz5K1MWTc",
+      "run": "2026-09-27_050721",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "33dWVXSUEMQVCL34oGDwtGJRg9LR11C2fG3RxsYepump",
+      "run": "2026-09-27_134611",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "FPiZdPHstg7h15FKqWcYRiJwWe12oEYsKTNjhgGFpump",
+      "run": "2026-09-27_163010",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "6DdTddtEBaCjG3KMPoh8J6XH8HbwFNVDLDGKN5Zzc2LG",
+      "run": "2026-09-26_034653",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "CNs4QLWgz8v6BSE8S1k8QyHH5PzQqz3wWGVeWmxxpump",
+      "run": "2026-09-26_123415",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": 0.3573,
+      "close_ret": -0.8128,
+      "min_ret": -0.8128
+    },
+    {
+      "mint": "JHMYeHB7xAvepFhPsVBTqKZmN2tW1E5Q2vPgDUiVPAD",
+      "run": "2026-09-27_210745",
+      "score": 0,
+      "status": "ok",
+      "n_candles": 1,
+      "coverage": 0.005,
+      "max_ret": -0.1994,
+      "close_ret": -0.2028,
+      "min_ret": -0.2028
+    },
+    {
+      "mint": "ETB89roA33YUxT8J9UpMjnc6YnoCyaKuLTE3ad1Fpump",
+      "run": "2026-09-27_152916",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "HESVpM9qMvXfP6jutyZ7i1wsYWEtaJxB5iqpecK9JWei",
+      "run": "2026-09-26_090732",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "DFmbVke4RvmRQPptfZgiEhfyMbghEBTHr8xmBfk8pump",
+      "run": "2026-09-26_162949",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "4ecSqqdPi5DZ5wpajg5kVUGDU13rjr19weBHLz2Kpump",
+      "run": "2026-09-26_214500",
+      "score": 10,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "443y6iJve3Mk4GFGgSCcDJHq1QWupmzXxGEwPdUC57hP",
+      "run": "2026-09-27_170714",
+      "score": 0,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "BD5RRrYkcvvNS2yTgZQBmgizsGwPmjzd5fxHmcyw29Bu",
+      "run": "2026-09-27_023044",
+      "score": 0,
+      "status": "http_429"
+    },
+    {
+      "mint": "VFZLbSjUdmSHPfgTnN6QDo5N8UVcbxAYatN48NooL3x",
+      "run": "2026-09-27_150747",
+      "score": 5,
+      "status": "ok",
+      "n_candles": 2,
+      "coverage": 0.01,
+      "max_ret": 0.276,
+      "close_ret": -0.4077,
+      "min_ret": -0.4077
+    },
+    {
+      "mint": "GUycRtjrtkDPRFgFQ9hJouSVdYVJTveuayC6jw3o1moH",
+      "run": "2026-09-26_164703",
+      "score": 10,
+      "status": "http_429"
+    },
+    {
+      "mint": "8ncS5CY9sL2tpDuZC3y1nGs9D6q3kpeso2AkeiZsiXzG",
+      "run": "2026-09-26_050731",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 4,
+      "coverage": 0.021,
+      "max_ret": 2.7849,
+      "close_ret": -0.9958,
+      "min_ret": -0.9958
+    },
+    {
+      "mint": "7TNy4TAaLdzLWAC4aAr7NpMHnU8sMB5aEXWr89g2pump",
+      "run": "2026-09-27_180920",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "dQdThfv9BEgAKyWHCfJjXzcSU5rzVpGow66ayqQpump",
+      "run": "2026-09-26_063507",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 3,
+      "coverage": 0.016,
+      "max_ret": 0.687,
+      "close_ret": -0.9952,
+      "min_ret": -0.9959
+    },
+    {
+      "mint": "DryBKnMFqsP5sDvzhkT5Kn2jUETj9FbaefB3KdzcfiVV",
+      "run": "2026-09-25_052918",
+      "score": 30,
+      "status": "ok",
+      "n_candles": 5,
+      "coverage": 0.026,
+      "max_ret": 2.1944,
+      "close_ret": -0.9928,
+      "min_ret": -0.993
+    },
+    {
+      "mint": "14L15kLCMm6BZNioqXHfUpC651pCTa9nbg3kdnt2yNuU",
+      "run": "2026-09-27_001132",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "2Lr3PLrMiZBg5MMRVu8mY38dRUheRoJNNBwkAuYapump",
+      "run": "2026-09-26_005115",
+      "score": 30,
+      "status": "sin_velas"
+    },
+    {
+      "mint": "NVW67WK8sGJTMK164AHhywAu38aXCMrZMnon4yvpump",
+      "run": "2026-09-27_054728",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "FCRphxLLRGCRs7zyR5krcHPxAiw2nZqkGU4RoEUbpump",
+      "run": "2026-09-27_160814",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 7,
+      "coverage": 0.036,
+      "max_ret": 1.9176,
+      "close_ret": -0.9955,
+      "min_ret": -0.9955
+    },
+    {
+      "mint": "AdXdZ8b4qLX7Y6oFRsvzDtbNW7xDTYPAfaC2dKfepump",
+      "run": "2026-09-27_144603",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 11,
+      "coverage": 0.057,
+      "max_ret": 6.5854,
+      "close_ret": -0.9942,
+      "min_ret": -0.9942
+    },
+    {
+      "mint": "FiaEy6XrTAPsAATZK4PVQjVrNREAmssEHFUjmjAspump",
+      "run": "2026-09-27_123520",
+      "score": 30,
+      "status": "http_429"
+    },
+    {
+      "mint": "FAyiSaJCYcEmJy7ejoBEncPZY5HkGARU6VYDyNaUpump",
+      "run": "2026-09-27_083031",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 10,
+      "coverage": 0.052,
+      "max_ret": 5.8688,
+      "close_ret": -0.9952,
+      "min_ret": -0.9953
+    },
+    {
+      "mint": "EV2NqdYDkuxU9DUV8YAhDPRQ9A1DzKi6mHkjKjwKpump",
+      "run": "2026-09-26_134525",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "Dzz3tZspgWyeEJrfCN741fHQ5fSkFCe9nUJqhhrepump",
+      "run": "2026-09-27_180920",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 5,
+      "coverage": 0.026,
+      "max_ret": 1.0746,
+      "close_ret": -0.9945,
+      "min_ret": -0.9945
+    },
+    {
+      "mint": "CzntSgAoVG6Wy6WBLXD7U329TBUa4uwbFaFdh1igpump",
+      "run": "2026-09-27_170714",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "DZbzxaQe4JQ5xYJSFhFRAMRbTHBEvFdJgTanckK9LPkf",
+      "run": "2026-09-23_042859",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 2,
+      "coverage": 0.01,
+      "max_ret": -0.9968,
+      "close_ret": -0.997,
+      "min_ret": -0.997
+    },
+    {
+      "mint": "2KnuMBeZZCQmxAGWv8fPbez1PBeXgLXDZoRM3oSZpump",
+      "run": "2026-09-27_074706",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 5,
+      "coverage": 0.026,
+      "max_ret": 1.3385,
+      "close_ret": -0.9955,
+      "min_ret": -0.9955
+    },
+    {
+      "mint": "nQbfuPPhTdEX1nSaqnzBEHQrB8S8zMyNaGr4UT7pump",
+      "run": "2026-09-26_162949",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "Jd3whkBk8mNB8LLn3s8C6PKYZfKT8JNphrgmHc7pump",
+      "run": "2026-09-26_063507",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 4,
+      "coverage": 0.021,
+      "max_ret": 2.2225,
+      "close_ret": -0.9949,
+      "min_ret": -0.995
+    },
+    {
+      "mint": "BRN8PquhscNmq7kvarpFtoup7cZVxh65RQcXRyPppump",
+      "run": "2026-09-26_170655",
+      "score": 30,
+      "status": "http_429"
+    },
+    {
+      "mint": "3YVA4Egq1qGdHg4RqVeZmTKc2BZNviBcCEPTtF3Rpump",
+      "run": "2026-09-27_144603",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 7,
+      "coverage": 0.036,
+      "max_ret": 1.8041,
+      "close_ret": -0.9952,
+      "min_ret": -0.9952
+    },
+    {
+      "mint": "4cUKzTFun2ptVPYSoY9nYQavFz8tGz42SPuDdgVypump",
+      "run": "2026-09-28_005626",
+      "score": 45,
+      "status": "http_429"
+    },
+    {
+      "mint": "JChyVNiRtth3TjJFwz95tuBcbo3Z1e1ArDpAeZP1pump",
+      "run": "2026-09-27_174610",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 8,
+      "coverage": 0.042,
+      "max_ret": 0.5112,
+      "close_ret": -0.9953,
+      "min_ret": -0.9954
+    },
+    {
+      "mint": "DP9z69gLmYG35rVCfJ3YzAMromzefkSbc5NADZjCpump",
+      "run": "2026-09-28_001145",
+      "score": 30,
+      "status": "ok",
+      "n_candles": 2,
+      "coverage": 0.01,
+      "max_ret": -0.984,
+      "close_ret": -0.9846,
+      "min_ret": -0.9846
+    },
+    {
+      "mint": "Bd1c5gT9r2N1kh8g3EhemR4t3q2yq26qqV74ydGMTNcS",
+      "run": "2026-09-26_014659",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "FfebxuiSG7CLvQVVvE2Uwt3zhkLMxMYnNGW5Vn4ypump",
+      "run": "2026-09-26_044713",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 52,
+      "coverage": 0.271,
+      "max_ret": -0.6641,
+      "close_ret": -0.9113,
+      "min_ret": -0.9391
+    },
+    {
+      "mint": "EKZwDZR1SVdEQHCdnCKFMCbG9ZLpZCHf8jHQtD6tpump",
+      "run": "2026-09-26_190658",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "CXftqTcKJ2L528AmUcJBKAfChum34ViLTYx9GGh4pump",
+      "run": "2026-09-27_142856",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 15,
+      "coverage": 0.078,
+      "max_ret": 8.3919,
+      "close_ret": -0.9944,
+      "min_ret": -0.9944
+    },
+    {
+      "mint": "G9hMFbN4akTeh9ojDRr3e4NUWGoZhkfX38fvLUB2pump",
+      "run": "2026-09-26_132752",
+      "score": 40,
+      "status": "http_429"
+    },
+    {
+      "mint": "5EcAbK48VTjRPrq962Tw3atTWNvz5GJquaH9iqZnpump",
+      "run": "2026-09-27_024825",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 3,
+      "coverage": 0.016,
+      "max_ret": -0.9943,
+      "close_ret": -0.9944,
+      "min_ret": -0.9944
+    },
+    {
+      "mint": "CMytvMe89SWLF89HGcncad7txh6oMK2x6mrTBT6Jpump",
+      "run": "2026-09-27_040748",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 5,
+      "coverage": 0.026,
+      "max_ret": 0.288,
+      "close_ret": -0.995,
+      "min_ret": -0.9955
+    },
+    {
+      "mint": "7pDwphACh3PccaX2zZUW54GyEuve6dnDogziCFoWpump",
+      "run": "2026-09-26_140743",
+      "score": 30,
+      "status": "http_429"
+    },
+    {
+      "mint": "BkAMHsosUZZZSyrUYasYo3ejQLzQe8ECKfRhL89upump",
+      "run": "2026-09-26_154701",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 4,
+      "coverage": 0.021,
+      "max_ret": 0.2746,
+      "close_ret": -0.9939,
+      "min_ret": -0.994
+    },
+    {
+      "mint": "4W64QV363Lu8QWZuFQLZEaSAFpxPTVq3zUCrJDS9pump",
+      "run": "2026-09-27_052852",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "9nCNxguyDMjtYwuUXyo3o6rvTnqvWn68v9L2BmMopump",
+      "run": "2026-09-27_212914",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 7,
+      "coverage": 0.036,
+      "max_ret": 6.0934,
+      "close_ret": -0.9954,
+      "min_ret": -0.9954
+    },
+    {
+      "mint": "63t1P7uJrWiJ4xw3ypNR3dVZ2nkb39w23mi97tMwpump",
+      "run": "2026-09-27_084740",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "CRHYQixMGwqZPtCjMzLxaxQsC2ovZmJ7c71wKhw5pump",
+      "run": "2026-09-26_144641",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 11,
+      "coverage": 0.057,
+      "max_ret": 3.2718,
+      "close_ret": -0.9953,
+      "min_ret": -0.9953
+    },
+    {
+      "mint": "EFhTcBs5317L3ZBJPg9Gyh1ZeWZu5Rfd3NcbC98fpump",
+      "run": "2026-09-27_164734",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 3,
+      "coverage": 0.016,
+      "max_ret": -0.9936,
+      "close_ret": -0.9938,
+      "min_ret": -0.9938
+    },
+    {
+      "mint": "DbSu6FR7zMbhd83D1V4KiNEobNM7B3ono6pMsaE6pump",
+      "run": "2026-09-26_022928",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "9Y3fhkwPk8kQXXwWzidSYYtNxbTXGi1vdC2ZtcjLpump",
+      "run": "2026-09-27_125055",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 4,
+      "coverage": 0.021,
+      "max_ret": -0.8431,
+      "close_ret": -0.9945,
+      "min_ret": -0.9945
+    },
+    {
+      "mint": "74fZWu5jcHUpGL6ooZhPJRoidpMRwPGwYNdrVoW9pump",
+      "run": "2026-09-26_140743",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "7j5z39HQouRPDjbBsdzajbaZfzKofvc6hKETiZ7Vpump",
+      "run": "2026-09-26_061019",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 2,
+      "coverage": 0.01,
+      "max_ret": 0.3985,
+      "close_ret": -0.9937,
+      "min_ret": -0.9946
+    },
+    {
+      "mint": "Avk25UtvVCimfCh5dn7pBAvo39GDqLUoYZg78L6pump",
+      "run": "2026-09-26_140743",
+      "score": 40,
+      "status": "http_429"
+    },
+    {
+      "mint": "5VKAyjJDHz9MpG7aFhbhwQjzgzPdsMdBxxAT9kR7pump",
+      "run": "2026-09-27_222946",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 5,
+      "coverage": 0.026,
+      "max_ret": 2.8841,
+      "close_ret": -0.9955,
+      "min_ret": -0.9955
+    },
+    {
+      "mint": "BULbQ4j9WU6r63idgdQVsjt6i3nKSTXgyj7Qqcdpump",
+      "run": "2026-09-27_003838",
+      "score": 30,
+      "status": "ok",
+      "n_candles": 19,
+      "coverage": 0.099,
+      "max_ret": 2.4224,
+      "close_ret": -0.9866,
+      "min_ret": -0.9867
+    },
+    {
+      "mint": "FeeQF3ztg6CtCDY2ZaxMLJYoFQsbVztzvU83B9mk438o",
+      "run": "2026-09-27_234517",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "DUsSPGnUsnYGW86MbSVYBG8356bifRoTAtgAGYQapump",
+      "run": "2026-09-23_042859",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 6,
+      "coverage": 0.031,
+      "max_ret": 2.005,
+      "close_ret": -0.9953,
+      "min_ret": -0.9953
+    },
+    {
+      "mint": "9SnKCoDLjZGM3wHEMAcYhcgo9shvMskWR59gwpgRpump",
+      "run": "2026-09-27_001132",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "ABN6QnKHYayVnymHRUoviNm6sRjPViQGNC5pGc8mpump",
+      "run": "2026-09-27_140740",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 9,
+      "coverage": 0.047,
+      "max_ret": 0.9251,
+      "close_ret": -0.9923,
+      "min_ret": -0.9944
+    },
+    {
+      "mint": "9sKzdnoSLQqtjAKX7AttoNWXrG8bxU9oF8c6ECs8pump",
+      "run": "2026-09-27_033045",
+      "score": 35,
+      "status": "http_429"
+    },
+    {
+      "mint": "j32GkRnbP7sdMpLoSmvGiNBJGnpBZq9xbmcPfaqpump",
+      "run": "2026-09-27_164734",
+      "score": 35,
+      "status": "ok",
+      "n_candles": 8,
+      "coverage": 0.042,
+      "max_ret": -0.1154,
+      "close_ret": -0.9977,
+      "min_ret": -0.9978
+    },
+    {
+      "mint": "EUf9LjBFk3S3ctZQP5PkyaqFUap8KmJLTopgxLNpump",
+      "run": "2026-09-26_014659",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 5,
+      "coverage": 0.026,
+      "max_ret": 0.0962,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "zVMjfjC2o5ciqZ235K5VFhAvCjJjiP22myvYDs6pump",
+      "run": "2026-09-27_140740",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "689XRPTKVXjAJFdVEJayyzJi4mcZcmDvCcLD8Uqdpump",
+      "run": "2026-09-26_212904",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 22,
+      "coverage": 0.115,
+      "max_ret": 0.5856,
+      "close_ret": -0.9999,
+      "min_ret": -0.9999
+    },
+    {
+      "mint": "nmuQS72vbUG796ZPssU1mjfuSfCQgPFoZcQ1ondpump",
+      "run": "2026-09-26_230740",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "T3kYh6TETQttm5YbBxHjwBKfvsd8Hm6y2wbweANpump",
+      "run": "2026-09-25_051700",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 107,
+      "coverage": 0.557,
+      "max_ret": 0.7384,
+      "close_ret": -0.9991,
+      "min_ret": -0.9991
+    },
+    {
+      "mint": "EE4A72cmNv8kyxsSH1ChRYc1DSfZ1raiatEKLggpump",
+      "run": "2026-09-25_051700",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "12z4buJ5yKb8fHWLHPxLhscfyHK31Lmpq8ekzduRpump",
+      "run": "2026-09-26_054613",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 3,
+      "coverage": 0.016,
+      "max_ret": -1.0,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "B1LRCeqmcbk7meh9CwVjk8LCcEVNJvVHcKM2zbJspump",
+      "run": "2026-09-27_083031",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 19,
+      "coverage": 0.099,
+      "max_ret": 0.3458,
+      "close_ret": -0.9998,
+      "min_ret": -0.9998
+    },
+    {
+      "mint": "yftbjdPbF1bdmeQTve97rFnYznyZQPSC6iphW34pump",
+      "run": "2026-09-27_190637",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "9fKN7KFDug46P4chsrhLNKZNMWNK3GZDaarKQtjpump",
+      "run": "2026-09-26_020741",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 3,
+      "coverage": 0.016,
+      "max_ret": 0.0503,
+      "close_ret": -0.9989,
+      "min_ret": -0.9989
+    },
+    {
+      "mint": "9QuKojjaafxXmNCdNvVFiFXfKkeDM46zd9x5smRpump",
+      "run": "2026-09-26_230740",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "Hm28o7wBLfGqd2JTbtDZyzBVZA4mPRYSkxNZJwxpump",
+      "run": "2026-09-27_140740",
+      "score": 50,
+      "status": "ok",
+      "n_candles": 50,
+      "coverage": 0.26,
+      "max_ret": 0.0916,
+      "close_ret": -0.9987,
+      "min_ret": -0.9987
+    },
+    {
+      "mint": "DBoeuAaioaQSqDMD4vwKUZLFcXyCS9S6tRfkENQXpump",
+      "run": "2026-09-27_212914",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "XQvhv6qRSPV2DjYnTCPB8uRKn7qZHyrXsTsHDw7pump",
+      "run": "2026-09-27_134611",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 158,
+      "coverage": 0.823,
+      "max_ret": 0.626,
+      "close_ret": -0.9991,
+      "min_ret": -0.9992
+    },
+    {
+      "mint": "AA5uXneY5LZwekC1WZRuCAH56BgkcZWp6kATCEiepump",
+      "run": "2026-09-27_034823",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 191,
+      "coverage": 0.995,
+      "max_ret": 0.2362,
+      "close_ret": -0.8458,
+      "min_ret": -0.9161
+    },
+    {
+      "mint": "oQWh9i5FqHf75HCjs5KjbQqgjBYq4inyZo238sZpump",
+      "run": "2026-09-26_032925",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "EoHTQS3Cka18r5tPJC5addT2WLqmCNfWNwPRcWYGpump",
+      "run": "2026-09-26_162949",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 16,
+      "coverage": 0.083,
+      "max_ret": 1.7875,
+      "close_ret": -0.999,
+      "min_ret": -0.999
+    },
+    {
+      "mint": "4uUjh24WU4fz5pjishtf5Tvp7jRmPL4is7FmRzXpump",
+      "run": "2026-09-27_210745",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "WJoCm62bzS94tWSexdnzC3Gn7N9PcUxzKGyEX8Dpump",
+      "run": "2026-09-26_012816",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 146,
+      "coverage": 0.76,
+      "max_ret": 2.6654,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "ZSg34KeCm3BwAhGQJ3sS6YjNVd69h65PZEhDcpHpump",
+      "run": "2026-09-27_013026",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "3RcH5XgraaYHa8irohLnxUMchdHmispvS4DAWit3pump",
+      "run": "2026-09-27_094707",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 9,
+      "coverage": 0.047,
+      "max_ret": 0.0838,
+      "close_ret": -0.9991,
+      "min_ret": -0.9991
+    },
+    {
+      "mint": "8mKBdobXgNqtHFvRGgYQaMa7nfJHNcENtVP8JQcGpump",
+      "run": "2026-09-26_194500",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 17,
+      "coverage": 0.089,
+      "max_ret": 1.0949,
+      "close_ret": -0.999,
+      "min_ret": -0.999
+    },
+    {
+      "mint": "gwxkj1mMygCjzKuT6NeMJ6XngzfmrvtFWsyU7f6pump",
+      "run": "2026-09-26_044713",
+      "score": 50,
+      "status": "http_429"
+    },
+    {
+      "mint": "638pDz2BDc1GA3bCoBjKZoRRzx2PYdSuqPMM1wYpump",
+      "run": "2026-09-26_224657",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 133,
+      "coverage": 0.693,
+      "max_ret": 1.5427,
+      "close_ret": -0.9999,
+      "min_ret": -0.9999
+    },
+    {
+      "mint": "98gwYA8UPZzFCFpLoMWiQtGbd3yiwWtuPhDQjPDpump",
+      "run": "2026-09-27_040748",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "fFEkmwpEte1p2TLr9joh9rw3tKqLnCbk2FNQLmHpump",
+      "run": "2026-09-27_043035",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 68,
+      "coverage": 0.354,
+      "max_ret": 1.3641,
+      "close_ret": -0.9991,
+      "min_ret": -0.9991
+    },
+    {
+      "mint": "J2TKoAqT1wVHLPvqv8xwWr5g7b2UVDnxFRZTNeJApump",
+      "run": "2026-09-27_192741",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "hACTC5hxchxXWUELZffyepwn8dbTpMnTLZQNfozpump",
+      "run": "2026-09-27_040748",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 81,
+      "coverage": 0.422,
+      "max_ret": 0.997,
+      "close_ret": -0.9995,
+      "min_ret": -0.9997
+    },
+    {
+      "mint": "rsuyGfvTcpcoD2B9U6RMWeoT7hzXN6NDegMDb3Ypump",
+      "run": "2026-09-27_050721",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 191,
+      "coverage": 0.995,
+      "max_ret": 0.5595,
+      "close_ret": 0.5512,
+      "min_ret": 0.0285
+    },
+    {
+      "mint": "AMmK4MwhQ4AwJLyUTTCKTKV1QLPFgPUwaxfZ7ArUpump",
+      "run": "2026-09-27_112854",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "E3aXB7kscdZvwBeDfjmzqk2Cro4ZbLwmSg5xACrpump",
+      "run": "2026-09-27_144603",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 191,
+      "coverage": 0.995,
+      "max_ret": 0.6096,
+      "close_ret": 0.5958,
+      "min_ret": 0.0036
+    },
+    {
+      "mint": "wKZQkCcAG3SNG4AxgNN5hw3UPhdsj3zaRv8xfv7pump",
+      "run": "2026-09-26_074618",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "J8z2ojjaERmG73V3gF3wB45mYJUFTXr6QTT68QHpump",
+      "run": "2026-09-26_144641",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 86,
+      "coverage": 0.448,
+      "max_ret": 2.4896,
+      "close_ret": -0.9989,
+      "min_ret": -0.9989
+    },
+    {
+      "mint": "6vvLBeCk1Fhdqijk7yh83AALnDxPK9GaJ2S8AkUppump",
+      "run": "2026-09-27_142856",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "cGUkfB4FmTzKnAaVMVgdSaW4nEW8tfQkC2Qhgnepump",
+      "run": "2026-09-27_134611",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 143,
+      "coverage": 0.745,
+      "max_ret": 0.9994,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "Y49yTFUyBiim3HQEiVnVKiiRPqTY2nNrJyvxsi4pump",
+      "run": "2026-09-27_125055",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 167,
+      "coverage": 0.87,
+      "max_ret": 7.3059,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "FMK7ZZ1VHcFWxPcK9WSxHrdxACwuSHFFin7WsL6kpump",
+      "run": "2026-09-26_032925",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "o6zmPZYrznnnbG7HUnq1NUNGk7G4CqG5rsAnpy7pump",
+      "run": "2026-09-26_072951",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 56,
+      "coverage": 0.292,
+      "max_ret": 0.7715,
+      "close_ret": -0.9994,
+      "min_ret": -0.9995
+    },
+    {
+      "mint": "Et44nuUcsdzhuDvob71YtF4mYGpFMgUuawzDf6cpump",
+      "run": "2026-09-27_164734",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "DkEuToENKuUkXQF7Hwn39AhHFoy9z7P6XByLzCXpump",
+      "run": "2026-09-26_022928",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 46,
+      "coverage": 0.24,
+      "max_ret": 0.316,
+      "close_ret": -0.9998,
+      "min_ret": -0.9998
+    },
+    {
+      "mint": "gzpr9zQumQVBBB71oo7Bh9Lpb9SodXdqbZw9HRfpump",
+      "run": "2026-09-25_051700",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 75,
+      "coverage": 0.391,
+      "max_ret": 0.3617,
+      "close_ret": -0.9997,
+      "min_ret": -0.9997
+    },
+    {
+      "mint": "6APAu3YcTVySUfAvQDnu8164ptKMqDDu4X6h3Tjdpump",
+      "run": "2026-09-27_164734",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "DR1toynZrj2FBjS2rdh6ovXqbGZCKPvkfugjgnRopump",
+      "run": "2026-09-26_054613",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 88,
+      "coverage": 0.458,
+      "max_ret": 0.7845,
+      "close_ret": -0.9991,
+      "min_ret": -0.9991
+    },
+    {
+      "mint": "HJ1vNgAUNT9Nncseiozeu72Uem1hTfy3tdiPMfbWpump",
+      "run": "2026-09-26_172904",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "Cv2zV389iVmUUCS9EF8x1ggmy9kifGuVw1NqGuApump",
+      "run": "2026-09-27_212914",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 8,
+      "coverage": 0.042,
+      "max_ret": 0.2576,
+      "close_ret": -0.9997,
+      "min_ret": -0.9997
+    },
+    {
+      "mint": "4HQBkUrPiYgXYDGq1PGxTZBxnfdCBSk88zthSVmdpump",
+      "run": "2026-09-26_110723",
+      "score": 60,
+      "status": "http_429"
+    },
+    {
+      "mint": "3CA4RGSFWAu7ePYr2rmCndNqgoYuMj97m5vAn6Zqpump",
+      "run": "2026-09-27_200754",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 103,
+      "coverage": 0.536,
+      "max_ret": 2.4884,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "rTyFAkFs6CRzey8eiXdz8n8Qra4sVPRCNkkdAEvpump",
+      "run": "2026-09-26_024650",
+      "score": 65,
+      "status": "ok",
+      "n_candles": 42,
+      "coverage": 0.219,
+      "max_ret": 1.6116,
+      "close_ret": -0.9997,
+      "min_ret": -0.9998
+    },
+    {
+      "mint": "nLvHqjKGjzGwz5rrn91SDKaoxiVDbKXoMKw2jhcpump",
+      "run": "2026-09-26_034653",
+      "score": 65,
+      "status": "http_429"
+    },
+    {
+      "mint": "1BxyCmWhypBnPFUiBYAwWYYdZgEoaVDhnZWY4yVpump",
+      "run": "2026-09-27_043035",
+      "score": 60,
+      "status": "ok",
+      "n_candles": 69,
+      "coverage": 0.359,
+      "max_ret": 1.308,
+      "close_ret": -0.9991,
+      "min_ret": -0.9991
+    },
+    {
+      "mint": "GgsSaetRZNCuP9HEWjbojtVWByRWFxpr93S1wtGFpump",
+      "run": "2026-09-26_003621",
+      "score": 72,
+      "status": "http_429"
+    },
+    {
+      "mint": "3DQbzaaQtDpNyeKY3ZQFWbqZxr8FV1FwGMxf1WpVpump",
+      "run": "2026-09-26_110723",
+      "score": 83,
+      "status": "ok",
+      "n_candles": 108,
+      "coverage": 0.562,
+      "max_ret": 1.7618,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+      "run": "2026-09-25_051700",
+      "score": 81,
+      "status": "http_429"
+    },
+    {
+      "mint": "Dmj4bs2qhcaVxQfP7cVxAbsdKhR92NvuftFzwXFpump",
+      "run": "2026-09-26_012816",
+      "score": 88,
+      "status": "ok",
+      "n_candles": 4,
+      "coverage": 0.021,
+      "max_ret": 0.0167,
+      "close_ret": -1.0,
+      "min_ret": -1.0
+    },
+    {
+      "mint": "udPEzBjbGMzYZbuLtByqLYhc4TEs6EebG8R7fwdpump",
+      "run": "2026-09-25_051700",
+      "score": 88,
+      "status": "ok",
+      "n_candles": 191,
+      "coverage": 0.995,
+      "max_ret": 2.0275,
+      "close_ret": 1.1946,
+      "min_ret": -0.138
+    },
+    {
+      "mint": "FeR8VBqNRSUD5NtXAj2n3j1dAHkZHfyDktKuLXD4pump",
+      "run": "2026-09-26_040810",
+      "score": 76,
+      "status": "http_429"
+    },
+    {
+      "mint": "5UUH9RTDiSpq6HKS6bp4NdU9PNJpXRXuiw6ShBTBhgH2",
+      "run": "2026-09-27_010808",
+      "score": 82,
+      "status": "ok",
+      "n_candles": 191,
+      "coverage": 0.995,
+      "max_ret": 0.0342,
+      "close_ret": -0.0799,
+      "min_ret": -0.0924
+    },
+    {
+      "mint": "HNg5PYJmtqcmzXrv6S9zP1CDKk5BgDuyFBxbvNApump",
+      "run": "2026-09-27_130711",
+      "score": 76,
+      "status": "http_429"
+    },
+    {
+      "mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+      "run": "2026-09-25_232730",
+      "score": 86,
+      "status": "ok",
+      "n_candles": 190,
+      "coverage": 0.99,
+      "max_ret": 0.0175,
+      "close_ret": -0.0107,
+      "min_ret": -0.049
+    },
+    {
+      "mint": "BxftAowY2dVa2h9KMqDTPk4oMxzU9k6uVbZuoorXpump",
+      "run": "2026-09-26_083044",
+      "score": 82,
+      "status": "http_429"
+    },
+    {
+      "mint": "9cRCn9rGT8V2imeM2BaKs13yhMEais3ruM3rPvTGpump",
+      "run": "2026-09-26_003621",
+      "score": 85,
+      "status": "ok",
+      "n_candles": 191,
+      "coverage": 0.995,
+      "max_ret": 0.0225,
+      "close_ret": -0.0829,
+      "min_ret": -0.0981
+    },
+    {
+      "mint": "3WcZUVcto1FUE9Q14BxMU1Z5F3Kye6xrSeTFLbRGpump",
+      "run": "2026-09-26_180855",
+      "score": 79,
+      "status": "ok",
+      "n_candles": 93,
+      "coverage": 0.484,
+      "max_ret": 0.168,
+      "close_ret": -0.9947,
+      "min_ret": -0.9947
+    },
+    {
+      "mint": "3znS89gifim2Hhhu8wjb2PfSgaCDdma187D5NMkDpump",
+      "run": "2026-09-25_234535",
+      "score": 72,
+      "status": "http_429"
+    },
+    {
+      "mint": "CbcyNo7m1amFWqEQm2m4PLv1UNvpcL3C1Ujm6AkzpKoU",
+      "run": "2026-09-28_005626",
+      "score": 82,
+      "status": "ok",
+      "n_candles": 191,
+      "coverage": 0.995,
+      "max_ret": 0.8018,
+      "close_ret": -0.279,
+      "min_ret": -0.4193
+    }
+  ]
+}
