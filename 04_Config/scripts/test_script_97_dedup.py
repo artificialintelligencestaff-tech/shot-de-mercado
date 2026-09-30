@@ -10,9 +10,11 @@ import os
 import shutil
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parent / "script_97_emit_alerts.py"
+FRESH = datetime.now(timezone.utc).isoformat(timespec="seconds")   # candidatos recién puntuados (R1)
 
 PARASITE_A = "8ed8xX8TVRDdeyyUwq7Kyo8VwxMWZ6c5J6ertxaBpump"   # los dos PARASITE reales
 PARASITE_B = "3kmygWKZBkCYrgZHKfiuB9UFKTcDLTFFsKo3BWpmpump"
@@ -20,8 +22,11 @@ OTHER = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump"
 EVM = "0x532f27101965dd16442E59d40670FaF5eBB142E4"
 
 
-def token(symbol, price=0.01, score=80):
-    return {"token": {"symbol": symbol}, "score": score, "dexscreener": {"priceUsd": price}}
+def token(symbol, price=0.01, score=80, detected_at=FRESH):
+    t = {"token": {"symbol": symbol}, "score": score, "dexscreener": {"priceUsd": price}}
+    if detected_at is not None:
+        t["detected_at"] = detected_at
+    return t
 
 
 def alert(mint, symbol, status="active_tracking", **extra):
@@ -132,7 +137,8 @@ class TestRobustez(Script97TestCase):
 
     def test_sin_precio_no_se_envia_ni_se_registra(self):
         self.write(self.alerts_file, [])
-        self.write(self.accumulated, {OTHER: {"token": {"symbol": "X"}, "score": 90, "dexscreener": None}})
+        self.write(self.accumulated, {OTHER: {"token": {"symbol": "X"}, "score": 90, "dexscreener": None,
+                                              "detected_at": FRESH}})
         self.m.main()
         self.m.main()
         self.assertEqual(self.sent, [])   # antes: se enviaba en CADA corrida sin registrarse
@@ -237,6 +243,36 @@ class TestModos(Script97TestCase):
         for v, expected in (("TRUE", True), ("1", True), ("yes", True), ("false", False), ("", False), ("0", False)):
             os.environ["SHADOW_MODE"] = v
             self.assertIs(self.m.env_flag("SHADOW_MODE"), expected, v)
+
+
+class TestFrescura(Script97TestCase):
+    """R1: solo candidatos puntuados en los últimos CANDIDATE_MAX_AGE_MIN minutos."""
+
+    def test_fresco_viejo_y_sin_fecha(self):
+        old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat(timespec="seconds")
+        self.write(self.alerts_file, [])
+        self.write(self.accumulated, {OTHER: token("Fartcoin"), PARASITE_A: token("PARASITE", detected_at=old),
+                                      PARASITE_B: token("PARASITE", detected_at=None)})
+        self.m.main()
+        self.assertEqual([a["mint"] for a in self.read(self.alerts_file)], [OTHER])
+
+    def test_atraso_no_ocupa_cupos(self):
+        # 5 candidatos viejos (sin fecha) delante de uno fresco: el fresco igual se emite
+        acc = {f"old{i:037d}": token(f"OLD{i}", detected_at=None) for i in range(5)}
+        acc[OTHER] = token("Fartcoin")
+        self.write(self.alerts_file, [])
+        self.write(self.accumulated, acc)
+        self.m.main()
+        self.assertEqual([a["mint"] for a in self.read(self.alerts_file)], [OTHER])
+
+    def test_fecha_invalida_es_no_fresca(self):
+        self.assertFalse(self.m.is_fresh({"detected_at": "ayer"}, 0.0, 60))
+        self.assertFalse(self.m.is_fresh({}, 0.0, 60))
+
+    def test_filtro_desactivable(self):
+        cands, stats = self.m.select_candidates({OTHER: token("X", detected_at=None)}, [], max_age_min=None)
+        self.assertEqual(len(cands), 1)
+        self.assertEqual(stats["stale_or_undated"], 0)
 
 
 if __name__ == "__main__":

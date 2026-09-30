@@ -16,6 +16,9 @@ OUTPUT_DIR = "03_Informes/shot_de_mercado"
 RAW_DIR = "01_Datos_Crudos/final_detection"
 ACCUMULATED_FILE = "02_Analisis/shadow_v4/_accumulated.json"
 
+# Versión del scorer que se registra en cada token enriquecido (R1). v7.2.1 la sube a "7.2.1".
+SCORING_VERSION = "7.2"
+
 import os
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(RAW_DIR, exist_ok=True)
@@ -480,6 +483,9 @@ def main():
                 "score": score,
                 "reasons": reasons
             }
+        # R1: momento del scoring y versión, para que script_97 descarte candidatos viejos o de otro scorer
+        enriched[mint]["detected_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        enriched[mint]["scoring_version"] = SCORING_VERSION
         time.sleep(0.2)
     
     # ===== RESULTADOS =====
