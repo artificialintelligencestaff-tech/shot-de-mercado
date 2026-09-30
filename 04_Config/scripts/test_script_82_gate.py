@@ -112,7 +112,7 @@ class UmbralEmisionTest(unittest.TestCase):
                 os.environ.pop("SHOT_ROOT", None)
         self.assertEqual(s97.EMIT_MIN_SCORE, 56)
         acc = {"A" * 40: {"score": 55}, "B" * 40: {"score": 56}}
-        cands, _ = s97.select_candidates(acc, [], max_age_min=None)   # aísla el umbral del filtro R1
+        cands, _ = s97.select_candidates(acc, [], max_age_min=None, min_age_min=None)   # aísla el umbral de R1 y edad
         self.assertEqual([m for m, _ in cands], ["B" * 40])
 
 

@@ -15,6 +15,7 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parent / "script_97_emit_alerts.py"
 FRESH = datetime.now(timezone.utc).isoformat(timespec="seconds")   # candidatos recién puntuados (R1)
+OLD_PAIR_MS = int((datetime.now(timezone.utc) - timedelta(minutes=120)).timestamp() * 1000)   # edad >= 30 min
 
 PARASITE_A = "8ed8xX8TVRDdeyyUwq7Kyo8VwxMWZ6c5J6ertxaBpump"   # los dos PARASITE reales
 PARASITE_B = "3kmygWKZBkCYrgZHKfiuB9UFKTcDLTFFsKo3BWpmpump"
@@ -22,8 +23,11 @@ OTHER = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump"
 EVM = "0x532f27101965dd16442E59d40670FaF5eBB142E4"
 
 
-def token(symbol, price=0.01, score=80, detected_at=FRESH):
-    t = {"token": {"symbol": symbol}, "score": score, "dexscreener": {"priceUsd": price}}
+def token(symbol, price=0.01, score=80, detected_at=FRESH, pair_created_ms=OLD_PAIR_MS):
+    dx = {"priceUsd": price}
+    if pair_created_ms is not None:
+        dx["pairCreatedAt"] = pair_created_ms
+    t = {"token": {"symbol": symbol}, "score": score, "dexscreener": dx}
     if detected_at is not None:
         t["detected_at"] = detected_at
     return t
@@ -137,8 +141,8 @@ class TestRobustez(Script97TestCase):
 
     def test_sin_precio_no_se_envia_ni_se_registra(self):
         self.write(self.alerts_file, [])
-        self.write(self.accumulated, {OTHER: {"token": {"symbol": "X"}, "score": 90, "dexscreener": None,
-                                              "detected_at": FRESH}})
+        self.write(self.accumulated, {OTHER: {"token": {"symbol": "X"}, "score": 90, "detected_at": FRESH,
+                                              "dexscreener": {"pairCreatedAt": OLD_PAIR_MS}}})   # edad ok, sin precio
         self.m.main()
         self.m.main()
         self.assertEqual(self.sent, [])   # antes: se enviaba en CADA corrida sin registrarse
@@ -273,6 +277,43 @@ class TestFrescura(Script97TestCase):
         cands, stats = self.m.select_candidates({OTHER: token("X", detected_at=None)}, [], max_age_min=None)
         self.assertEqual(len(cands), 1)
         self.assertEqual(stats["stale_or_undated"], 0)
+
+
+class TestEdadMinima(Script97TestCase):
+    """Dirección (30/09): no emitir tokens con edad < 30 min ni con edad desconocida."""
+
+    def ms_ago(self, minutes):
+        return int((datetime.now(timezone.utc) - timedelta(minutes=minutes)).timestamp() * 1000)
+
+    def run_with(self, acc):
+        self.write(self.alerts_file, [])
+        self.write(self.accumulated, acc)
+        self.m.main()
+        return [a["mint"] for a in self.read(self.alerts_file)]
+
+    def test_5_min_no_emite(self):
+        self.assertEqual(self.run_with({OTHER: token("X", pair_created_ms=self.ms_ago(5))}), [])
+
+    def test_45_min_emite(self):
+        self.assertEqual(self.run_with({OTHER: token("X", pair_created_ms=self.ms_ago(45))}), [OTHER])
+
+    def test_sin_pair_created_no_emite(self):
+        self.assertEqual(self.run_with({OTHER: token("X", pair_created_ms=None)}), [])
+
+    def test_sin_dexscreener_no_emite(self):
+        acc = {OTHER: {"token": {"symbol": "X"}, "score": 90, "detected_at": FRESH, "dexscreener": None}}
+        self.assertEqual(self.run_with(acc), [])
+
+    def test_motivos_registrados_en_stats(self):
+        acc = {PARASITE_A: token("A", pair_created_ms=self.ms_ago(5)), PARASITE_B: token("B", pair_created_ms=None)}
+        _, stats = self.m.select_candidates(acc, [])
+        reasons = {s["mint"]: s["reason"] for s in stats["too_young_or_unknown_age"]}
+        self.assertEqual(reasons, {PARASITE_A: "age<30min", PARASITE_B: "edad desconocida"})
+
+    def test_joven_no_ocupa_cupo(self):
+        acc = {f"young{i:035d}": token(f"Y{i}", pair_created_ms=self.ms_ago(2)) for i in range(4)}
+        acc[OTHER] = token("Fartcoin")
+        self.assertEqual(self.run_with(acc), [OTHER])
 
 
 if __name__ == "__main__":

@@ -30,6 +30,9 @@ EMIT_MIN_SCORE = 56
 # R1: antigüedad máxima del scoring de un candidato. Evita que el modo sombra/emisión recorra el
 # atraso de _accumulated.json (269 candidatos v7.2 el 30/09) con precios de detección viejos.
 CANDIDATE_MAX_AGE_MIN = 60
+# Edad mínima del par para emitir (Dirección, 30/09): la exposición a tokens recién nacidos debe ser
+# < 20%. Sin edad conocida (sin pairCreatedAt) no se emite.
+EMIT_MIN_AGE_MIN = 30
 
 
 def env_flag(name):
@@ -94,18 +97,36 @@ def is_fresh(token, now, max_age_min):
     return now - detected <= max_age_min * 60
 
 
-def select_candidates(accumulated, all_alerts, min_score=EMIT_MIN_SCORE, max_age_min=CANDIDATE_MAX_AGE_MIN, now=None):
-    """Candidatos con score >= min_score, frescos, cuyo mint no fue alertado nunca (activas y cerradas)."""
+def pair_age_min(token, now):
+    """Edad del par en minutos a `now`, desde dexscreener.pairCreatedAt (ms). None si no se conoce."""
+    dx = token.get("dexscreener") or token.get("dx") or {}
+    created = dx.get("pairCreatedAt")
+    if not isinstance(created, (int, float)) or isinstance(created, bool) or created <= 0:
+        return None
+    return (now - created / 1000) / 60
+
+
+def select_candidates(accumulated, all_alerts, min_score=EMIT_MIN_SCORE, max_age_min=CANDIDATE_MAX_AGE_MIN,
+                      now=None, min_age_min=EMIT_MIN_AGE_MIN):
+    """Candidatos con score >= min_score, frescos, con edad >= min_age_min y cuyo mint no fue alertado nunca."""
     alerted = {normalize_mint(a.get("mint")) for a in all_alerts if isinstance(a, dict)} - {""}
     now = time.time() if now is None else now
     candidates, seen = [], set()
-    stats = {"already_alerted": 0, "intra_cycle_duplicates": [], "stale_or_undated": 0}
+    stats = {"already_alerted": 0, "intra_cycle_duplicates": [], "stale_or_undated": 0,
+             "too_young_or_unknown_age": []}
     for mint, token in accumulated.items():
         if token.get("score", 0) < min_score:
             continue
         if max_age_min is not None and not is_fresh(token, now, max_age_min):
             stats["stale_or_undated"] += 1
             continue
+        if min_age_min is not None:
+            age = pair_age_min(token, now)
+            if age is None or age < min_age_min:
+                stats["too_young_or_unknown_age"].append(
+                    {"mint": mint, "age_min": round(age, 1) if age is not None else None,
+                     "reason": f"age<{min_age_min}min" if age is not None else "edad desconocida"})
+                continue
         key = normalize_mint(mint)
         if not key:
             continue
@@ -367,7 +388,10 @@ def main():
     to_emit = candidates[:3]
     print(f"[INFO] Candidatos con score >= {EMIT_MIN_SCORE} pendientes de emitir: {len(candidates)} "
           f"(ya alertados y omitidos: {stats['already_alerted']}; "
-          f"sin scoring en los últimos {CANDIDATE_MAX_AGE_MIN} min: {stats['stale_or_undated']})")
+          f"sin scoring en los últimos {CANDIDATE_MAX_AGE_MIN} min: {stats['stale_or_undated']}; "
+          f"edad < {EMIT_MIN_AGE_MIN} min o desconocida: {len(stats['too_young_or_unknown_age'])})")
+    for skip in stats["too_young_or_unknown_age"][:5]:
+        print(f"[SKIP] {skip['mint'][:10]}... {skip['reason']} (edad: {skip['age_min']})")
     print(f"[INFO] Emitiendo {len(to_emit)} alertas en este ciclo.")
 
     emitted_count = 0
