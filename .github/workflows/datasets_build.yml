@@ -58,7 +58,7 @@ jobs:
           git config user.email "bot@shotdemercado.local"
           for p in 01_Datos_Crudos/datasets 02_Analisis/datasets/memechain_index.json 02_Analisis/datasets/binance_index.json \
                    02_Analisis/operations/dataset_memechain.jsonl 02_Analisis/operations/dataset_binance.jsonl; do
-            [ -e "$p" ] && git add -- "$p"
+            if [ -e "$p" ]; then git add -- "$p"; fi
           done
           if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
           git commit -q -m "datasets_build: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
