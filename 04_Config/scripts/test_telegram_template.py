@@ -62,8 +62,9 @@ class TemplateTest(unittest.TestCase):
         msg, _ = self.m.format_alert_message(bare, (), None)
         for fake in ("$0.001", "$25,000", "$50,000", "85.0 SOL", "top 1%", "Sin señales de riesgo", "ballena"):
             self.assertNotIn(fake, msg)
-        # nombre, mint, detectado, edad, par creado, precio, mcap, liquidez, volumen, motivos, fuentes
-        self.assertEqual(msg.count("n/d"), 11)
+        # activo: nombre, mint · compra: mint, liquidez, impacto $100, impacto $1,000, contrato, par ·
+        # detección: detectado, edad, par creado · datos: precio, mcap, liquidez, volumen · motivos · fuentes
+        self.assertEqual(msg.count("n/d"), 17)
 
     def test_motivos_reales_sin_nota_interna(self):
         msg, _ = self.m.format_alert_message(TOKEN, (), None)
@@ -135,6 +136,71 @@ class TemplateTest(unittest.TestCase):
         self.assertIn("• Chain: Monad", msg.splitlines())
         self.assertNotIn("Solscan", msg)                                              # no se inventa link
         self.assertNotIn("dexscreener.com", msg)
+
+    def full_token(self, chain=None, liquidity=54266.0, dex="pumpswap"):
+        tok = {"token": {"symbol": "PMP", "name": "Pump Token", "mint": "GmcLzFNHxjFLby3uTBAZkzpPbfkTZa8sZUfLrtoD7bUg"},
+               "score": 70, "detected_at": "2026-09-30T22:36:03+00:00",
+               "dexscreener": {"priceUsd": 5.6e-06, "liquidityUsd": liquidity, "dexId": dex,
+                               "pairAddress": "DguFz7QMapVm6aHDmthnPGqVrxguKPa3FHov6CMdg4pV",
+                               "pairCreatedAt": epoch_ms(datetime(2026, 9, 30, 21, 51, 3, tzinfo=timezone.utc))}}
+        if chain:
+            tok["chain"] = chain
+        return tok
+
+    def test_compra_va_primero(self):
+        msg, _ = self.m.format_alert_message(self.full_token(), (), None)
+        order = ["🪪 *ACTIVO*", "🛒 *CÓMO ADQUIRIRLO*", "🕒 *DETECCIÓN*", "🎯 *PROBABILIDADES*", "📊 *DATOS",
+                 "🔎 *POR QUÉ", "🔗 *FUENTES VERIFICABLES*", "⏱️ *SEGUIMIENTO*"]
+        self.assertEqual([msg.index(s) for s in order], sorted(msg.index(s) for s in order))
+
+    def test_bloque_de_compra_solana_completo(self):
+        mint = "GmcLzFNHxjFLby3uTBAZkzpPbfkTZa8sZUfLrtoD7bUg"
+        msg, _ = self.m.format_alert_message(self.full_token(), (), None)
+        lines = msg.splitlines()
+        for line in ("🛒 *CÓMO ADQUIRIRLO* — Solana",
+                     "1. Wallet: Phantom (https://phantom.app) o Solflare (https://solflare.com)",
+                     "2. Fondear con SOL o USDC (comprados en Binance, Coinbase o Kraken); dejar SOL para comisiones",
+                     "3. Conectar la wallet a Jupiter (https://jup.ag) (liquidez principal en pumpswap) · alternativas: "
+                     "Raydium (https://raydium.io), Orca (https://www.orca.so)",
+                     f"4. Pegar el mint (coincidencia exacta): `{mint}`",
+                     "5. Slippage sugerido: 5% (liquidez $54,266) · impacto estimado: $100 → 0.37% · $1,000 → 3.69%",
+                     f"6. Verificar: contrato https://solscan.io/token/{mint} · par "
+                     "https://dexscreener.com/solana/DguFz7QMapVm6aHDmthnPGqVrxguKPa3FHov6CMdg4pV",
+                     "7. Ejecutar el swap", "8. Confirmar la transacción en Solscan"):
+            self.assertIn(line, lines)
+
+    def test_bloque_de_compra_base_evm(self):
+        msg, _ = self.m.format_alert_message(self.full_token(chain="base", dex="aerodrome"), (), None)
+        self.assertIn("🛒 *CÓMO ADQUIRIRLO* — Base", msg)
+        self.assertIn("1. Wallet: MetaMask (https://metamask.io) o Coinbase Wallet (https://www.coinbase.com/wallet)", msg)
+        self.assertIn("3. Conectar la wallet a Aerodrome (https://aerodrome.finance)", msg)
+        self.assertIn("4. Pegar el contrato (coincidencia exacta)", msg)
+        self.assertIn("contrato https://basescan.org/token/", msg)
+        self.assertNotIn("Phantom", msg)
+
+    def test_slippage_e_impacto_por_liquidez(self):
+        self.assertEqual([self.m.suggested_slippage(x) for x in (None, 0, 10_000, 100_000, 500_000, 2_000_000)],
+                         ["5–10%", "5–10%", "10%", "5%", "3%", "1%"])
+        self.assertAlmostEqual(self.m.price_impact(1000, 1_195_183.55), 0.001673, places=6)   # VSOF al detectar
+        self.assertIsNone(self.m.price_impact(100, 0))                                         # bonding curve
+        msg, _ = self.m.format_alert_message(self.full_token(liquidity=0.0, dex="pumpfun"), (), None)
+        self.assertIn("5. Slippage sugerido: 5–10% (liquidez n/d) · impacto estimado: $100 → n/d · $1,000 → n/d", msg)
+
+    def test_sin_guia_de_compra_o_sin_mint_no_esta_listo(self):
+        self.assertTrue(self.m.acquisition_ready(self.full_token()))
+        self.assertTrue(self.m.acquisition_ready(self.full_token(chain="ethereum")))
+        for chain in ("monad", "blast"):
+            self.assertFalse(self.m.acquisition_ready(self.full_token(chain=chain)))
+        sin_mint = {"token": {"symbol": "X"}, "score": 60}
+        self.assertFalse(self.m.acquisition_ready(sin_mint))
+        self.assertTrue(self.m.acquisition_ready(sin_mint, mint="M1"))        # mint = clave del acumulado
+
+    def test_largo_dentro_del_limite_de_telegram(self):
+        tok = self.full_token()
+        tok["reasons"] = ["WS score muy alto", "MCap > $1M", "Volumen masivo", "Liquidez alta", "Pump 24h"]
+        tok["token"]["traderPublicKey"] = "7jQwHdK771P286Vsn44v7dFVfCH8CzZcL3PZGidbShch"
+        msg, _ = self.m.format_alert_message(tok, ["otro"], CALIB)
+        self.assertLess(len(msg), 4096)
 
     def test_markdown_de_datos_externos_escapado(self):
         tok = {"token": {"symbol": "DOG_WIF", "name": "dog *wif* [hat]", "mint": "M1"}, "score": 60,

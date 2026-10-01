@@ -336,7 +336,77 @@ def detection_facts(token):
     return {"name": tok.get("name") or token.get("name"),
             "chain": str(token.get("chain") or dx.get("chainId") or DEFAULT_CHAIN).lower(),
             "creator": tok.get("traderPublicKey") or tok.get("creator"), "pool": tok.get("pool"),
-            "pair": dx.get("pairAddress"), "created": created_dt, "detected": detected_dt, "age_min": age}
+            "pair": dx.get("pairAddress"), "dex": dx.get("dexId"), "created": created_dt, "detected": detected_dt,
+            "age_min": age}
+
+
+# Guía de compra por chain (Dirección, 01/10): la adquisición es el núcleo del producto y va primero en la
+# alerta. Chain sin guía o candidato sin mint = no se emite (acquisition_ready). Enlaces a los sitios oficiales;
+# los enlaces de swap con el par precargado quedan pendientes de verificación manual (doc 24 §1.5).
+ACQUISITION_GUIDES = {
+    "solana": {"wallets": [("Phantom", "https://phantom.app"), ("Solflare", "https://solflare.com")],
+               "dexes": [("Jupiter", "https://jup.ag"), ("Raydium", "https://raydium.io"), ("Orca", "https://www.orca.so")],
+               "fund": "SOL o USDC", "native": "SOL", "address_word": "mint"},
+    "ethereum": {"wallets": [("MetaMask", "https://metamask.io"), ("Rabby", "https://rabby.io")],
+                 "dexes": [("Uniswap", "https://app.uniswap.org"), ("1inch", "https://app.1inch.io")],
+                 "fund": "ETH o USDC/USDT", "native": "ETH", "address_word": "contrato"},
+    "base": {"wallets": [("MetaMask", "https://metamask.io"), ("Coinbase Wallet", "https://www.coinbase.com/wallet")],
+             "dexes": [("Aerodrome", "https://aerodrome.finance"), ("Uniswap", "https://app.uniswap.org")],
+             "fund": "ETH o USDC en la red Base", "native": "ETH", "address_word": "contrato"},
+}
+FUNDING_EXCHANGES = "Binance, Coinbase o Kraken"
+# Slippage por liquidez del par [H, doc 24 §1.2]: < $50K 10% · < $250K 5% · < $1M 3% · resto 1%.
+SLIPPAGE_TIERS = ((50_000, "10%"), (250_000, "5%"), (1_000_000, "3%"))
+
+
+def suggested_slippage(liquidity):
+    if not liquidity:
+        return "5–10%"          # liquidez desconocida (p. ej., bonding curve de pump.fun: DexScreener informa 0)
+    return next((slip for limit, slip in SLIPPAGE_TIERS if liquidity < limit), "1%")
+
+
+def price_impact(usd, liquidity):
+    """Impacto estimado de comprar `usd` en un pool de producto constante con liquidez total `liquidity` (la mitad
+    del lado cotizado), sin comisiones: prima del precio promedio sobre el spot ≈ 2·usd/liquidity [H]."""
+    return 2 * usd / liquidity if liquidity else None
+
+
+def acquisition_ready(token, mint=None):
+    """Regla núcleo: se emite solo si hay guía de compra para la chain y un mint/contrato para pegar."""
+    mint = mint or (token.get("token") or {}).get("mint") or token.get("mint")
+    return bool(mint) and detection_facts(token)["chain"] in ACQUISITION_GUIDES
+
+
+def acquisition_block(mint, facts, snap):
+    """Bloque 🛒: wallet, fondeo, DEX, mint, slippage + impacto estimado, verificación, swap y confirmación."""
+    chain_text = CHAIN_LABELS.get(facts["chain"], facts["chain"])
+    guide = ACQUISITION_GUIDES.get(facts["chain"])
+    if not guide:
+        return f"🛒 *CÓMO ADQUIRIRLO* — {chain_text}\n• Sin guía de compra verificada para esta chain\n"
+    (w1, wu1), (w2, wu2) = guide["wallets"][:2]
+    (d1, du1), *alts = guide["dexes"]
+    liq = snap["liquidity"]
+
+    def impact(usd):
+        x = price_impact(usd, liq)
+        return "n/d" if x is None else ("<0.01%" if x < 0.0001 else f"{x * 100:.2f}%")
+
+    explorer = EXPLORERS.get(facts["chain"])
+    explorer_url = explorer[1].format(addr=mint) if explorer and mint else "n/d"
+    pair_url = (f"https://dexscreener.com/{facts['chain']}/{facts['pair'] or mint}"
+                if facts["chain"] in DEXSCREENER_CHAINS and (facts["pair"] or mint) else "n/d")
+    pool = f" (liquidez principal en {md(facts['dex'])})" if facts.get("dex") else ""
+    alternatives = ", ".join(f"{name} ({url})" for name, url in alts)
+    return (f"🛒 *CÓMO ADQUIRIRLO* — {chain_text}\n"
+            f"1. Wallet: {w1} ({wu1}) o {w2} ({wu2})\n"
+            f"2. Fondear con {guide['fund']} (comprados en {FUNDING_EXCHANGES}); dejar {guide['native']} para comisiones\n"
+            f"3. Conectar la wallet a {d1} ({du1}){pool} · alternativas: {alternatives}\n"
+            f"4. Pegar el {guide['address_word']} (coincidencia exacta): {f'`{mint}`' if mint else 'n/d'}\n"
+            f"5. Slippage sugerido: {suggested_slippage(liq)} (liquidez {f'${liq:,.0f}' if liq else 'n/d'}) · "
+            f"impacto estimado: $100 → {impact(100)} · $1,000 → {impact(1000)}\n"
+            f"6. Verificar: contrato {explorer_url} · par {pair_url}\n"
+            f"7. Ejecutar el swap\n"
+            f"8. Confirmar la transacción en {explorer[0] if explorer else 'el explorador'}\n")
 
 
 def source_links(mint, facts):
@@ -414,6 +484,7 @@ def format_alert_message(token, collisions=(), calibration=None):
 • Chain: {chain_text}
 • Mint: {mint_text}
 {creator_line}
+{acquisition_block(mint, facts, snap)}
 🕒 *DETECCIÓN*
 • Detectado: {when(facts['detected'])}
 • Edad del par al detectar: {age_text}
@@ -429,15 +500,6 @@ def format_alert_message(token, collisions=(), calibration=None):
 {sol_line}{collision_line}
 🔎 *POR QUÉ LO DETECTAMOS* (score {score})
 {reasons_block}
-🛒 *CÓMO ADQUIRIRLO (paso a paso)*
-1. Instalar Phantom: https://phantom.app
-2. Comprar SOL en Binance/Coinbase
-3. Enviar SOL a tu wallet Phantom
-4. Conectar a Jupiter: https://jup.ag
-5. Pegar mint (verificá que coincida): `{mint}`
-6. Slippage: 5-10%
-7. Ejecutar swap
-
 🔗 *FUENTES VERIFICABLES*
 {links_block}
 ⏱️ *SEGUIMIENTO*
@@ -515,6 +577,12 @@ def main(argv=None):
         print(f"[WARN] Candidatos repetidos en el mismo ciclo (variantes del mismo mint): {dups}")
         log_cycle_event({"key": f"intra_cycle_duplicates:{timestamp}", "type": "intra_cycle_duplicates",
                          "timestamp": timestamp, "mints": dups})
+
+    # Regla núcleo: sin guía de compra para la chain (o sin mint) no se emite
+    no_guide = [(m, detection_facts(t)["chain"]) for m, t in candidates if not acquisition_ready(t, m)]
+    candidates = [(m, t) for m, t in candidates if acquisition_ready(t, m)]
+    for m, chain in no_guide[:5]:
+        print(f"[SKIP] {m[:10]}... sin guía de compra para la chain '{chain}' o sin mint")
 
     # Max 3 alerts per cycle
     to_emit = candidates[:3]

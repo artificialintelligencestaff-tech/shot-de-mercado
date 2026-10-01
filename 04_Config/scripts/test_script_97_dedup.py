@@ -69,6 +69,16 @@ class Script97TestCase(unittest.TestCase):
         return self.read(self.cycle_log).get("dedup_events", []) if self.cycle_log.exists() else []
 
 
+class TestGuiaDeCompra(Script97TestCase):
+    def test_chain_sin_guia_de_compra_no_se_emite(self):
+        sin_guia = dict(token("MONADCAT"), chain="monad")
+        self.write(self.accumulated, {OTHER: token("GOOD"), EVM: sin_guia})
+        self.write(self.alerts_file, [])
+        self.assertEqual(self.m.main([]), 0)
+        self.assertEqual([a["mint"] for a in self.read(self.alerts_file)], [OTHER])   # solo el que tiene guía
+        self.assertEqual(len(self.sent), 1)
+
+
 class TestDedup(Script97TestCase):
     def test_mint_ya_alertado_no_se_duplica_activo_ni_cerrado(self):
         self.write(self.alerts_file, [alert(PARASITE_A, "PARASITE"),
