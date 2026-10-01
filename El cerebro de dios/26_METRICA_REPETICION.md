@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO + librería y sonda (lib_repetition, probe_narrative_sources); Fase 0 sin implementar
+status: FASE 0 IMPLEMENTADA (script_115 + narrative_collector.yml, rama claude/zealous-tesla-3ua19i); Fase 1 pendiente
 last_updated: 2026-10-01
-version: 0.2
+version: 0.3
 ---
 
 # 26 — Métrica de repetición mediática ("masa social ansiosa")
@@ -185,9 +185,9 @@ Solo si la Fase 1 muestra un efecto con IC90 que no cruza el baseline del tramo 
 
 ## 8. Pendientes
 
-1. [P] Verificar desde Actions: workflow manual `probe_narrative_sources.yml` (§9). Requiere que esté en main y un dispatch.
+1. ~~Verificar desde Actions~~ **Hecho** (run `36818939038`): 5/6 familias, 12/17 endpoints; falla GDELT [V].
 2. [P] Lista curada de canales públicos de Telegram y de subreddits, con criterio explícito (volumen, idioma, foco en Solana/Base). Dirección la valida.
-3. ~~Parsers, deduplicación, `S_eff`, sorpresa de Poisson y casos A/B/C~~ → hechos en `lib_repetition.py` (15 tests, §9). Falta el colector de la Fase 0.
+3. ~~Parsers, deduplicación, `S_eff`, sorpresa de Poisson y casos A/B/C~~ → hechos en `lib_repetition.py` (15 tests, §9). ~~Falta el colector de la Fase 0~~ → `script_115` (§10).
 4. [P] Fase 1 cuando haya ≥ 20 tokens por tramo.
 
 ---
@@ -226,3 +226,49 @@ Solo si la Fase 1 muestra un efecto con IC90 que no cruza el baseline del tramo 
 - **Por ítem guarda** los identificadores extraídos (direcciones base58 / `0x…` y cashtags encontrados), `ts`, fuente, hash del texto normalizado y hash con sal del autor. **Sin texto ni handles.**
 - `script_97` / `script_113` solo **leen** el snapshot (`02_Analisis/narrative/<mint>.json`) y lo muestran en el dossier. El score no cambia.
 - **Se habilita** cuando la sonda desde Actions dé ≥ 3 familias OK y Dirección apruebe el workflow nuevo.
+
+---
+
+## 10. Fase 0 implementada — `script_115_narrative_collector.py` (Fase 5, T1)
+
+**Condición cumplida [V]:** la sonda desde Actions dio 5 familias de menciones OK (criterio: ≥ 3). Dirección aprobó el workflow nuevo (directiva Fase 5).
+
+**Workflow** `narrative_collector.yml`: cada 20 min, en los minutos 7/27/47 (desfasado de `pipeline_t0`). Concurrency propia `ops-narrative_collector`, sin secretos y sin envíos. Commitea solo `02_Analisis/narrative/`. No toca `script_82`, `script_97` ni el score.
+
+**Qué hace cada corrida**
+
+1. **Candidatos.** Tokens de `shadow_v4/_accumulated.json` con **score ≥ 40**, puntuados en las últimas **48 h** y **con el scorer vigente**. La versión vigente es la del registro más reciente; hoy, 7.2.1.
+   - Un token que entra se sigue 48 h desde su entrada, aunque después baje su score: la Fase 1 necesita la serie completa.
+   - [V] Sin el filtro de versión entraban 59 tokens, 45 de ellos puntuados por v7.2 el 30/09 (los 100 inflados del doc 20). Con el filtro quedan **14**, entre ellos DEGEN y arc, las dos alertas reales del 01/10.
+2. **Fuentes.** Las familias que la sonda marcó OK (`narrative_sources_probe.json`); sin sonda, todas.
+   - GDELT queda fuera siempre: da volumen agregado de noticias, no menciones de un activo.
+   - CoinGecko trending se guarda como dato de atención. Hay coincidencia solo si coinciden el símbolo **y** el nombre.
+3. **Almacén rodante de 26 h** (`_items.json`). De cada ítem se guardan solo sus identificadores:
+   - **qué contiene:** direcciones base58 (32–44 caracteres) y `0x…` en minúsculas, cashtags y nombres de los candidatos encontrados;
+   - **cuándo y de dónde:** timestamp y fuente;
+   - **huellas:** clave `fuente|sha1(texto normalizado)` (la misma deduplicación que `lib_repetition`) y hash con sal del autor;
+   - **qué no:** **textos y handles**;
+   - se guardan solo los ítems con al menos un identificador. Las direcciones y los cashtags se cuentan retroactivamente para un token que entra después; los nombres, solo mientras el ítem siga en el feed.
+4. **Métrica por token.** `lib_repetition.repetition_snapshot` (v0.1 de §3.2) sobre las menciones del almacén, con los pesos de §2: contrato 1,0, cashtag 0,5, nombre 0,25.
+   - Salida: `02_Analisis/narrative/<mint>.json` con la foto actual, la **primera foto** (≈ intensidad al detectar, para la Fase 1), el historial de 24 h, el desglose por fuente y por tipo de coincidencia, y el trending.
+   - Además, `_index.json` con el estado de cada endpoint, las familias usadas y descartadas, el resumen por token y las últimas 72 corridas.
+
+**Exclusiones de identificadores** (registradas por token en `identifiers.excluded`):
+- **Cashtag:**
+  - símbolo vacío, de 1 carácter o fuera de `[A-Za-z0-9]` (por ejemplo `C@T`);
+  - o símbolo de la lista de majors, stablecoins y fiat (`$SOL`, `$USDC`, `$BTC`…): esas menciones casi nunca son del memecoin.
+- **Nombre:**
+  - de menos de 2 palabras;
+  - o compartido por más de un token del acumulado.
+
+**Límites [I]**
+- El baseline arranca vacío: `baseline_coverage_h` dice cuántas horas de historia hay (tope 24). Hasta las 24 h, la intensidad sobreestima y la sorpresa usa λ_min.
+- Los feeds traen ~20–25 ítems: lo que entra y sale entre dos corridas (20 min) se pierde.
+- X y Discord no se miden (§4). Reddit desde Actions dio 1/5 en la sonda.
+- Sal del hash de autor: `NARRATIVE_AUTHOR_SALT` si existe; si no, una sal fija pública. Es un seudónimo, no anonimato. No se guardan handles.
+
+**Tests** (`test_script_115_collector.py`, sin red): 20/20.
+- Cubren: paridad con `lib_repetition.match_weight`, el caso C de §3.3 reproducido, deduplicación, privacidad, la ventana de 48 h, el filtro de versión, las exclusiones, el tope por score, la corrida completa (escribe solo en `narrative/`, no modifica el acumulado, no consulta GDELT), la segunda corrida, el historial de 24 h, el comportamiento sin red y el dry-run.
+- **Mutation testing: 10/10 mutaciones muertas.**
+
+**Uso:** `python 04_Config/scripts/script_115_narrative_collector.py [--dry-run] [--families reddit_rss,4chan_biz] [--min-score 40] [--track-hours 48]`
