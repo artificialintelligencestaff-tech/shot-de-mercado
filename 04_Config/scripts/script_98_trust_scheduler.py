@@ -44,6 +44,43 @@ def get_current_price(mint):
         pass
     return None
 
+# Fase 8: activos sin contrato único (blue chips y tokens confirmados en exchanges por CoinGecko) se siguen con el
+# precio del exchange. Orden: Binance (par USDT) -> Coinbase (USD) -> Kraken (USD). APIs públicas, sin key.
+TRACKED_STATUSES = {"active_tracking", "active_tracking_cex"}
+BINANCE_TICKER = "https://data-api.binance.vision/api/v3/ticker/price?symbol={sym}USDT"
+COINBASE_TICKER = "https://api.exchange.coinbase.com/products/{sym}-USD/ticker"
+KRAKEN_TICKER = "https://api.kraken.com/0/public/Ticker?pair={sym}USD"
+KRAKEN_ALIASES = {"BTC": "XBT"}
+
+
+def get_cex_price(symbol):
+    """Precio spot del símbolo en el primer exchange que responda. Devuelve (precio, fuente) o (None, None)."""
+    sym = str(symbol or "").upper().strip()
+    if not sym.isalnum():
+        return None, None
+    sources = (("binance", BINANCE_TICKER.format(sym=sym), lambda d: d.get("price")),
+               ("coinbase", COINBASE_TICKER.format(sym=sym), lambda d: d.get("price")),
+               ("kraken", KRAKEN_TICKER.format(sym=KRAKEN_ALIASES.get(sym, sym)),
+                lambda d: next(iter((d.get("result") or {}).values()), {}).get("c", [None])[0]))
+    for name, url, pick in sources:
+        try:
+            r = requests.get(url, timeout=10)
+            if r.status_code != 200:
+                continue
+            price = float(pick(r.json()) or 0)
+            if price > 0:
+                return price, name
+        except Exception:
+            continue
+    return None, None
+
+
+def price_for(alert):
+    if alert.get("status") == "active_tracking_cex":
+        return get_cex_price(alert.get("symbol"))[0]
+    return get_current_price(alert["mint"])
+
+
 def main():
     print("[YIN] Ejecutando Trust Update Scheduler (Script 98)...")
     if not os.path.exists(ALL_ALERTS_FILE):
@@ -59,7 +96,7 @@ def main():
     for alert in all_alerts:
         # Solo alertas en seguimiento activo. Las "shadow" (modo sombra) nunca se notificaron:
         # procesarlas enviaría a Telegram actualizaciones de alertas que el usuario no recibió.
-        if alert.get("status", "active_tracking") != "active_tracking":
+        if alert.get("status", "active_tracking") not in TRACKED_STATUSES:
             continue
         mint = alert["mint"]
         symbol = alert["symbol"]
@@ -75,7 +112,7 @@ def main():
 
         # Get original price if stored, or fetch baseline (we approximate baseline from DEX or alert record if stored)
         # For simplicity, we store/fetch current price and compare with initial expected price
-        current_price = get_current_price(mint)
+        current_price = price_for(alert)
         if not current_price:
             print(f"[SKIP] {symbol} ({mint[:8]}...) sin precio consultable. Se reintentará en el próximo ciclo.")
             continue

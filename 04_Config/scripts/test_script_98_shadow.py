@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest import mock
 
 SCRIPT = Path(__file__).resolve().parent / "script_98_trust_scheduler.py"
 
@@ -62,6 +63,34 @@ class TestTrustLoopShadow(unittest.TestCase):
         self.m.main()
         self.assertEqual(self.priced, ["legado"])
 
+
+    def test_cex_se_sigue_con_precio_de_exchange(self):
+        self.m.get_cex_price = lambda sym: (self.priced.append(f"cex:{sym}") or 1.2, "binance")
+        btc = alert("cg:bitcoin", "active_tracking_cex")
+        btc["symbol"] = "BTC"
+        self.alerts_file.write_text(json.dumps([btc, alert("activo", "active_tracking")]), encoding="utf-8")
+        self.m.main()
+        data = {a["mint"]: a for a in json.loads(self.alerts_file.read_text(encoding="utf-8"))}
+        self.assertEqual(self.priced, ["cex:BTC", "activo"])                  # DexScreener solo para la on-chain
+        self.assertEqual(len(data["cg:bitcoin"]["trust_updates"]), 1)
+
+    def test_get_cex_price_orden_y_parseo(self):
+        calls = []
+
+        class R:
+            def __init__(self, code, data):
+                self.status_code, self._d = code, data
+
+            def json(self):
+                return self._d
+        answers = {"binance": R(451, {}), "coinbase": R(404, {}),
+                   "kraken": R(200, {"error": [], "result": {"XXBTZUSD": {"c": ["77000.1", "1"]}}})}
+        fake = lambda url, timeout=None: calls.append(url) or answers[                     # noqa: E731
+            "binance" if "binance" in url else "coinbase" if "coinbase" in url else "kraken"]
+        with mock.patch.object(self.m.requests, "get", fake):
+            self.assertEqual(self.m.get_cex_price("btc"), (77000.1, "kraken"))
+            self.assertIn("pair=XBTUSD", calls[-1])
+            self.assertEqual(self.m.get_cex_price("BAD$"), (None, None))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
