@@ -1,0 +1,62 @@
+name: multichain_scanner
+
+# Scanner multi-chain v0.2 (Fase 5, T2) — script_114. Cada 1 h, en el minuto 35 (fuera de los minutos del
+# pipeline 0/20/40 y del colector 7/27/47). Solo recolección: fichas por chain, _categories.json, _history.jsonl
+# y scan_latest.json (mismo esquema que v0.1, lo lee script_113). Sin score, sin emisión, sin secretos.
+# Fuentes gratuitas sin key: CoinGecko (15 s entre requests), GeckoTerminal (6,5 s), DefiLlama (1 s).
+# Commitea únicamente 02_Analisis/multichain/.
+
+on:
+  schedule:
+    - cron: '35 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ops-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Scan chains and categories
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python 04_Config/scripts/script_114_multichain_scanner.py
+
+      - name: Commit multichain state
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          git add -- 02_Analisis/multichain
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "multichain_scanner: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear 02_Analisis/multichain tras 4 intentos"
+          exit 1
