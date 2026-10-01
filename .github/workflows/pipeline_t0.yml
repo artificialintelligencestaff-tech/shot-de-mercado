@@ -61,7 +61,7 @@ jobs:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
           SHOT_ROOT: ${{ github.workspace }}
           PAUSE_EMISSIONS: "false"   # la pausa la resuelve script_97 (defensa en profundidad); "true" = no procesa nada
-          SHADOW_MODE: "true"        # registra alertas status=shadow sin Telegram hasta validar v7.2.1
+          SHADOW_MODE: "false"       # emisiones reales al grupo privado (validado v7.2.1)
         run: |
           python 04_Config/scripts/script_97_emit_alerts.py
 
