@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: IMPLEMENTADO — script_113 v1.1, enganchado a script_97 (rama claude/dossier-envio, sin push)
+status: EN PRODUCCIÓN — script_113 v1.1 en main (15e9d1a, 547c288), adjunto a cada alerta de script_97
 last_updated: 2026-10-01
-version: 1.3
+version: 1.4
 ---
 
 # 24 — Dossier por activo (diseño) + integración multi-chain
@@ -435,10 +435,11 @@ Fuentes: doc 19 §4.2 y doc 21.
 ### 6.1 Estado actual
 
 - **Ruta rápida Solana** (`pipeline_t0`, cada 20 min): `script_82` (PumpPortal + trending → score v7.2.1) → `shadow_v4/_accumulated.json` → `script_97` (emisión; en sombra).
-- **Scanner multi-chain v0** (`script_114`, en main desde `3694aa8`):
-  - fuentes: CoinGecko sin key para los grupos h, f, c, g, d, e y GeckoTerminal para a (solana, base, eth, blast, monad);
-  - solo recolecta y marca aceleración [H];
-  - no está enganchado a ningún workflow.
+- **Scanner multi-chain** (`script_114`): v0.1 en main desde `3694aa8`; **v0.2 en la rama `claude/zealous-tesla-3ua19i`** (Fase 5, T2):
+  - fuentes: CoinGecko sin key para los grupos h, f, c, g, d, e y GeckoTerminal para a (solana, base, eth, arbitrum, optimism, blast, monad);
+  - v0.2 suma una ficha por chain (`02_Analisis/multichain/<chain>.json`: token nativo, TVL, volumen DEX, fees, pools en tendencia y nuevos), `_categories.json` (7 categorías) y `_history.jsonl`;
+  - solo recolecta y marca aceleración [H]; sin score ni emisión;
+  - workflow propio `multichain_scanner.yml`, cada 1 h (minuto 35). El scoring por grupo está diseñado en el doc 27.
 
 ### 6.2 Regla de adquisición por chain (Dirección, 01/10)
 
@@ -615,3 +616,13 @@ Filtros de emisión (`script_97`):
 - Sin dato: `n/d` con el motivo.
 
 **Costo por dossier:** 7 requests gratuitas (DexScreener, RugCheck, GoPlus, GeckoTerminal, CoinGecko, Binance, Coinbase) con 1 s de pausa; ~10–15 s por alerta y ≤ 3 alertas por ciclo [I].
+
+---
+
+## 9. Estado en producción (01/10/2026 ~15:00 UTC)
+
+- **En producción desde `15e9d1a`** (Fase 4 en main, integrada por YIN; docs en `a537c08`). Las emisiones reales están activas desde `6ff13c5` (01/10 03:48 UTC) y cada alerta sale con su dossier [V].
+- **Primer dossier real:** arc (`61V8vBaqAGMpgDQi4JcAwo1dmBGHsyhzodcPqnEVpump`), 08:40 UTC, guardado en `02_Analisis/dossiers/solana/` (`.md` + `.json`) y commiteado por `pipeline_t0` (`ec31920`) [V].
+- **Entrega bloqueada [V]:** `sendDocument` y el fallback `sendMessage` respondieron 400 "group chat was upgraded to a supergroup chat" (job `110287433551`). El registro quedó con `telegram_sent: false` y `dossier_sent: false`. Lo corrige Dirección actualizando `TELEGRAM_PUBLIC_CHAT_ID` con el `migrate_to_chat_id` del log (doc 22 §7, P0).
+- **Sonda de fuentes de menciones: ya disparada desde Actions** (run `36818939038`): 5/6 familias y 12/17 endpoints OK; falla GDELT [V]. Con eso quedó habilitado el colector de la Fase 0 del doc 26 (`script_115`, T1), que escribe `02_Analisis/narrative/<mint>.json`.
+- [P] **Próximo paso del dossier:** leer ese snapshot y mostrarlo como dato en 🔬 Método y ⏱️ Vigencia (intensidad, sorpresa, fuentes efectivas, tramo). El score no cambia.
