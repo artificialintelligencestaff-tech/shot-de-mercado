@@ -48,11 +48,11 @@ import requests
 
 ROOT = Path(os.environ.get("SHOT_ROOT") or Path(__file__).resolve().parents[2])
 OUT_FILE = ROOT / "02_Analisis" / "multichain" / "scan_latest.json"
-SCANNER_VERSION = "0.3"
+SCANNER_VERSION = "0.4"
 CG = "https://api.coingecko.com/api/v3"
 GT = "https://api.geckoterminal.com/api/v2"
 LL = "https://api.llama.fi"
-UA = {"User-Agent": "shot-de-mercado-scanner/0.3", "Accept": "application/json"}
+UA = {"User-Agent": "shot-de-mercado-scanner/0.4", "Accept": "application/json"}
 BINANCE = "https://data-api.binance.vision/api/v3"
 FNG = "https://api.alternative.me/fng/?limit=1"
 HYPERLIQUID = "https://api.hyperliquid.xyz/info"
@@ -60,6 +60,12 @@ HYPERLIQUID = "https://api.hyperliquid.xyz/info"
 # de Binance fapi, que suele dar 451 desde EE.UU., doc 23). Se guardan en las fichas de bitcoin/ethereum/solana.
 UNIVERSE_A = {"bitcoin": "BTC", "ethereum": "ETH", "solana": "SOL"}
 KLINES_LIMIT = 400
+# Fase 8: grupos c, d, g, b con datos propios (mismo workflow horario, sin servicios nuevos).
+SNAPSHOT = "https://hub.snapshot.org/graphql"
+SNAPSHOT_QUERY = ("query { proposals(first: 500, where: {state: \"active\"}, orderBy: \"end\", orderDirection: asc) "
+                  "{ id title end space { id name symbol } } }")
+AEVO_MARKETS = "https://api.aevo.xyz/markets"
+PERPS_HISTORY_POINTS = 30          # ~30 h de OI por perp (una foto por corrida horaria)
 
 # grupo -> (descripción, fuentes). Fuente = ("ids", "bitcoin,...") o ("category", "<id de CoinGecko>").
 GROUPS = {
@@ -110,7 +116,7 @@ class Http:
     def __init__(self, intervals=None, retry_wait=30.0, sleep=time.sleep, clock=time.monotonic, get=None, post=None):
         self.intervals = intervals or {"api.coingecko.com": 15.0, "api.geckoterminal.com": 6.5, "api.llama.fi": 1.0,
                                        "data-api.binance.vision": 1.0, "api.alternative.me": 1.0,
-                                       "api.hyperliquid.xyz": 1.0}
+                                       "api.hyperliquid.xyz": 1.0, "hub.snapshot.org": 1.0, "api.aevo.xyz": 1.0}
         self.retry_wait, self.sleep, self.clock = retry_wait, sleep, clock
         self.get = get or (lambda url: requests.get(url, headers=UA, timeout=25))
         self.post = post or (lambda url, payload: requests.post(url, json=payload, headers=UA, timeout=25))
@@ -410,7 +416,7 @@ def build_chain_cards(http, report, now=None, chains=None):
 
 def universe_a(http, sources):
     """Velas diarias de Binance (BTC/ETH/SOL), Fear & Greed y funding/OI de Hyperliquid. Lo que falla queda en None."""
-    out = {"klines_1d": {}, "fear_greed": None, "perps": {}}
+    out = {"klines_1d": {}, "fear_greed": None, "perps": {}, "all_perps": {}}
     for chain, sym in UNIVERSE_A.items():
         status, data = http.get_json(f"{BINANCE}/klines?symbol={sym}USDT&interval=1d&limit={KLINES_LIMIT}")
         sources.append({"source": f"binance:klines/{sym}USDT", "status": status})
@@ -432,10 +438,14 @@ def universe_a(http, sources):
     if status == 200 and isinstance(data, list) and len(data) == 2:
         names = [u.get("name") for u in (data[0] or {}).get("universe") or []]
         for name, ctx in zip(names, data[1] or []):
-            if name in UNIVERSE_A.values() and isinstance(ctx, dict):
-                out["perps"][name] = {"funding_1h": _f(ctx.get("funding")), "open_interest": _f(ctx.get("openInterest")),
-                                      "premium": _f(ctx.get("premium")), "mark_px": _f(ctx.get("markPx")),
-                                      "oracle_px": _f(ctx.get("oraclePx"))}
+            if not name or not isinstance(ctx, dict):
+                continue
+            row = {"funding_1h": _f(ctx.get("funding")), "open_interest": _f(ctx.get("openInterest")),
+                   "premium": _f(ctx.get("premium")), "mark_px": _f(ctx.get("markPx")), "oracle_px": _f(ctx.get("oraclePx")),
+                   "day_volume_usd": _f(ctx.get("dayNtlVlm"))}
+            out["all_perps"][str(name).upper()] = row          # grupo d (y cualquier activo con perp)
+            if name in UNIVERSE_A.values():
+                out["perps"][name] = row
     return out
 
 
@@ -448,10 +458,52 @@ def protocols_index(http, report, sources):
     for p in data if status == 200 and isinstance(data, list) else []:
         gid = p.get("gecko_id") if isinstance(p, dict) else None
         if gid in ids and (gid not in out or (_f(p.get("tvl")) or 0) > (out[gid]["tvl"] or 0)):
-            out[gid] = {"name": p.get("name"), "category": p.get("category"), "tvl": _f(p.get("tvl")),
+            out[gid] = {"name": p.get("name"), "defillama_id": p.get("id"), "slug": p.get("slug"),
+                        "category": p.get("category"), "tvl": _f(p.get("tvl")),
                         "change_1d": _f(p.get("change_1d")), "change_7d": _f(p.get("change_7d")),
                         "mcap": _f(p.get("mcap")), "chains": (p.get("chains") or [])[:10]}
+    if out:
+        status, data = http.get_json(f"{LL}/overview/fees?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true")
+        sources.append({"source": "defillama:/overview/fees", "status": status})
+        fees = {}
+        for f in ((data or {}).get("protocols") or []) if isinstance(data, dict) else []:
+            for key in (f.get("defillamaId"), f.get("slug"), (f.get("name") or "").lower()):
+                if key:
+                    fees.setdefault(str(key), f)
+        for gid, row in out.items():
+            f = fees.get(str(row.get("defillama_id"))) or fees.get(str(row.get("slug"))) or fees.get((row.get("name") or "").lower())
+            if f:
+                row.update(fees_24h=_f(f.get("total24h")), fees_7d=_f(f.get("total7d")), fees_30d=_f(f.get("total30d")),
+                           fees_change_1m=_f(f.get("change_1m")))
     return out
+
+
+def snapshot_proposals(http, sources, now=None):
+    """Propuestas activas de Snapshot (GraphQL público, 100 req/60 s, doc 23): grupo c."""
+    now = now or datetime.now(timezone.utc)
+    status, data = http.get_json(SNAPSHOT, {"query": SNAPSHOT_QUERY})
+    sources.append({"source": "snapshot:proposals(active)", "status": status})
+    rows = (((data or {}).get("data") or {}).get("proposals") or []) if isinstance(data, dict) else []
+    out = [{"id": p.get("id"), "title": p.get("title"), "end": p.get("end"),
+            "hours_left": round((p["end"] - now.timestamp()) / 3600, 2) if isinstance(p.get("end"), (int, float)) else None,
+            "space": (p.get("space") or {}).get("id"), "space_name": (p.get("space") or {}).get("name"),
+            "space_symbol": str((p.get("space") or {}).get("symbol") or "").upper() or None}
+           for p in rows if isinstance(p, dict)]
+    return {"generated_at": now.isoformat(timespec="seconds"), "status": status, "loaded": status == 200,
+            "proposals": out}
+
+
+def aevo_premarkets(http, sources):
+    """Mercados de Aevo que no son perps cripto estándar (pre_ipo / pre-launch): grupo b (doc 23: 2 pre_ipo)."""
+    status, data = http.get_json(AEVO_MARKETS)
+    sources.append({"source": "aevo:markets", "status": status})
+    out = []
+    for m in data if status == 200 and isinstance(data, list) else []:
+        kind = str(m.get("instrument_type") or m.get("type") or "").lower()
+        if isinstance(m, dict) and ("pre" in kind or m.get("is_pre_launch") or m.get("pre_launch")):
+            out.append({"underlying": m.get("underlying_asset"), "instrument": m.get("instrument_name"), "type": kind,
+                        "mark_price": _f(m.get("mark_price")), "index_price": _f(m.get("index_price"))})
+    return {"status": status, "markets": out}
 
 
 # ---------------------------------------------------------------------------
@@ -538,8 +590,19 @@ def _write_atomic(path, data):
     os.replace(tmp, path)
 
 
-def write_outputs(out_file, report, out_dir=None, cards=None, categories=None, calls=None, protocols=None):
-    """scan_latest.json (esquema v0.1) + fichas, _categories.json, _protocols.json y una línea en _history.jsonl."""
+def merge_perps(previous, perps, ts):
+    """_perps.json: foto actual de todos los perps + historial de open interest por símbolo (últimas 30 fotos)."""
+    hist = dict((previous or {}).get("oi_history") or {})
+    for sym, row in (perps or {}).items():
+        if row.get("open_interest") is not None:
+            hist[sym] = (list(hist.get(sym) or []) + [[ts, row["open_interest"]]])[-PERPS_HISTORY_POINTS:]
+    return {"generated_at": ts, "source": "hyperliquid metaAndAssetCtxs", "perps": perps or {}, "oi_history": hist}
+
+
+def write_outputs(out_file, report, out_dir=None, cards=None, categories=None, calls=None, protocols=None,
+                  extras=None, perps=None):
+    """scan_latest.json (esquema v0.1) + fichas, _categories.json, _protocols.json, extras (_governance,
+    _premarket), _perps.json con historial y una línea en _history.jsonl."""
     _write_atomic(out_file, report)
     written = [Path(out_file)]
     if cards is None and categories is None:
@@ -554,6 +617,16 @@ def write_outputs(out_file, report, out_dir=None, cards=None, categories=None, c
     if protocols is not None:
         _write_atomic(out_dir / "_protocols.json", protocols)
         written.append(out_dir / "_protocols.json")
+    for name, data in (extras or {}).items():
+        _write_atomic(out_dir / name, data)
+        written.append(out_dir / name)
+    if perps is not None:
+        try:
+            previous = json.loads((out_dir / "_perps.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            previous = None
+        _write_atomic(out_dir / "_perps.json", merge_perps(previous, perps, report.get("generated_at")))
+        written.append(out_dir / "_perps.json")
     line = json.dumps(history_line(report, cards, categories, calls if calls is not None else report.get("calls")),
                       ensure_ascii=False, separators=(",", ":"))
     with open(out_dir / "_history.jsonl", "a", encoding="utf-8") as f:
@@ -587,7 +660,7 @@ def main(argv=None, http=None):
     print(f"[114] ítems por fuente: {counts} · llamadas: {report['calls']} · errores: {len(report['errors'])}")
     for a in report["accelerating"][:15]:
         print(f"[114] ACEL {a['group']} {a.get('chain') or '-':<8} {a['symbol']:<10} {'; '.join(a['reasons'])}")
-    cards = categories = protocols = None
+    cards = categories = protocols = extras = perps = None
     if not args.no_cards:
         cards, _ = build_chain_cards(http, report, chains=chains)
         categories = build_categories(http, report)
@@ -599,6 +672,10 @@ def main(argv=None, http=None):
                                               "perp": ua["perps"].get(sym), "sources": ua_sources}
         protocols = {"generated_at": report["generated_at"], "sources": proto_sources,
                      "protocols": protocols_index(http, report, proto_sources)}
+        perps = ua["all_perps"] or None
+        extra_sources = []
+        extras = {"_governance.json": snapshot_proposals(http, extra_sources),
+                  "_premarket.json": aevo_premarkets(http, extra_sources)}
         for chain, c in cards.items():
             tvl, nt = c.get("tvl") or {}, c.get("native_token") or {}
             print(f"[114] {chain:<9} TVL {tvl.get('tvl_usd')} ({tvl.get('change_7d_pct')} % 7d) · "
@@ -610,7 +687,7 @@ def main(argv=None, http=None):
                   f"amplitud {v['sample']['breadth_24h']}")
     print(f"[114] llamadas totales: {http.calls}")
     if not args.dry_run:
-        for path in write_outputs(args.out, report, args.out_dir, cards, categories, http.calls, protocols):
+        for path in write_outputs(args.out, report, args.out_dir, cards, categories, http.calls, protocols, extras, perps):
             print(f"[OK] {path}")
     return 0
 

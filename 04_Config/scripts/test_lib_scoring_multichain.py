@@ -254,7 +254,7 @@ class ClassifyTest(unittest.TestCase):
         self.assertFalse(res["ethereum:0xabc"]["emittable"])                  # i: solo registro
         self.assertIn("Dirección", res["ethereum:0xabc"]["status_reason"])
         self.assertEqual(res["cg:cardano"]["status_reason"], "cobertura 0.25 < 0.6")
-        self.assertEqual(res["cg:arbitrum"]["scoring_version"], "mc-f-0.1")
+        self.assertEqual(res["cg:arbitrum"]["scoring_version"], f"mc-f-{L.VERSION}")
         cov = L.coverage_by_group(res.values())
         self.assertEqual(cov["f"]["assets"], 2)
 
@@ -280,6 +280,53 @@ class ClassifyTest(unittest.TestCase):
         finally:
             L.garch11 = orig
 
+
+class Fase8Test(unittest.TestCase):
+    """c con fees y Snapshot, e con ingresos de red, g con yield, d con perps de Hyperliquid, b desde pre-mercado."""
+
+    def test_gobernanza_con_fees_y_snapshot(self):
+        a = {"symbol": "UNI", "name": "Uniswap", "mcap_usd": 6e9, "fdv_usd": 6e9, "change_7d": 5.0,
+             "category_median_7d": 0.0, "protocol": {"tvl": 4e9, "change_7d": 2.0, "fees_7d": 7e6, "fees_30d": 2.4e7},
+             "governance": {"loaded": True, "matches": [{"title": "Activate the fee switch", "hours_left": 30}]}}
+        comps, *_ = L.components_governance(a)
+        self.assertEqual(comps[0]["name"], "Crecimiento de fees (7d vs 30d)")
+        self.assertAlmostEqual(comps[0]["s"], round(math.log((7e6 * 30 / 7) / 2.4e7) / 0.5, 4))
+        self.assertEqual(comps[2]["s"], 1.0)
+        self.assertEqual(L.score_governance(a)[2], 1.0)                          # las 5 componentes con dato
+        far = dict(a, governance={"loaded": True, "matches": [{"title": "fee switch", "hours_left": 100}]})
+        self.assertEqual(L.components_governance(far)[0][2]["s"], 0.0)
+        self.assertIsNone(L.components_governance(dict(a, governance={"loaded": False}))[0][2]["s"])
+
+    def test_depin_con_ingresos_y_rwa_con_yield(self):
+        d = {"protocol": {"fees_7d": 3e5, "fees_30d": 6e5}, "volume_24h_usd": 1.0, "mcap_usd": 10.0}
+        self.assertEqual(L.components_depin(d)[0][0]["name"], "Crecimiento de ingresos de red (fees 7d vs 30d)")
+        g = {"protocol": {"fees_30d": 1e6, "tvl": 1e8}}                         # yield 1e6·365/30 / 1e8 = 12,2%
+        c = L._yield_comp(g)
+        self.assertAlmostEqual(c["s"], round(math.log((1e6 * 365 / 30 / 1e8) / 0.05) / math.log(4), 4))
+
+    def test_sinteticos_con_perp(self):
+        hist = [["2026-09-30T17:00:00+00:00", 100.0], ["2026-10-01T17:00:00+00:00", 150.0]]
+        a = {"categories": ["decentralized-perpetuals"], "change_24h": 10.0, "oi_history": hist,
+             "perp": {"funding_1h": 0.0001, "mark_px": 10.05, "oracle_px": 10.0}}
+        comps, *_ = L.components_synthetic(a)
+        self.assertEqual([c["s"] for c in comps], [-1, round(math.log(1.5) / 0.5, 4), 0.5, 0.5])
+        r = L.evaluate(a, now=NOW)
+        self.assertEqual((r["group"], r["confidence"]), ("d", 1.0))              # d ya no es solo registro
+        self.assertNotIn("d", L.REGISTER_ONLY)
+        self.assertIsNone(L._oi_change_24h({"oi_history": hist[:1]}))
+
+    def test_build_assets_adjunta_snapshot_perps_y_premercado(self):
+        scan = {"groups": {"c": {"items": [{"id": "uniswap", "symbol": "UNI", "name": "Uniswap", "source": "governance"}]},
+                           "d": {"items": [{"id": "hyperliquid", "symbol": "HYPE", "source": "decentralized-perpetuals"}]}}}
+        gov = {"loaded": True, "proposals": [{"space_symbol": "UNI", "title": "x", "hours_left": 5},
+                                             {"space_symbol": "AAVE", "title": "y", "hours_left": 5}]}
+        perps = {"perps": {"HYPE": {"funding_1h": 0.0}}, "oi_history": {"HYPE": [["t", 1.0]]}}
+        pre = {"markets": [{"underlying": "OPENAI", "type": "pre_ipo", "mark_price": 900.0}]}
+        assets = {a["key"]: a for a in L.build_assets(scan, {}, {"categories": {}}, None, NOW, gov, perps, pre, None)}
+        self.assertEqual(len(assets["cg:uniswap"]["governance"]["matches"]), 1)
+        self.assertEqual(assets["cg:hyperliquid"]["perp"], {"funding_1h": 0.0})
+        r = L.evaluate(assets["pre:openai"], now=NOW)
+        self.assertEqual((r["group"], r["emittable"]), ("b", False))
 
 class DossierTest(unittest.TestCase):
     def test_compra_primero_y_tabla_de_componentes(self):

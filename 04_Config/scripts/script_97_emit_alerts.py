@@ -736,6 +736,14 @@ def load_multichain_inputs(now=None, max_age_min=MULTICHAIN_MAX_AGE_MIN):
     return scan, cards, _read_json_file(MULTICHAIN_DIR / "_categories.json"), _read_json_file(MULTICHAIN_DIR / "_protocols.json")
 
 
+def load_multichain_extras():
+    """Fase 8: Snapshot (c), perps de Hyperliquid (d), pre-mercado de Aevo y TGEs de script_99 (b)."""
+    return {"governance": _read_json_file(MULTICHAIN_DIR / "_governance.json"),
+            "perps": _read_json_file(MULTICHAIN_DIR / "_perps.json"),
+            "premarket": _read_json_file(MULTICHAIN_DIR / "_premarket.json"),
+            "prelaunch": _read_json_file(PROJECT_ROOT / "02_Analisis" / "pre_launch" / "_prelaunch_accumulated.json")}
+
+
 def multichain_results(now=None, memecoin_scorer=None):
     """Puntúa todos los activos del último scan (lib_scoring_multichain) y deja el registro en _scores.json."""
     now = now or datetime.now(timezone.utc)
@@ -743,7 +751,7 @@ def multichain_results(now=None, memecoin_scorer=None):
     if inputs is None:
         return None
     lib = _load_lib_scoring()
-    results = lib.evaluate_all(*inputs, memecoin_scorer=memecoin_scorer, now=now)
+    results = lib.evaluate_all(*inputs, memecoin_scorer=memecoin_scorer, now=now, **load_multichain_extras())
     write_json_atomic(str(MULTICHAIN_SCORES_FILE), {
         "generated_at": now.isoformat(timespec="seconds"), "scan_generated_at": inputs[0].get("generated_at"),
         "lib_version": lib.VERSION, "min_coverage": lib.MIN_COVERAGE, "thresholds": lib.EMIT_THRESHOLD,

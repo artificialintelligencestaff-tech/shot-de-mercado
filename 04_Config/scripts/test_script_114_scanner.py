@@ -300,7 +300,8 @@ class FichasTest(unittest.TestCase):
         self.assertEqual(s114.main(["--groups", "h", "--networks", "", "--chains", "base", "--out", str(out)],
                                    http=http), 0)
         self.assertEqual(sorted(p.name for p in out.parent.iterdir()),
-                         ["_categories.json", "_history.jsonl", "_protocols.json", "base.json", "scan_latest.json"])
+                         ["_categories.json", "_governance.json", "_history.jsonl", "_premarket.json", "_protocols.json",
+                          "base.json", "scan_latest.json"])
         with self.assertRaises(SystemExit):
             s114.main(["--chains", "dogechain", "--out", str(out)], http=http)
 
@@ -348,6 +349,63 @@ class UniversoATest(unittest.TestCase):
         self.assertEqual(list(prot), ["uniswap"])
         self.assertEqual(prot["uniswap"]["tvl"], 4e9)                  # el de mayor TVL entre los homónimos
         self.assertIn({"source": "defillama:/protocols", "status": 200}, src)
+
+class GruposFase8Test(unittest.TestCase):
+    """v0.4: Snapshot (c), fees por protocolo (c/e/g), todos los perps con historial de OI (d), Aevo (b)."""
+
+    def http(self, routes, posted=None):
+        def get(url):
+            for k, r in routes.items():
+                if k in url:
+                    return r
+            return FakeResp(404)
+
+        def post(url, payload):
+            if posted is not None:
+                posted.append(payload)
+            for k, r in routes.items():
+                if k in url:
+                    return r
+            return FakeResp(404)
+        clock = iter(range(0, 1_000_000, 100))
+        return s114.Http(get=get, post=post, sleep=lambda s: None, clock=lambda: next(clock))
+
+    def test_snapshot(self):
+        now = datetime(2026, 10, 1, 18, 0, tzinfo=timezone.utc)
+        posted = []
+        http = self.http({"snapshot.org": FakeResp(200, {"data": {"proposals": [
+            {"id": "p1", "title": "Activate fee switch", "end": int(now.timestamp()) + 7200,
+             "space": {"id": "uniswapgovernance.eth", "name": "Uniswap", "symbol": "uni"}}]}})}, posted)
+        src = []
+        g = s114.snapshot_proposals(http, src, now)
+        self.assertTrue(g["loaded"])
+        self.assertEqual(g["proposals"][0]["space_symbol"], "UNI")
+        self.assertEqual(g["proposals"][0]["hours_left"], 2.0)
+        self.assertIn("proposals", posted[0]["query"])
+        self.assertFalse(s114.snapshot_proposals(self.http({}), [], now)["loaded"])
+
+    def test_fees_por_protocolo_y_aevo(self):
+        http = self.http({"/protocols": FakeResp(200, [{"gecko_id": "uniswap", "name": "Uniswap", "id": "1",
+                                                        "slug": "uniswap", "tvl": 4e9, "change_7d": 2.0}]),
+                          "overview/fees": FakeResp(200, {"protocols": [{"defillamaId": "1", "total24h": 1e6,
+                                                                         "total7d": 7e6, "total30d": 2.4e7,
+                                                                         "change_1m": 12.0}]}),
+                          "aevo.xyz": FakeResp(200, [{"instrument_type": "PRE_IPO", "underlying_asset": "OPENAI",
+                                                      "mark_price": "100"}, {"instrument_type": "PERPETUAL"}])})
+        prot = s114.protocols_index(http, {"groups": {"c": {"items": [{"id": "uniswap"}]}}}, [])
+        self.assertEqual((prot["uniswap"]["fees_7d"], prot["uniswap"]["fees_30d"]), (7e6, 2.4e7))
+        pre = s114.aevo_premarkets(http, [])
+        self.assertEqual([m["underlying"] for m in pre["markets"]], ["OPENAI"])
+
+    def test_historial_de_open_interest(self):
+        p1 = s114.merge_perps(None, {"HYPE": {"open_interest": 10.0}, "X": {"open_interest": None}}, "t1")
+        p2 = s114.merge_perps(p1, {"HYPE": {"open_interest": 12.0}}, "t2")
+        self.assertEqual(p2["oi_history"]["HYPE"], [["t1", 10.0], ["t2", 12.0]])
+        self.assertNotIn("X", p2["oi_history"])
+        p = p2
+        for i in range(40):
+            p = s114.merge_perps(p, {"HYPE": {"open_interest": float(i)}}, f"x{i}")
+        self.assertEqual(len(p["oi_history"]["HYPE"]), s114.PERPS_HISTORY_POINTS)
 
 def tearDownModule():
     shutil.rmtree(TMP, ignore_errors=True)
