@@ -1,0 +1,1802 @@
+{
+ "version": "28-1.0",
+ "updated": "2026-10-01",
+ "entries": [
+  {
+   "id": "coingecko",
+   "name": "CoinGecko API pública",
+   "category": "precios",
+   "url": "https://www.coingecko.com/en/api",
+   "probe": "https://api.coingecko.com/api/v3/ping",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinGecko",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "mercado, categorías, tickers (rutas CEX), trending",
+   "priority": "P0",
+   "verified": "[V] doc 23 / Fase 7",
+   "note": null
+  },
+  {
+   "id": "coinpaprika",
+   "name": "CoinPaprika",
+   "category": "precios",
+   "url": "https://api.coinpaprika.com",
+   "probe": "https://api.coinpaprika.com/v1/global",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinPaprika",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "verificación cruzada de precios, beta, first_data_at",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "coincap",
+   "name": "CoinCap API 3.0",
+   "category": "precios",
+   "url": "https://pro.coincap.io/api-docs",
+   "probe": "https://rest.coincap.io/v3/assets?limit=1",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinCap",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "precios; la v3 pide key [I]",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "cryptocompare",
+   "name": "CryptoCompare min-api (CoinDesk Data)",
+   "category": "precios",
+   "url": "https://min-api.cryptocompare.com",
+   "probe": "https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinDesk Data",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "precios y OHLCV históricos sin key con límite [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "binance_spot",
+   "name": "Binance data-api (spot público)",
+   "category": "precios",
+   "url": "https://data-api.binance.vision",
+   "probe": "https://data-api.binance.vision/api/v3/ping",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Binance",
+   "api_key": "no",
+   "groups": [
+    "h",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g"
+   ],
+   "use": "velas diarias (GARCH/ATR/Bollinger), exchangeInfo, precio del trust loop CEX",
+   "priority": "P0",
+   "verified": "[V] doc 23 / Fase 7",
+   "note": null
+  },
+  {
+   "id": "coinbase",
+   "name": "Coinbase Exchange API pública",
+   "category": "precios",
+   "url": "https://docs.cdp.coinbase.com/exchange",
+   "probe": "https://api.exchange.coinbase.com/products/BTC-USD/ticker",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Coinbase",
+   "api_key": "no",
+   "groups": [
+    "h",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g"
+   ],
+   "use": "verificación de par y precio del trust loop CEX",
+   "priority": "P0",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "kraken",
+   "name": "Kraken API pública",
+   "category": "precios",
+   "url": "https://docs.kraken.com/api",
+   "probe": "https://api.kraken.com/0/public/Ticker?pair=XBTUSD",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Kraken",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "precio del trust loop CEX (respaldo)",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "okx",
+   "name": "OKX API v5 (market)",
+   "category": "precios",
+   "url": "https://www.okx.com/docs-v5",
+   "probe": "https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT",
+   "method": "GET",
+   "body": null,
+   "license": "ToS OKX",
+   "api_key": "no",
+   "groups": [
+    "h",
+    "d"
+   ],
+   "use": "ruta CEX adicional y funding [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "bybit",
+   "name": "Bybit API v5 (market)",
+   "category": "precios",
+   "url": "https://bybit-exchange.github.io/docs/v5/intro",
+   "probe": "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Bybit",
+   "api_key": "no",
+   "groups": [
+    "h",
+    "d"
+   ],
+   "use": "funding y OI; puede bloquear IPs de EE.UU. [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "kucoin",
+   "name": "KuCoin API pública",
+   "category": "precios",
+   "url": "https://www.kucoin.com/docs",
+   "probe": "https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT",
+   "method": "GET",
+   "body": null,
+   "license": "ToS KuCoin",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "d",
+    "e",
+    "f",
+    "g"
+   ],
+   "use": "cotización de altcoins que no están en Binance/Coinbase [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "gateio",
+   "name": "Gate API v4",
+   "category": "precios",
+   "url": "https://www.gate.io/docs/developers/apiv4",
+   "probe": "https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Gate",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g"
+   ],
+   "use": "listados de tokens chicos (ruta CEX) [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "dexscreener",
+   "name": "DexScreener API",
+   "category": "dex",
+   "url": "https://docs.dexscreener.com",
+   "probe": "https://api.dexscreener.com/latest/dex/search?q=SOL",
+   "method": "GET",
+   "body": null,
+   "license": "ToS DexScreener",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "i"
+   ],
+   "use": "pares, m5/h1, pairCreatedAt (pipeline Solana)",
+   "priority": "P0",
+   "verified": "[V] producción",
+   "note": null
+  },
+  {
+   "id": "geckoterminal",
+   "name": "GeckoTerminal API v2",
+   "category": "dex",
+   "url": "https://www.geckoterminal.com/dex-api",
+   "probe": "https://api.geckoterminal.com/api/v2/networks?page=1",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinGecko",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "f"
+   ],
+   "use": "pools en tendencia y nuevos por red, OHLCV de la métrica dual",
+   "priority": "P0",
+   "verified": "[V] producción",
+   "note": null
+  },
+  {
+   "id": "dexpaprika",
+   "name": "DexPaprika API",
+   "category": "dex",
+   "url": "https://docs.dexpaprika.com",
+   "probe": "https://api.dexpaprika.com/networks",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinPaprika",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "f"
+   ],
+   "use": "pools y tokens multi-chain sin key [I]; respaldo de GeckoTerminal",
+   "priority": "P1",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "jupiter",
+   "name": "Jupiter API (api.jup.ag)",
+   "category": "dex",
+   "url": "https://dev.jup.ag",
+   "probe": "https://api.jup.ag/tokens/v2/search?query=SOL",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Jupiter",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "a"
+   ],
+   "use": "datos de token Solana; lite-api.jup.ag prohibido (deprecado)",
+   "priority": "P2",
+   "verified": "[V] doc 22 (V2)",
+   "note": null
+  },
+  {
+   "id": "raydium",
+   "name": "Raydium API v3",
+   "category": "dex",
+   "url": "https://api-v3.raydium.io/docs",
+   "probe": "https://api-v3.raydium.io/main/info",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Raydium",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "pools de Raydium (Solana) [I]",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "pumpportal",
+   "name": "PumpPortal WebSocket",
+   "category": "dex",
+   "url": "https://pumpportal.fun",
+   "probe": "https://pumpportal.fun",
+   "method": "GET",
+   "body": null,
+   "license": "ToS PumpPortal",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "lanzamientos en pump.fun (producción)",
+   "priority": "P0",
+   "verified": "[V] producción",
+   "note": null
+  },
+  {
+   "id": "rugcheck",
+   "name": "RugCheck API",
+   "category": "dex",
+   "url": "https://api.rugcheck.xyz/swagger",
+   "probe": "https://api.rugcheck.xyz/v1/stats/recent",
+   "method": "GET",
+   "body": null,
+   "license": "ToS RugCheck",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "i"
+   ],
+   "use": "authorities, holders, LP (dossier)",
+   "priority": "P0",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "goplus",
+   "name": "GoPlus Security API",
+   "category": "dex",
+   "url": "https://docs.gopluslabs.io",
+   "probe": "https://api.gopluslabs.io/api/v1/supported_chains",
+   "method": "GET",
+   "body": null,
+   "license": "ToS GoPlus",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "i"
+   ],
+   "use": "seguridad de contratos Solana/EVM (dossier)",
+   "priority": "P0",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "honeypot",
+   "name": "Honeypot.is",
+   "category": "dex",
+   "url": "https://honeypot.is",
+   "probe": "https://api.honeypot.is/v2/IsHoneypot?address=0x4200000000000000000000000000000000000006&chainID=8453",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Honeypot.is",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "simulación compra/venta EVM",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "etherscan_v2",
+   "name": "Etherscan API v2 (multi-chain: Ethereum, Base, Arbitrum, Optimism, Blast)",
+   "category": "exploradores",
+   "url": "https://docs.etherscan.io",
+   "probe": "https://api.etherscan.io/v2/api?chainid=1&module=stats&action=ethprice",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Etherscan",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "a",
+    "c",
+    "f",
+    "g"
+   ],
+   "use": "holders y transferencias EVM; pide key gratuita [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "blockscout",
+   "name": "Blockscout API (instancias públicas)",
+   "category": "exploradores",
+   "url": "https://docs.blockscout.com",
+   "probe": "https://base.blockscout.com/api/v2/stats",
+   "method": "GET",
+   "body": null,
+   "license": "GPL-3.0 (código)",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "c",
+    "f",
+    "g",
+    "i"
+   ],
+   "use": "holders y transferencias EVM sin key [I]: alternativa a Etherscan",
+   "priority": "P1",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "solscan",
+   "name": "Solscan Pro API",
+   "category": "exploradores",
+   "url": "https://pro-api.solscan.io",
+   "probe": "https://public-api.solscan.io/chaininfo",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Solscan",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "a",
+    "i"
+   ],
+   "use": "holders Solana; la pública pide key [I]",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "solana_rpc",
+   "name": "Solana RPC público",
+   "category": "exploradores",
+   "url": "https://solana.com/docs/rpc",
+   "probe": "https://api.mainnet-beta.solana.com",
+   "method": "POST",
+   "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getHealth"
+   },
+   "license": "ToS Solana Foundation",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "i"
+   ],
+   "use": "getTokenLargestAccounts (holders) con límite estricto [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "helius",
+   "name": "Helius RPC/DAS",
+   "category": "exploradores",
+   "url": "https://docs.helius.dev",
+   "probe": "https://mainnet.helius-rpc.com",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Helius",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "a",
+    "i"
+   ],
+   "use": "DAS y webhooks (1M req/mes gratis)",
+   "priority": "P3",
+   "verified": "[V] doc 13 (key)",
+   "note": null
+  },
+  {
+   "id": "mempool",
+   "name": "mempool.space",
+   "category": "exploradores",
+   "url": "https://mempool.space/docs/api",
+   "probe": "https://mempool.space/api/v1/fees/recommended",
+   "method": "GET",
+   "body": null,
+   "license": "AGPL-3.0 (código)",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "fees y actividad de Bitcoin",
+   "priority": "P2",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "blockstream",
+   "name": "Blockstream Esplora",
+   "category": "exploradores",
+   "url": "https://github.com/Blockstream/esplora/blob/master/API.md",
+   "probe": "https://blockstream.info/api/blocks/tip/height",
+   "method": "GET",
+   "body": null,
+   "license": "MIT (código)",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "altura y actividad on-chain de Bitcoin [I]",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "defillama_tvl",
+   "name": "DefiLlama TVL (chains, protocols)",
+   "category": "defi",
+   "url": "https://defillama.com/docs/api",
+   "probe": "https://api.llama.fi/v2/chains",
+   "method": "GET",
+   "body": null,
+   "license": "API pública (adapters sin licencia)",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "e",
+    "f",
+    "g",
+    "i"
+   ],
+   "use": "TVL por chain y protocolo (f, c, g, e, i)",
+   "priority": "P0",
+   "verified": "[V] Fase 7",
+   "note": null
+  },
+  {
+   "id": "defillama_overview",
+   "name": "DefiLlama fees y DEX por chain/protocolo",
+   "category": "defi",
+   "url": "https://defillama.com/docs/api",
+   "probe": "https://api.llama.fi/overview/fees?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true",
+   "method": "GET",
+   "body": null,
+   "license": "API pública",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "e",
+    "f",
+    "g"
+   ],
+   "use": "fees (c, e, g) y volumen DEX (f)",
+   "priority": "P0",
+   "verified": "[V] Fase 7",
+   "note": null
+  },
+  {
+   "id": "defillama_stables",
+   "name": "DefiLlama stablecoins",
+   "category": "defi",
+   "url": "https://defillama.com/docs/api",
+   "probe": "https://stablecoins.llama.fi/stablecoins?includePrices=false",
+   "method": "GET",
+   "body": null,
+   "license": "API pública",
+   "api_key": "no",
+   "groups": [
+    "d"
+   ],
+   "use": "peg y circulante (d2: stables algorítmicas)",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "defillama_yields",
+   "name": "DefiLlama yields",
+   "category": "defi",
+   "url": "https://defillama.com/docs/api",
+   "probe": "https://yields.llama.fi/pools",
+   "method": "GET",
+   "body": null,
+   "license": "API pública",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "g"
+   ],
+   "use": "APY por pool (yield de RWA y DeFi) [I]",
+   "priority": "P1",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "defillama_derivatives",
+   "name": "DefiLlama derivatives overview",
+   "category": "defi",
+   "url": "https://defillama.com/pro-api",
+   "probe": "https://api.llama.fi/overview/derivatives?excludeTotalDataChart=true",
+   "method": "GET",
+   "body": null,
+   "license": "de pago",
+   "api_key": "sí (de pago)",
+   "groups": [
+    "d"
+   ],
+   "use": "volumen de derivados: 402",
+   "priority": "P3",
+   "verified": "[V] doc 23 (402)",
+   "note": null
+  },
+  {
+   "id": "defillama_emissions",
+   "name": "DefiLlama emissions (unlocks)",
+   "category": "defi",
+   "url": "https://defillama.com/pro-api",
+   "probe": "https://api.llama.fi/emissions",
+   "method": "GET",
+   "body": null,
+   "license": "de pago",
+   "api_key": "sí (de pago)",
+   "groups": [
+    "c",
+    "e"
+   ],
+   "use": "unlocks: 402 (se usa FDV/mcap como proxy)",
+   "priority": "P3",
+   "verified": "[V] doc 23 (402)",
+   "note": null
+  },
+  {
+   "id": "growthepie",
+   "name": "growthepie",
+   "category": "defi",
+   "url": "https://docs.growthepie.xyz",
+   "probe": "https://api.growthepie.xyz/v1/master.json",
+   "method": "GET",
+   "body": null,
+   "license": "MIT (código)",
+   "api_key": "no",
+   "groups": [
+    "f"
+   ],
+   "use": "métricas de L2 (actividad, fees)",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "l2beat",
+   "name": "L2BEAT",
+   "category": "defi",
+   "url": "https://l2beat.com",
+   "probe": "https://l2beat.com/api/scaling/summary",
+   "method": "GET",
+   "body": null,
+   "license": "MIT (código)",
+   "api_key": "no",
+   "groups": [
+    "f"
+   ],
+   "use": "TVS y riesgo de L2",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "tokenterminal",
+   "name": "Token Terminal",
+   "category": "defi",
+   "url": "https://tokenterminal.com",
+   "probe": "https://api.tokenterminal.com/v2/projects",
+   "method": "GET",
+   "body": null,
+   "license": "de pago",
+   "api_key": "sí (de pago)",
+   "groups": [
+    "c",
+    "e",
+    "f"
+   ],
+   "use": "ingresos por protocolo: requiere plan",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "hyperliquid",
+   "name": "Hyperliquid info API",
+   "category": "derivados",
+   "url": "https://hyperliquid.gitbook.io",
+   "probe": "https://api.hyperliquid.xyz/info",
+   "method": "POST",
+   "body": {
+    "type": "meta"
+   },
+   "license": "API pública",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "d",
+    "h"
+   ],
+   "use": "funding, OI, basis de todos los perps (d, h)",
+   "priority": "P0",
+   "verified": "[V] doc 23 / Fase 8",
+   "note": null
+  },
+  {
+   "id": "dydx",
+   "name": "dYdX v4 indexer",
+   "category": "derivados",
+   "url": "https://docs.dydx.exchange",
+   "probe": "https://indexer.dydx.trade/v4/perpetualMarkets",
+   "method": "GET",
+   "body": null,
+   "license": "API pública (código propietario)",
+   "api_key": "no",
+   "groups": [
+    "d"
+   ],
+   "use": "perps: OI y funding (respaldo)",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "gmx",
+   "name": "GMX Arbitrum API",
+   "category": "derivados",
+   "url": "https://docs.gmx.io",
+   "probe": "https://arbitrum-api.gmxinfra.io/prices/tickers",
+   "method": "GET",
+   "body": null,
+   "license": "API pública (código BUSL)",
+   "api_key": "no",
+   "groups": [
+    "d"
+   ],
+   "use": "precios de perps de GMX",
+   "priority": "P2",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "deribit",
+   "name": "Deribit API pública (DVOL)",
+   "category": "derivados",
+   "url": "https://docs.deribit.com",
+   "probe": "https://www.deribit.com/api/v2/public/get_index_price?index_name=btc_usd",
+   "method": "GET",
+   "body": null,
+   "license": "API pública",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "volatilidad implícita (energía M de h)",
+   "priority": "P1",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "aevo",
+   "name": "Aevo API",
+   "category": "derivados",
+   "url": "https://api-docs.aevo.xyz",
+   "probe": "https://api.aevo.xyz/markets",
+   "method": "GET",
+   "body": null,
+   "license": "API pública",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "d"
+   ],
+   "use": "pre-IPO / pre-lanzamiento (b)",
+   "priority": "P1",
+   "verified": "[V] doc 23 / Fase 8",
+   "note": null
+  },
+  {
+   "id": "binance_futures",
+   "name": "Binance Futures (fapi)",
+   "category": "derivados",
+   "url": "https://binance-docs.github.io/apidocs/futures",
+   "probe": "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Binance",
+   "api_key": "no",
+   "groups": [
+    "d",
+    "h"
+   ],
+   "use": "funding; suele dar 451 desde EE.UU. [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "snapshot",
+   "name": "Snapshot GraphQL",
+   "category": "gobernanza",
+   "url": "https://docs.snapshot.box",
+   "probe": "https://hub.snapshot.org/graphql",
+   "method": "POST",
+   "body": {
+    "query": "{ space(id: \"aave.eth\") { id name } }"
+   },
+   "license": "MIT (código archivado)",
+   "api_key": "no",
+   "groups": [
+    "c"
+   ],
+   "use": "propuestas activas (evento de gobernanza de c)",
+   "priority": "P0",
+   "verified": "[V] doc 23 / Fase 8",
+   "note": null
+  },
+  {
+   "id": "tally",
+   "name": "Tally API",
+   "category": "gobernanza",
+   "url": "https://docs.tally.xyz",
+   "probe": "https://api.tally.xyz/query",
+   "method": "POST",
+   "body": {
+    "query": "{ chains { id } }"
+   },
+   "license": "ToS Tally",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "c"
+   ],
+   "use": "gobernanza on-chain: pide key (401)",
+   "priority": "P3",
+   "verified": "[V] doc 23 (401)",
+   "note": null
+  },
+  {
+   "id": "rwa_xyz",
+   "name": "RWA.xyz",
+   "category": "rwa",
+   "url": "https://rwa.xyz",
+   "probe": "https://api.rwa.xyz/v3/assets",
+   "method": "GET",
+   "body": null,
+   "license": "ToS RWA.xyz",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "g"
+   ],
+   "use": "activos tokenizados: sin acceso sin key (404)",
+   "priority": "P3",
+   "verified": "[V] doc 23 (404)",
+   "note": null
+  },
+  {
+   "id": "feargreed",
+   "name": "alternative.me Fear & Greed",
+   "category": "sentimiento",
+   "url": "https://alternative.me/crypto/fear-and-greed-index",
+   "probe": "https://api.alternative.me/fng/?limit=1",
+   "method": "GET",
+   "body": null,
+   "license": "ToS alternative.me",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "sentimiento contrarian (h)",
+   "priority": "P0",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "gdelt",
+   "name": "GDELT DOC 2.0",
+   "category": "noticias",
+   "url": "https://blog.gdeltproject.org",
+   "probe": "https://api.gdeltproject.org/api/v2/doc/doc?query=bitcoin&mode=timelinevolraw&format=json&timespan=24h",
+   "method": "GET",
+   "body": null,
+   "license": "abierto",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "h"
+   ],
+   "use": "volumen de noticias (429 frecuente desde Actions)",
+   "priority": "P2",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "google_news",
+   "name": "Google News RSS",
+   "category": "noticias",
+   "url": "https://news.google.com",
+   "probe": "https://news.google.com/rss/search?q=bitcoin&hl=en-US&gl=US&ceid=US:en",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Google",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "menciones en noticias por activo [I]",
+   "priority": "P1",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "cryptopanic",
+   "name": "CryptoPanic API",
+   "category": "noticias",
+   "url": "https://cryptopanic.com/developers/api",
+   "probe": "https://cryptopanic.com/api/v1/posts/?public=true",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CryptoPanic",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "a",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "agregador de noticias cripto: pide key gratuita [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "coindesk_rss",
+   "name": "CoinDesk RSS",
+   "category": "noticias",
+   "url": "https://www.coindesk.com",
+   "probe": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinDesk",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "menciones (colector T1)",
+   "priority": "P0",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "cointelegraph_rss",
+   "name": "Cointelegraph RSS",
+   "category": "noticias",
+   "url": "https://cointelegraph.com",
+   "probe": "https://cointelegraph.com/rss",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Cointelegraph",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "menciones (colector T1)",
+   "priority": "P0",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "decrypt_rss",
+   "name": "Decrypt RSS",
+   "category": "noticias",
+   "url": "https://decrypt.co",
+   "probe": "https://decrypt.co/feed",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Decrypt",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "menciones (colector T1)",
+   "priority": "P0",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "theblock_rss",
+   "name": "The Block RSS",
+   "category": "noticias",
+   "url": "https://www.theblock.co",
+   "probe": "https://www.theblock.co/rss.xml",
+   "method": "GET",
+   "body": null,
+   "license": "ToS The Block",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "menciones (colector T1)",
+   "priority": "P0",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "reddit_rss",
+   "name": "Reddit RSS",
+   "category": "social",
+   "url": "https://www.reddit.com",
+   "probe": "https://www.reddit.com/r/CryptoCurrency/new/.rss",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Reddit",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "menciones; 429 por IP desde Actions",
+   "priority": "P1",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "telegram_web",
+   "name": "Telegram t.me/s (canales públicos)",
+   "category": "social",
+   "url": "https://t.me",
+   "probe": "https://t.me/s/pumpfun",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Telegram",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "menciones (colector T1)",
+   "priority": "P0",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "hn_algolia",
+   "name": "Hacker News (Algolia)",
+   "category": "social",
+   "url": "https://hn.algolia.com/api",
+   "probe": "https://hn.algolia.com/api/v1/search_by_date?query=crypto&tags=story&hitsPerPage=1",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Algolia",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "e",
+    "f",
+    "h"
+   ],
+   "use": "atención técnica (L1/L2, infra)",
+   "priority": "P1",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "4chan_biz",
+   "name": "4chan /biz/",
+   "category": "social",
+   "url": "https://github.com/4chan/4chan-API",
+   "probe": "https://a.4cdn.org/biz/catalog.json",
+   "method": "GET",
+   "body": null,
+   "license": "ToS 4chan",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "menciones de CA (memecoins)",
+   "priority": "P1",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "bluesky",
+   "name": "Bluesky búsqueda pública",
+   "category": "social",
+   "url": "https://docs.bsky.app",
+   "probe": "https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=bitcoin&limit=1",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Bluesky",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "menciones: 403 sin auth",
+   "priority": "P3",
+   "verified": "[V] doc 26 (403)",
+   "note": null
+  },
+  {
+   "id": "apewisdom",
+   "name": "ApeWisdom",
+   "category": "social",
+   "url": "https://apewisdom.io/api",
+   "probe": "https://apewisdom.io/api/v1.0/filter/all-crypto/page/1",
+   "method": "GET",
+   "body": null,
+   "license": "ToS ApeWisdom",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "ranking de menciones en Reddit/4chan por ticker (hay capturas en 01_Datos_Crudos/social/apewisdom)",
+   "priority": "P1",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "coingecko_trending",
+   "name": "CoinGecko trending",
+   "category": "sentimiento",
+   "url": "https://www.coingecko.com/en/api",
+   "probe": "https://api.coingecko.com/api/v3/search/trending",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinGecko",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "atención (búsquedas 24 h)",
+   "priority": "P0",
+   "verified": "[V] doc 26",
+   "note": null
+  },
+  {
+   "id": "wikipedia_pv",
+   "name": "Wikipedia Pageviews",
+   "category": "calendario",
+   "url": "https://wikitech.wikimedia.org/wiki/Analytics/AQS/Pageviews",
+   "probe": "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/Bitcoin/daily/20260901/20260930",
+   "method": "GET",
+   "body": null,
+   "license": "CC0 (datos)",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "h"
+   ],
+   "use": "atención temática (lib_narrative)",
+   "priority": "P1",
+   "verified": "[V] doc 18",
+   "note": null
+  },
+  {
+   "id": "wikidata",
+   "name": "Wikidata SPARQL",
+   "category": "calendario",
+   "url": "https://query.wikidata.org",
+   "probe": "https://query.wikidata.org/sparql?query=SELECT%20%3Fx%20WHERE%20%7B%20wd%3AQ131723%20wdt%3AP31%20%3Fx%20%7D%20LIMIT%201&format=json",
+   "method": "GET",
+   "body": null,
+   "license": "CC0 (datos)",
+   "api_key": "no",
+   "groups": [
+    "b"
+   ],
+   "use": "fechas de eventos (calendario narrativo)",
+   "priority": "P1",
+   "verified": "[V] doc 18",
+   "note": null
+  },
+  {
+   "id": "cryptorank",
+   "name": "CryptoRank API",
+   "category": "calendario",
+   "url": "https://api.cryptorank.io/docs",
+   "probe": "https://api.cryptorank.io/v2/currencies?limit=1",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CryptoRank",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "b"
+   ],
+   "use": "calendario de TGEs y preventas: pide key [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "coinmarketcal",
+   "name": "CoinMarketCal",
+   "category": "calendario",
+   "url": "https://coinmarketcal.com/en/api",
+   "probe": "https://developers.coinmarketcal.com/v1/events",
+   "method": "GET",
+   "body": null,
+   "license": "ToS CoinMarketCal",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "b",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "eventos por activo (upgrades, listings): pide key [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "threews",
+   "name": "three.ws Crypto API",
+   "category": "calendario",
+   "url": "https://three.ws",
+   "probe": "https://three.ws/api/crypto/trending",
+   "method": "GET",
+   "body": null,
+   "license": "ToS three.ws",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "b"
+   ],
+   "use": "trending y airdrops (script_82, script_99)",
+   "priority": "P1",
+   "verified": "[V] doc 13",
+   "note": null
+  },
+  {
+   "id": "defillama_raises",
+   "name": "DefiLlama raises",
+   "category": "calendario",
+   "url": "https://defillama.com/docs/api",
+   "probe": "https://api.llama.fi/raises",
+   "method": "GET",
+   "body": null,
+   "license": "API pública (posible pago)",
+   "api_key": "no",
+   "groups": [
+    "b"
+   ],
+   "use": "rondas de financiación: proxy de TGEs futuros [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "mcp_reference",
+   "name": "modelcontextprotocol/servers (fetch, time, memory, git, filesystem)",
+   "category": "mcp",
+   "url": "https://github.com/modelcontextprotocol/servers",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "MIT [I]",
+   "api_key": "no",
+   "groups": [],
+   "use": "referencia oficial; no aporta datos de mercado (uso: herramientas de investigación)",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "mcp_awesome",
+   "name": "punkpeye/awesome-mcp-servers (directorio)",
+   "category": "mcp",
+   "url": "https://github.com/punkpeye/awesome-mcp-servers",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "MIT [I]",
+   "api_key": "no",
+   "groups": [],
+   "use": "directorio para relevar MCP cripto: cada uno pasa el checklist del doc 25",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "mcp_so",
+   "name": "mcp.so (directorio)",
+   "category": "mcp",
+   "url": "https://mcp.so",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "ToS mcp.so",
+   "api_key": "no",
+   "groups": [],
+   "use": "directorio web de MCP servers",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "npm_mcp",
+   "name": "npm keyword mcp-server",
+   "category": "mcp",
+   "url": "https://www.npmjs.com/search?q=keywords:mcp-server",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "varía por paquete",
+   "api_key": "no",
+   "groups": [],
+   "use": "descubrimiento; revisar postinstall antes de cualquier uso (doc 25)",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "mcp_coingecko",
+   "name": "CoinGecko MCP (@coingecko/coingecko-mcp)",
+   "category": "mcp",
+   "url": "https://github.com/coingecko/coingecko-typescript",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "Apache-2.0",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "consultas manuales de investigación (no para el pipeline)",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "mcp_goplus",
+   "name": "GoPlusSecurity/goplus-mcp",
+   "category": "mcp",
+   "url": "https://github.com/GoPlusSecurity/goplus-mcp",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "Apache-2.0",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "descartado: sin push desde 2025-05",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "mcp_hyperliquid",
+   "name": "caiovicentino/hyperliquid-mcp-server",
+   "category": "mcp",
+   "url": "https://github.com/caiovicentino/hyperliquid-mcp-server",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "MIT",
+   "api_key": "no",
+   "groups": [
+    "d"
+   ],
+   "use": "descartado: inactivo > 6 meses",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "mcp_perpcli",
+   "name": "hypurrquant/perp-cli",
+   "category": "mcp",
+   "url": "https://github.com/hypurrquant/perp-cli",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "MIT",
+   "api_key": "no",
+   "groups": [
+    "d"
+   ],
+   "use": "orientado a operar: solo referencia de lectura",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "mcp_dexscreener",
+   "name": "vibeforge1111/dexscreener-cli-mcp-tool",
+   "category": "mcp",
+   "url": "https://github.com/vibeforge1111/dexscreener-cli-mcp-tool",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "sin licencia",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "descartado: sin licencia",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "mcp_defillama",
+   "name": "DefiLlama/defillama-skills",
+   "category": "mcp",
+   "url": "https://github.com/DefiLlama/defillama-skills",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "sin licencia",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "e",
+    "f",
+    "g"
+   ],
+   "use": "descartado: inactivo y sin licencia",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "arch",
+   "name": "bashtage/arch (GARCH, HAR)",
+   "category": "repos",
+   "url": "https://github.com/bashtage/arch",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "NCSA",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "EGARCH/HAR cuando el GARCH en Python puro no alcance",
+   "priority": "P2",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "ruptures",
+   "name": "deepcharles/ruptures (changepoint detection)",
+   "category": "repos",
+   "url": "https://github.com/deepcharles/ruptures",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "BSD-2-Clause [I]",
+   "api_key": "no",
+   "groups": [
+    "f",
+    "h"
+   ],
+   "use": "detección de régimen (cambios de nivel/varianza) en h y f [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "mapie",
+   "name": "MAPIE (intervalos conformales)",
+   "category": "repos",
+   "url": "https://github.com/scikit-learn-contrib/MAPIE",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "BSD-3-Clause",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "intervalos con cobertura garantizada",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "crepes",
+   "name": "crepes (conformal, liviano)",
+   "category": "repos",
+   "url": "https://github.com/henrikbostrom/crepes",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "BSD-3-Clause",
+   "api_key": "no",
+   "groups": [
+    "h"
+   ],
+   "use": "ídem, sin scikit-learn completo",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "finbert",
+   "name": "ProsusAI/finbert (sentimiento financiero)",
+   "category": "repos",
+   "url": "https://github.com/ProsusAI/finBERT",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "Apache-2.0 [I]",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "sentimiento de titulares (requiere torch: pesado para Actions) [I]",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "pyahocorasick",
+   "name": "pyahocorasick",
+   "category": "repos",
+   "url": "https://github.com/WojciechMula/pyahocorasick",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "BSD-3-Clause",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "matching de miles de identificadores en el colector",
+   "priority": "P2",
+   "verified": "[V] doc 18",
+   "note": null
+  },
+  {
+   "id": "gliner",
+   "name": "GLiNER (NER zero-shot)",
+   "category": "repos",
+   "url": "https://github.com/urchade/GLiNER",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "Apache-2.0",
+   "api_key": "no",
+   "groups": [
+    "b"
+   ],
+   "use": "extraer entidades de noticias (requiere torch)",
+   "priority": "P3",
+   "verified": "[V] doc 18",
+   "note": null
+  },
+  {
+   "id": "scrapling",
+   "name": "D4Vinci/Scrapling",
+   "category": "repos",
+   "url": "https://github.com/D4Vinci/Scrapling",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "BSD-3-Clause",
+   "api_key": "no",
+   "groups": [
+    "a",
+    "b"
+   ],
+   "use": "scraping condicional (solo núcleo)",
+   "priority": "P3",
+   "verified": "[V] doc 25",
+   "note": null
+  },
+  {
+   "id": "statsmodels",
+   "name": "statsmodels",
+   "category": "repos",
+   "url": "https://github.com/statsmodels/statsmodels",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "BSD-3-Clause [I]",
+   "api_key": "no",
+   "groups": [
+    "f",
+    "h"
+   ],
+   "use": "tests de estacionariedad y event studies",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "memechain",
+   "name": "MemeChain (Zenodo 18246856)",
+   "category": "datasets",
+   "url": "https://zenodo.org/records/18246856",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "CC-BY-4.0",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "etiquetas de rug multi-chain para calibrar (709,6 MB)",
+   "priority": "P1",
+   "verified": "[V] doc 18",
+   "note": null
+  },
+  {
+   "id": "melt",
+   "name": "MELT (git-disl/MELT)",
+   "category": "datasets",
+   "url": "https://github.com/git-disl/MELT",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "CC BY-NC 4.0",
+   "api_key": "no",
+   "groups": [
+    "a"
+   ],
+   "use": "no comercial: solo metodología",
+   "priority": "P3",
+   "verified": "[V] doc 23",
+   "note": null
+  },
+  {
+   "id": "binance_bulk",
+   "name": "Binance public data (data.binance.vision)",
+   "category": "datasets",
+   "url": "https://github.com/binance/binance-public-data",
+   "probe": "https://data.binance.vision/?prefix=data/spot/daily/klines/BTCUSDT/1d/",
+   "method": "GET",
+   "body": null,
+   "license": "ToS Binance",
+   "api_key": "no",
+   "groups": [
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "velas históricas masivas para backtests sin límite de API [I]",
+   "priority": "P1",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "kaggle",
+   "name": "Kaggle (datasets cripto)",
+   "category": "datasets",
+   "url": "https://www.kaggle.com/datasets?search=crypto",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "varía (muchos CC0/CC-BY)",
+   "api_key": "sí (gratuita con registro)",
+   "groups": [
+    "a",
+    "c",
+    "e",
+    "f",
+    "g",
+    "h"
+   ],
+   "use": "históricos; requiere cuenta para la API [I]",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "gdelt_raw",
+   "name": "GDELT 2.0 archivos crudos",
+   "category": "datasets",
+   "url": "http://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+   "probe": "http://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+   "method": "GET",
+   "body": null,
+   "license": "abierto",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "h"
+   ],
+   "use": "volumen de noticias sin el límite de la API DOC [I]",
+   "priority": "P2",
+   "verified": "[P]",
+   "note": null
+  },
+  {
+   "id": "wiki_dumps",
+   "name": "Wikimedia pageview dumps",
+   "category": "datasets",
+   "url": "https://dumps.wikimedia.org/other/pageviews/",
+   "probe": null,
+   "method": "GET",
+   "body": null,
+   "license": "CC0",
+   "api_key": "no",
+   "groups": [
+    "b",
+    "h"
+   ],
+   "use": "atención histórica completa",
+   "priority": "P3",
+   "verified": "[P]",
+   "note": null
+  }
+ ]
+}
