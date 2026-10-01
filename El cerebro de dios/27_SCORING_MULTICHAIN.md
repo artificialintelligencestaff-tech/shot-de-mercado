@@ -1,6 +1,6 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO (sin implementación) — Fase 5, T3
+status: IMPLEMENTADO (Fase 7) — lib_scoring_multichain + emisión en script_97; heurísticas no calibradas
 last_updated: 2026-10-01
 version: 0.2
 ---
@@ -466,3 +466,42 @@ Token con TGE en 6 días (ventana de anticipación) → s = 1 (w 25). Intensidad
    - `coins/categories`: [I].
 5. [P] v7.3 en sombra con las propuestas de §4.9 (rotación mínima, Wilson en buy pressure), comparado contra v7.2.1 con la métrica dual.
 6. ~~Grupo x~~ → **grupo i** (Dirección, Fase 6): registrar sin emitir. [P] Fuentes de holders con historia (RugCheck / GoPlus diarios por token) y el `scoring_version` `mc-i-0.1` en `script_116`.
+
+---
+
+## 8. Implementación (Fase 7)
+
+**Archivos**
+- `lib_scoring_multichain.py`: clasificación §2.2 y un scorer por tipo, cada uno devuelve `(score, reasons, confidence)` con confidence = cobertura. Funciones puras y sin red.
+- `script_114` v0.3 (mismo workflow horario): suma las velas diarias de Binance (400), Fear & Greed y el funding/OI de Hyperliquid para BTC/ETH/SOL, más `_protocols.json` con el TVL por protocolo de DefiLlama.
+- `script_97`: bloque multi-chain después de la ruta Solana, que no cambia.
+
+**Desvíos respecto de §4** [H]:
+- **Umbral:** 56 en todos los grupos (directiva Fase 7) en lugar de 65/70.
+- **h:** funding con umbral absoluto (≥ 30% anual → −1; ≤ −10% → +1) hasta tener historia; M = 1 porque DVOL no se colecta.
+- **c:** el crecimiento del TVL del protocolo reemplaza al de fees (fees por protocolo sin colectar).
+- **e:** la actividad del token (vol/mcap contra la mediana de la categoría) es un proxy de ingresos de red.
+- **Bollinger:** squeeze y bandas sobre velas cerradas; el precio actual se compara contra esas bandas.
+
+**Emisión:** score ≥ 56, cobertura ≥ 0,6 y grupo emisor (a, c, e, f, g, h); b, d e i solo se registran.
+- **Topes:** 2 alertas por ciclo, 3 por grupo en 24 h, y el mismo activo de nuevo recién pasadas 48 h.
+- **Compra:**
+  - pools on-chain → guía de su chain;
+  - blue chips → Binance, Coinbase y Kraken;
+  - resto → exchanges que CoinGecko confirma para ese id (`coins/{id}/tickers`).
+
+  Sin ruta confirmada, el activo no se emite.
+- **Registro:** `02_Analisis/multichain/_scores.json` en cada ciclo.
+
+**Primera corrida sobre datos reales** (scan de producción del 01/10 16:39 UTC, v0.2 todavía sin Universo A ni protocolos) [V]:
+
+| Grupo | Activos | Con cobertura ≥ 0,6 | Emitibles |
+|---|---|---|---|
+| e DePIN | 24 | 24 | 12 (PHA 88, JASMY 88, TRAC 85…) |
+| f L1/L2 | 44 | 4 (tokens nativos con ficha) | 1 (MON 64; ARB 46, OP 46, BLAST 27) |
+| c gobernanza | 19 | 0 (falta `_protocols.json`, llega con v0.3) | 0 |
+| g RWA | 25 (13 estables filtrados) | 0 (ídem) | 0 |
+| h blue chips | 3 | 0 (falta el Universo A, llega con v0.3) | 0 |
+| a memecoins multi-chain | 32 | 32 | 0 |
+| i establecidos | 88 | 0 | registro |
+| d sintéticos | 38 | 0 | registro |
