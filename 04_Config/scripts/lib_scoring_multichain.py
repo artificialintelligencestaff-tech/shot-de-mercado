@@ -592,6 +592,8 @@ def evaluate_all(scan, cards=None, categories=None, protocols=None, memecoin_sco
     assets = build_assets(scan, cards, categories, protocols, now)
     peers = [c for c in (cards or {}).values()]
     eth = next((_f(a.get("change_7d")) for a in assets if a.get("cg_id") == "ethereum"), None)
+    if memecoin_scorer is None and any(classify(a)[0] == "a" for a in assets):
+        memecoin_scorer = load_memecoin_scorer()          # una sola carga de script_82 por corrida
     out = []
     for a in assets:
         try:
