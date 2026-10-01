@@ -6,7 +6,7 @@ import sys
 import time
 import requests
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 from pathlib import Path as _Path
@@ -677,6 +677,294 @@ def get_current_price(token):
         return float(price)
     return None
 
+# ---------------------------------------------------------------------------
+# Emisión multi-chain (Fase 7, doc 27). La ruta de memecoins Solana de arriba NO cambia: esto corre después,
+# con su propio tope por ciclo, y lee las salidas de script_114 (02_Analisis/multichain/).
+# ---------------------------------------------------------------------------
+MULTICHAIN_DIR = PROJECT_ROOT / "02_Analisis" / "multichain"
+MULTICHAIN_SCORES_FILE = MULTICHAIN_DIR / "_scores.json"
+DOSSIERS_MULTICHAIN_DIR = PROJECT_ROOT / "02_Analisis" / "dossiers" / "multichain"
+MULTICHAIN_MAX_AGE_MIN = 120          # el scanner corre cada 1 h: un scan de más de 2 h no se usa
+MULTICHAIN_MAX_PER_CYCLE = 2          # aparte de las 3 de Solana
+MULTICHAIN_MAX_PER_GROUP_24H = 3      # ningún grupo acapara la emisión
+MULTICHAIN_COOLDOWN_H = SIGNAL_WINDOW_H   # el mismo activo se puede volver a alertar pasada la ventana de 48 h
+CEX_BLUE_CHIPS = {"bitcoin": "BTC", "ethereum": "ETH", "solana": "SOL"}
+CEX_HOME = {"Binance": "https://www.binance.com", "Coinbase": "https://www.coinbase.com", "Kraken": "https://www.kraken.com"}
+CG_TICKERS_URL = "https://api.coingecko.com/api/v3/coins/{id}/tickers?exchange_ids=binance,gdax,kraken"
+GROUP_LABELS = {"a": "memecoin multi-chain", "b": "preventa", "c": "gobernanza DeFi", "d": "sintéticos",
+                "e": "DePIN", "f": "L1/L2", "g": "RWA", "h": "blue chip", "i": "establecido sin grupo"}
+
+
+def _load_lib_scoring():
+    """lib_scoring_multichain, cargada recién al emitir multi-chain (vive al lado de este script)."""
+    here = str(_Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import lib_scoring_multichain   # noqa: E402
+    return lib_scoring_multichain
+
+
+def _read_json_file(path, default=None):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+def load_multichain_inputs(now=None, max_age_min=MULTICHAIN_MAX_AGE_MIN):
+    """(scan, cards, categories, protocols) del último scan, o None si falta o tiene más de `max_age_min`."""
+    now = now or datetime.now(timezone.utc)
+    scan = _read_json_file(MULTICHAIN_DIR / "scan_latest.json")
+    if not isinstance(scan, dict):
+        return None
+    try:
+        at = datetime.fromisoformat(str(scan.get("generated_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if (now - at).total_seconds() / 60 > max_age_min:
+        return None
+    cards = {}
+    for path in MULTICHAIN_DIR.glob("*.json"):
+        if not path.name.startswith(("_", "scan_")):
+            card = _read_json_file(path)
+            if isinstance(card, dict):
+                cards[path.stem] = card
+    return scan, cards, _read_json_file(MULTICHAIN_DIR / "_categories.json"), _read_json_file(MULTICHAIN_DIR / "_protocols.json")
+
+
+def multichain_results(now=None, memecoin_scorer=None):
+    """Puntúa todos los activos del último scan (lib_scoring_multichain) y deja el registro en _scores.json."""
+    now = now or datetime.now(timezone.utc)
+    inputs = load_multichain_inputs(now)
+    if inputs is None:
+        return None
+    lib = _load_lib_scoring()
+    results = lib.evaluate_all(*inputs, memecoin_scorer=memecoin_scorer, now=now)
+    write_json_atomic(str(MULTICHAIN_SCORES_FILE), {
+        "generated_at": now.isoformat(timespec="seconds"), "scan_generated_at": inputs[0].get("generated_at"),
+        "lib_version": lib.VERSION, "min_coverage": lib.MIN_COVERAGE, "thresholds": lib.EMIT_THRESHOLD,
+        "register_only": lib.REGISTER_ONLY, "coverage_by_group": lib.coverage_by_group(results),
+        "results": [{k: r.get(k) for k in ("key", "group", "symbol", "chain", "score", "confidence", "emittable",
+                                           "status_reason", "scoring_version")} for r in results]})
+    return results
+
+
+def _alert_time(alert):
+    try:
+        return datetime.strptime(str(alert.get("timestamp")), "%Y-%m-%d_%H%M%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def select_multichain(results, all_alerts, now=None, per_cycle=MULTICHAIN_MAX_PER_CYCLE,
+                      per_group_24h=MULTICHAIN_MAX_PER_GROUP_24H, cooldown_h=MULTICHAIN_COOLDOWN_H):
+    """Emitibles por score, sin repetir un activo dentro de su ventana y con tope por grupo en 24 h."""
+    now = now or datetime.now(timezone.utc)
+    recent_keys, group_count = set(), {}
+    for a in all_alerts:
+        t = _alert_time(a) if isinstance(a, dict) and a.get("multichain") else None
+        if t is None:
+            continue
+        if now - t < timedelta(hours=cooldown_h):
+            recent_keys.add(a.get("asset_key") or a.get("mint"))
+        if now - t < timedelta(hours=24):
+            group_count[a.get("group")] = group_count.get(a.get("group"), 0) + 1
+    out, skipped = [], {"cooldown": 0, "group_cap": 0}
+    for r in results or []:
+        if not r.get("emittable"):
+            continue
+        if r["key"] in recent_keys:
+            skipped["cooldown"] += 1
+            continue
+        if group_count.get(r["group"], 0) >= per_group_24h:
+            skipped["group_cap"] += 1
+            continue
+        out.append(r)
+        group_count[r["group"]] = group_count.get(r["group"], 0) + 1
+        if len(out) >= per_cycle:
+            break
+    return out, skipped
+
+
+def cex_links_for(result, builder, fetch=None):
+    """Exchanges centralizados confirmados para el activo: blue chips directos; el resto, pares que CoinGecko
+    lista para ESE id (tickers de Binance, Coinbase y Kraken). Enlaces armados sin parámetros (sin referidos)."""
+    if builder is None:
+        return []
+    cg_id, sym = result.get("cg_id"), (result.get("symbol") or "").upper()
+    if cg_id in CEX_BLUE_CHIPS:
+        return [(name, builder.CEX_LINKS[name].format(base=sym, quote="USDT" if name == "Binance" else "USD"))
+                for name in ("Binance", "Coinbase", "Kraken")]
+    fetch = fetch or (lambda url: requests.get(url, timeout=15, headers={"Accept": "application/json"}))
+    try:
+        r = fetch(CG_TICKERS_URL.format(id=cg_id))
+        data = r.json() if r.status_code == 200 else None
+    except (requests.RequestException, ValueError):
+        data = None
+    parsed = builder.parse_coingecko_contract({"id": cg_id, "symbol": sym, "tickers": (data or {}).get("tickers")}) \
+        if isinstance(data, dict) else None
+    confirmed = (parsed or {}).get("cex") or {}
+    return [(name, builder.CEX_LINKS[name].format(base=pair[0], quote=pair[1]))
+            for name in ("Binance", "Coinbase", "Kraken") for pair in confirmed.get(name, [])[:1]]
+
+
+def multichain_token(result, detected_at):
+    """Activo on-chain (pool de GeckoTerminal) con la forma de un candidato de script_82: reusa el mensaje y la guía."""
+    created = result.get("pool_created_at")
+    try:
+        created_ms = int(datetime.fromisoformat(str(created).replace("Z", "+00:00")).timestamp() * 1000)
+    except ValueError:
+        created_ms = None
+    return {"source": "multichain", "chain": result["chain"],
+            "token": {"mint": result["address"], "symbol": result.get("symbol"), "name": result.get("name")},
+            "dexscreener": {"priceUsd": result.get("price_usd"), "liquidityUsd": result.get("liquidity_usd"),
+                            "volume24hUsd": result.get("volume_24h_usd"), "marketCapUsd": result.get("mcap_usd"),
+                            "priceChange24h": result.get("change_24h"), "pairCreatedAt": created_ms,
+                            "pairAddress": str(result.get("pool_address") or "").split("_", 1)[-1] or None},
+            "score": result["score"], "reasons": result.get("reasons") or [], "detected_at": detected_at,
+            "scoring_version": result["scoring_version"], "group": result["group"]}
+
+
+def cex_acquisition_lines(result, links):
+    """Pasos de compra por exchange centralizado (más la ruta on-chain de la red nativa en ETH y SOL)."""
+    sym = md(result.get("symbol") or "?")
+    cg = f"https://www.coingecko.com/en/coins/{result['cg_id']}" if result.get("cg_id") else "n/d"
+    exchanges = " · ".join(f"{n} ({u})" for n, u in links)
+    lines = [f"Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): {exchanges}",
+             "1. Abrir cuenta en " + " o ".join(f"{n} ({CEX_HOME[n]})" for n, _ in links),
+             "2. Depositar USDT o USD (transferencia, tarjeta o envío desde otra wallet)",
+             f"3. Abrir el par: {links[0][1]}",
+             f"4. Verificar que el activo es {md(result.get('name') or sym)} ({sym}): {cg}",
+             "5. Elegir orden de mercado (ejecución inmediata) o límite (precio fijado)",
+             "6. Ejecutar la compra",
+             "7. Confirmar la operación en el historial de órdenes"]
+    guide = guide_for(result.get("chain")) if result.get("cg_id") in CEX_BLUE_CHIPS else None
+    if guide:
+        w = " o ".join(f"{n} ({u})" for n, u in guide["wallets"][:2])
+        d = " · ".join(f"{n} ({u})" for n, u in guide["dexes"][:2])
+        lines.append(f"8. Opcional, custodia propia: retirar a una wallet de {CHAIN_LABELS.get(result['chain'])}: {w}. "
+                     f"Ruta on-chain alternativa: fondear la wallet y comprar en {d}")
+    else:
+        lines.append("8. Opcional, custodia propia: retirar a una wallet compatible con la red del activo")
+    return lines
+
+
+def format_multichain_message(result, links, detected_at):
+    """Alerta de un activo sin contrato único (blue chips y tokens de CoinGecko): mismo orden de bloques, 🛒 primero."""
+    sym = md(result.get("symbol") or "?")
+    group = result["group"]
+    comps = [c for c in result.get("components") or [] if c.get("s") is not None]
+    comps.sort(key=lambda c: -abs(c["w"] * c["s"]))
+    reasons = "".join(f"• {md(c['name'])}: {md(c['value'])} (s {c['s']:+.2f}, w {c['w']})\n" for c in comps[:4]) or "• n/d\n"
+    extra = result.get("extra") or {}
+    barrier = (f"• Barreras de la métrica (±2σ₄₈ del GARCH): ±{extra['barrier_pct']:.2f}%\n"
+               if extra.get("barrier_pct") is not None else "")
+
+    def usd(x, fmt=",.0f"):
+        return "n/d" if x is None else "$" + format(x, fmt)
+
+    def pct(x):
+        return "n/d" if x is None else f"{x:+.2f}%"
+    steps = "\n".join(cex_acquisition_lines(result, links))
+    return (f"🚨 *SHOT DE MERCADO* — {sym} ({GROUP_LABELS.get(group, group)})\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🪪 *ACTIVO*\n• Nombre: {md(result.get('name') or 'n/d')} ({sym})\n"
+            f"• Grupo: {group} — {GROUP_LABELS.get(group, group)} ({md(result.get('group_rule') or '')})\n"
+            f"• Chain: {CHAIN_LABELS.get(result.get('chain'), result.get('chain') or 'multi-chain')}\n"
+            f"• CoinGecko: {result.get('cg_id') or 'n/d'}\n\n"
+            f"🛒 *CÓMO ADQUIRIRLO*\n{steps}\n\n"
+            f"🕒 *DETECCIÓN*\n• Detectado: {detected_at}\n• Ventana operativa: < {SIGNAL_WINDOW_H} h desde la detección\n\n"
+            f"🎯 *PROBABILIDADES*: en validación para el grupo {group} (scoring {result['scoring_version']})\n"
+            f"• Evento medido: {result.get('event')}\n{barrier}\n"
+            f"📊 *DATOS (CoinGecko, al detectar)*\n• Precio: {usd(result.get('price_usd'), ',.8g')}\n"
+            f"• MCap: {usd(result.get('mcap_usd'))}\n• Volumen 24h: {usd(result.get('volume_24h_usd'))}\n"
+            f"• Cambio 24h / 7d: {pct(result.get('change_24h'))} / {pct(result.get('change_7d'))}\n\n"
+            f"🔎 *POR QUÉ LO DETECTAMOS* (score {result['score']}, cobertura {result['confidence']:.2f})\n{reasons}\n"
+            f"🔗 *FUENTES VERIFICABLES*\n• CoinGecko: https://www.coingecko.com/en/coins/{result.get('cg_id')}\n"
+            f"• Datos del scan: 02_Analisis/multichain/ (script_114)\n\n"
+            f"⏱️ *SEGUIMIENTO*\n• Ventana de {SIGNAL_WINDOW_H} h; el activo se puede volver a alertar al cerrarla\n")
+
+
+def _plain(text):
+    return re.sub(r"[*`]", "", re.sub(r"\\([_*`\[])", r"\1", text))
+
+
+def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memecoin_scorer=None, cex_fetch=None):
+    """Bloque multi-chain del ciclo. Mismo orden seguro que Solana: precio → registro persistido → dossier → envío."""
+    if os.getenv("MULTICHAIN_EMISSIONS", "true").strip().lower() not in TRUTHY:
+        print("[INFO] MULTICHAIN_EMISSIONS desactivado: no se emite multi-chain.")
+        return 0
+    now = now or datetime.now(timezone.utc)
+    try:
+        results = multichain_results(now, memecoin_scorer)
+    except Exception as e:      # el bloque multi-chain nunca tumba la ruta Solana ni el commit del ciclo
+        print(f"[WARN] Scoring multi-chain falló: {type(e).__name__}: {e}")
+        return 0
+    if results is None:
+        print(f"[INFO] Multi-chain: sin scan de los últimos {MULTICHAIN_MAX_AGE_MIN} min en {MULTICHAIN_DIR}.")
+        return 0
+    # Se eligen hasta el doble del tope: si uno no tiene ruta de compra confirmada, el cupo pasa al siguiente.
+    selected, skipped = select_multichain(results, all_alerts, now, per_cycle=2 * MULTICHAIN_MAX_PER_CYCLE)
+    emittable = sum(1 for r in results if r.get("emittable"))
+    print(f"[INFO] Multi-chain: {len(results)} activos puntuados · emitibles {emittable} · seleccionados "
+          f"{len(selected)} (en ventana: {skipped['cooldown']}, tope por grupo: {skipped['group_cap']})")
+    builder = load_dossier_builder() if selected else None
+    detected_at = now.strftime("%d/%m/%Y %H:%M UTC")
+    emitted = 0
+    for r in selected:
+        if emitted >= MULTICHAIN_MAX_PER_CYCLE:
+            break
+        onchain = bool(r.get("address"))
+        if onchain:
+            token = multichain_token(r, now.isoformat(timespec="seconds"))
+            if not acquisition_ready(token, r["address"]):
+                print(f"[SKIP] {r['symbol']} ({r['chain']}): sin guía de compra completa para la chain")
+                continue
+            msg, _ = format_alert_message(token, (), calibration if r["group"] == "a" else None)
+            snap, facts = market_snapshot(token), detection_facts(token)
+            acq = _plain(acquisition_block(r["address"], facts, snap)).splitlines()[1:]
+        else:
+            links = cex_links_for(r, builder, cex_fetch)
+            if not links:
+                print(f"[SKIP] {r['symbol']} ({r['key']}): sin exchange confirmado por CoinGecko (regla núcleo)")
+                continue
+            msg = format_multichain_message(r, links, detected_at)
+            acq = [_plain(x) for x in cex_acquisition_lines(r, links)]
+        price = r.get("price_usd")
+        if not price or price <= 0:
+            print(f"[SKIP] {r['symbol']} sin precio. No se emite.")
+            continue
+        # mint = contrato on-chain (script_98 consulta DexScreener con él); los activos CEX usan la clave cg:<id>
+        record = {"timestamp": timestamp, "mint": r["address"] if onchain else r["key"], "asset_key": r["key"],
+                  "symbol": r.get("symbol"), "score": r["score"],
+                  "confidence": int(round(100 * (r.get("confidence") or 0))), "initial_price": price,
+                  "status": ("shadow" if shadow else "active_tracking" if onchain else "active_tracking_cex"),
+                  "multichain": True, "group": r["group"], "scoring_version": r["scoring_version"],
+                  "chain": r.get("chain"), "coingecko_id": r.get("cg_id"), "trust_updates": []}
+        safe = re.sub(r"[^A-Za-z0-9]+", "_", r["key"])
+        with open(os.path.join(ALERTS_DIR, f"alert_{safe}_{timestamp}.json"), "w", encoding="utf-8") as f:
+            json.dump(r, f, indent=2, ensure_ascii=False)
+        all_alerts.append(record)
+        write_json_atomic(ALL_ALERTS_FILE, all_alerts)            # persistido ANTES de enviar
+        lib = _load_lib_scoring()
+        dossier_path = DOSSIERS_MULTICHAIN_DIR / r["group"] / f"{safe}.md"
+        dossier_path.parent.mkdir(parents=True, exist_ok=True)
+        dossier_path.write_text(lib.render_dossier(r, acq, detected_at, [f"CoinGecko / GeckoTerminal / DefiLlama vía script_114"]),
+                                encoding="utf-8")
+        record["dossier"] = dossier_path.relative_to(PROJECT_ROOT).as_posix()
+        name = f"dossier_{re.sub(r'[^A-Za-z0-9]+', '', str(r.get('symbol') or 'activo'))[:20]}_{safe[-8:]}.md"
+        if shadow:
+            record["telegram_sent"] = False
+        else:
+            record["telegram_sent"], record["dossier_sent"] = send_alert(msg, str(dossier_path), name)
+        write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+        print(f"[INFO] Multi-chain emitida: {r['symbol']} grupo {r['group']} score {r['score']} ({r['key']})")
+        emitted += 1
+        time.sleep(1)
+    return emitted
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if "--test-send" in argv:
@@ -803,6 +1091,9 @@ def main(argv=None):
         write_json_atomic(ALL_ALERTS_FILE, all_alerts)
         emitted_count += 1
         time.sleep(1) # rate limit telegram
+
+    # Multi-chain (Fase 7): después de la ruta Solana, con su propio tope y su propio registro.
+    emitted_count += emit_multichain(all_alerts, timestamp, shadow, calibration)
 
     # Feedback loop check (every 10 alerts). Nunca debe tumbar el step: si fallara después de
     # enviar, el commit del workflow se saltea y la alerta se reenvía en el ciclo siguiente.
