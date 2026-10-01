@@ -1,0 +1,77 @@
+name: probe_narrative_sources
+
+# Sonda manual de las fuentes de menciones del doc 26 (métrica de repetición) desde las IPs de Actions.
+# Solo GET de lectura a endpoints públicos (RSS, JSON públicos, vista web de canales públicos de Telegram),
+# sin secretos, sin cuentas ni cookies. No toca el pipeline ni ningún score.
+# Commitea únicamente 02_Analisis/diagnostics/narrative_sources_probe.json (y lo publica como artifact).
+
+on:
+  workflow_dispatch:
+    inputs:
+      quick:
+        description: "Un endpoint por familia (true/false)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ops-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Probe sources
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+          QUICK: ${{ inputs.quick }}
+        run: |
+          if [ "$QUICK" = "true" ]; then
+            python 04_Config/scripts/probe_narrative_sources.py --quick
+          else
+            python 04_Config/scripts/probe_narrative_sources.py
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: narrative-sources-probe
+          path: 02_Analisis/diagnostics/narrative_sources_probe.json
+          if-no-files-found: warn
+
+      - name: Commit report
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          git add -- 02_Analisis/diagnostics/narrative_sources_probe.json
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "probe_narrative_sources: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear narrative_sources_probe.json tras 4 intentos"
+          exit 1
