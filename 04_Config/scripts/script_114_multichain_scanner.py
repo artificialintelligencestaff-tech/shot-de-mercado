@@ -48,11 +48,18 @@ import requests
 
 ROOT = Path(os.environ.get("SHOT_ROOT") or Path(__file__).resolve().parents[2])
 OUT_FILE = ROOT / "02_Analisis" / "multichain" / "scan_latest.json"
-SCANNER_VERSION = "0.2"
+SCANNER_VERSION = "0.3"
 CG = "https://api.coingecko.com/api/v3"
 GT = "https://api.geckoterminal.com/api/v2"
 LL = "https://api.llama.fi"
-UA = {"User-Agent": "shot-de-mercado-scanner/0.2", "Accept": "application/json"}
+UA = {"User-Agent": "shot-de-mercado-scanner/0.3", "Accept": "application/json"}
+BINANCE = "https://data-api.binance.vision/api/v3"
+FNG = "https://api.alternative.me/fng/?limit=1"
+HYPERLIQUID = "https://api.hyperliquid.xyz/info"
+# Universo A (Fase 7): velas diarias para GARCH/ATR/Bollinger, Fear & Greed y funding de Hyperliquid (fallback
+# de Binance fapi, que suele dar 451 desde EE.UU., doc 23). Se guardan en las fichas de bitcoin/ethereum/solana.
+UNIVERSE_A = {"bitcoin": "BTC", "ethereum": "ETH", "solana": "SOL"}
+KLINES_LIMIT = 400
 
 # grupo -> (descripción, fuentes). Fuente = ("ids", "bitcoin,...") o ("category", "<id de CoinGecko>").
 GROUPS = {
@@ -100,10 +107,13 @@ DAY = 86400
 class Http:
     """GET JSON con espaciado por host y un reintento tras 429. Devuelve (status, data|None)."""
 
-    def __init__(self, intervals=None, retry_wait=30.0, sleep=time.sleep, clock=time.monotonic, get=None):
-        self.intervals = intervals or {"api.coingecko.com": 15.0, "api.geckoterminal.com": 6.5, "api.llama.fi": 1.0}
+    def __init__(self, intervals=None, retry_wait=30.0, sleep=time.sleep, clock=time.monotonic, get=None, post=None):
+        self.intervals = intervals or {"api.coingecko.com": 15.0, "api.geckoterminal.com": 6.5, "api.llama.fi": 1.0,
+                                       "data-api.binance.vision": 1.0, "api.alternative.me": 1.0,
+                                       "api.hyperliquid.xyz": 1.0}
         self.retry_wait, self.sleep, self.clock = retry_wait, sleep, clock
         self.get = get or (lambda url: requests.get(url, headers=UA, timeout=25))
+        self.post = post or (lambda url, payload: requests.post(url, json=payload, headers=UA, timeout=25))
         self.last, self.calls = {}, 0
 
     def _pace(self, host):
@@ -112,13 +122,14 @@ class Http:
             self.sleep(wait)
         self.last[host] = self.clock()
 
-    def get_json(self, url):
+    def get_json(self, url, payload=None):
+        """GET (o POST JSON si hay `payload`, p. ej. la API `info` de Hyperliquid, que es solo lectura)."""
         host = url.split("/")[2]
         for attempt in range(2):
             self._pace(host)
             self.calls += 1
             try:
-                r = self.get(url)
+                r = self.get(url) if payload is None else self.post(url, payload)
             except requests.RequestException as e:
                 return f"error:{type(e).__name__}", None
             if r.status_code == 429 and attempt == 0:
@@ -144,7 +155,7 @@ def _f(x):
 def cg_item(x):
     return {"id": x.get("id"), "symbol": (x.get("symbol") or "").upper(), "name": x.get("name"),
             "price_usd": _f(x.get("current_price")), "mcap_usd": _f(x.get("market_cap")),
-            "volume_24h_usd": _f(x.get("total_volume")),
+            "fdv_usd": _f(x.get("fully_diluted_valuation")), "volume_24h_usd": _f(x.get("total_volume")),
             "change_1h": _f(x.get("price_change_percentage_1h_in_currency")),
             "change_24h": _f(x.get("price_change_percentage_24h_in_currency", x.get("price_change_percentage_24h"))),
             "change_7d": _f(x.get("price_change_percentage_7d_in_currency"))}
@@ -394,6 +405,56 @@ def build_chain_cards(http, report, now=None, chains=None):
 
 
 # ---------------------------------------------------------------------------
+# v0.3 — Universo A (blue chips) y TVL por protocolo (Fase 7: entradas del scoring multi-chain)
+# ---------------------------------------------------------------------------
+
+def universe_a(http, sources):
+    """Velas diarias de Binance (BTC/ETH/SOL), Fear & Greed y funding/OI de Hyperliquid. Lo que falla queda en None."""
+    out = {"klines_1d": {}, "fear_greed": None, "perps": {}}
+    for chain, sym in UNIVERSE_A.items():
+        status, data = http.get_json(f"{BINANCE}/klines?symbol={sym}USDT&interval=1d&limit={KLINES_LIMIT}")
+        sources.append({"source": f"binance:klines/{sym}USDT", "status": status})
+        rows = []
+        for k in data if status == 200 and isinstance(data, list) else []:
+            try:
+                rows.append([int(k[0]), float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5]), int(k[6])])
+            except (TypeError, ValueError, IndexError):
+                continue
+        out["klines_1d"][sym] = rows or None
+    status, data = http.get_json(FNG)
+    sources.append({"source": "alternative.me:fng", "status": status})
+    row = ((data or {}).get("data") or [None])[0] if isinstance(data, dict) else None
+    if isinstance(row, dict) and _f(row.get("value")) is not None:
+        out["fear_greed"] = {"value": _f(row.get("value")), "label": row.get("value_classification"),
+                             "timestamp": row.get("timestamp")}
+    status, data = http.get_json(HYPERLIQUID, {"type": "metaAndAssetCtxs"})
+    sources.append({"source": "hyperliquid:metaAndAssetCtxs", "status": status})
+    if status == 200 and isinstance(data, list) and len(data) == 2:
+        names = [u.get("name") for u in (data[0] or {}).get("universe") or []]
+        for name, ctx in zip(names, data[1] or []):
+            if name in UNIVERSE_A.values() and isinstance(ctx, dict):
+                out["perps"][name] = {"funding_1h": _f(ctx.get("funding")), "open_interest": _f(ctx.get("openInterest")),
+                                      "premium": _f(ctx.get("premium")), "mark_px": _f(ctx.get("markPx")),
+                                      "oracle_px": _f(ctx.get("oraclePx"))}
+    return out
+
+
+def protocols_index(http, report, sources):
+    """DefiLlama /protocols filtrado a los gecko_id que trajo scan(): TVL y cambios por protocolo (c, e, g, i)."""
+    ids = {i.get("id") for e in (report.get("groups") or {}).values() for i in e.get("items") or [] if i.get("id")}
+    status, data = http.get_json(f"{LL}/protocols")
+    sources.append({"source": "defillama:/protocols", "status": status})
+    out = {}
+    for p in data if status == 200 and isinstance(data, list) else []:
+        gid = p.get("gecko_id") if isinstance(p, dict) else None
+        if gid in ids and (gid not in out or (_f(p.get("tvl")) or 0) > (out[gid]["tvl"] or 0)):
+            out[gid] = {"name": p.get("name"), "category": p.get("category"), "tvl": _f(p.get("tvl")),
+                        "change_1d": _f(p.get("change_1d")), "change_7d": _f(p.get("change_7d")),
+                        "mcap": _f(p.get("mcap")), "chains": (p.get("chains") or [])[:10]}
+    return out
+
+
+# ---------------------------------------------------------------------------
 # v0.2 — resumen de categorías
 # ---------------------------------------------------------------------------
 
@@ -477,8 +538,8 @@ def _write_atomic(path, data):
     os.replace(tmp, path)
 
 
-def write_outputs(out_file, report, out_dir=None, cards=None, categories=None, calls=None):
-    """scan_latest.json (esquema v0.1) + fichas, _categories.json y una línea en _history.jsonl."""
+def write_outputs(out_file, report, out_dir=None, cards=None, categories=None, calls=None, protocols=None):
+    """scan_latest.json (esquema v0.1) + fichas, _categories.json, _protocols.json y una línea en _history.jsonl."""
     _write_atomic(out_file, report)
     written = [Path(out_file)]
     if cards is None and categories is None:
@@ -490,6 +551,9 @@ def write_outputs(out_file, report, out_dir=None, cards=None, categories=None, c
     if categories is not None:
         _write_atomic(out_dir / "_categories.json", categories)
         written.append(out_dir / "_categories.json")
+    if protocols is not None:
+        _write_atomic(out_dir / "_protocols.json", protocols)
+        written.append(out_dir / "_protocols.json")
     line = json.dumps(history_line(report, cards, categories, calls if calls is not None else report.get("calls")),
                       ensure_ascii=False, separators=(",", ":"))
     with open(out_dir / "_history.jsonl", "a", encoding="utf-8") as f:
@@ -523,10 +587,18 @@ def main(argv=None, http=None):
     print(f"[114] ítems por fuente: {counts} · llamadas: {report['calls']} · errores: {len(report['errors'])}")
     for a in report["accelerating"][:15]:
         print(f"[114] ACEL {a['group']} {a.get('chain') or '-':<8} {a['symbol']:<10} {'; '.join(a['reasons'])}")
-    cards = categories = None
+    cards = categories = protocols = None
     if not args.no_cards:
         cards, _ = build_chain_cards(http, report, chains=chains)
         categories = build_categories(http, report)
+        ua_sources, proto_sources = [], []
+        ua = universe_a(http, ua_sources)
+        for chain, sym in UNIVERSE_A.items():
+            if chain in cards:
+                cards[chain]["universe_a"] = {"klines_1d": ua["klines_1d"].get(sym), "fear_greed": ua["fear_greed"],
+                                              "perp": ua["perps"].get(sym), "sources": ua_sources}
+        protocols = {"generated_at": report["generated_at"], "sources": proto_sources,
+                     "protocols": protocols_index(http, report, proto_sources)}
         for chain, c in cards.items():
             tvl, nt = c.get("tvl") or {}, c.get("native_token") or {}
             print(f"[114] {chain:<9} TVL {tvl.get('tvl_usd')} ({tvl.get('change_7d_pct')} % 7d) · "
@@ -538,7 +610,7 @@ def main(argv=None, http=None):
                   f"amplitud {v['sample']['breadth_24h']}")
     print(f"[114] llamadas totales: {http.calls}")
     if not args.dry_run:
-        for path in write_outputs(args.out, report, args.out_dir, cards, categories, http.calls):
+        for path in write_outputs(args.out, report, args.out_dir, cards, categories, http.calls, protocols):
             print(f"[OK] {path}")
     return 0
 
