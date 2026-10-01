@@ -61,7 +61,6 @@ El proyecto informa y el usuario decide. Toda alerta de cualquier grupo lleva pr
 | 6 | Categoría CoinGecko `layer-1` / `layer-2`, o token nativo de una chain de `script_114` | f | ídem + `CHAINS` de T2 |
 | 7 | Categoría CoinGecko `governance`, o protocolo DefiLlama con `gecko_id` (DEX, lending, yield) | c | ídem |
 | 8 | **Memecoin nueva:** lanzada en un launchpad (pump.fun) **y** par < 7 días, **o** categoría CoinGecko `meme-token` con mcap < $50 M | a | detector + DexScreener `pairCreatedAt` |
-<<<<<<< HEAD
 | 9 | Ninguna de las anteriores y **par creado hace > 180 días** | **i (establecido sin grupo)** | DexScreener `pairCreatedAt` |
 | 10 | Resto | a | por defecto, como hoy |
 
@@ -249,7 +248,6 @@ M = clip(1 + (DVOL − RV₃₀)/40, 0,5, 1,5)        DVOL y RV₃₀ en puntos 
 
 ---
 
-<<<<<<< HEAD
 ### 4.10 i — Establecidos sin grupo (Dirección, Fase 6)
 
 **Definición:** par creado hace **> 180 días** que no clasifica en a–h (§2.2, regla 9).
@@ -283,9 +281,6 @@ score_i = clip(50 + 50·D, 0, 100) − 10·[edad del par > 365 días]      (cobe
 2. Mapeo `gecko_id` → protocolo de DefiLlama.
 3. Medición en sombra con el evento de f (+20% antes de −15% en 48 h).
 4. Decisión de Dirección.
-
-=======
->>>>>>> 784b4ec (docs: 27 — scoring por tipo de activo (diseño multi-chain, grupos a–h))
 ## 5. Cómo integrar al pipeline multi-chain (diseño)
 
 ### 5.1 Flujo
