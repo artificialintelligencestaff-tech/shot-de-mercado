@@ -122,9 +122,12 @@ def select_candidates(accumulated, all_alerts, min_score=EMIT_MIN_SCORE, max_age
     now = time.time() if now is None else now
     candidates, seen = [], set()
     stats = {"already_alerted": 0, "intra_cycle_duplicates": [], "stale_or_undated": 0,
-             "too_young_or_unknown_age": []}
+             "too_young_or_unknown_age": [], "group_i_registered": 0}
     for mint, token in accumulated.items():
         if token.get("score", 0) < min_score:
+            continue
+        if token.get("group") == "i":          # Fase 8: establecido sin grupo (par > 180 días): registro, no emisión
+            stats["group_i_registered"] += 1
             continue
         if max_age_min is not None and not is_fresh(token, now, max_age_min):
             stats["stale_or_undated"] += 1
@@ -1027,7 +1030,8 @@ def main(argv=None):
     print(f"[INFO] Candidatos con score >= {EMIT_MIN_SCORE} pendientes de emitir: {len(candidates)} "
           f"(ya alertados y omitidos: {stats['already_alerted']}; "
           f"sin scoring en los últimos {CANDIDATE_MAX_AGE_MIN} min: {stats['stale_or_undated']}; "
-          f"edad < {EMIT_MIN_AGE_MIN} min o desconocida: {len(stats['too_young_or_unknown_age'])})")
+          f"edad < {EMIT_MIN_AGE_MIN} min o desconocida: {len(stats['too_young_or_unknown_age'])}; "
+          f"grupo i registrados: {stats['group_i_registered']})")
     for skip in stats["too_young_or_unknown_age"][:5]:
         print(f"[SKIP] {skip['mint'][:10]}... {skip['reason']} (edad: {skip['age_min']})")
     print(f"[INFO] Emitiendo {len(to_emit)} alertas en este ciclo.")
