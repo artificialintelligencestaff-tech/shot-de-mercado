@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO (no implementado)
+status: DISEÑO + IMPLEMENTADO en script_113 v1.0 (sin enganchar al pipeline ni al envío)
 last_updated: 2026-10-01
-version: 1.1
+version: 1.2
 ---
 
 # 24 — Dossier por activo (diseño) + integración multi-chain
@@ -18,8 +18,8 @@ Que cada alerta llegue con un documento que, **antes que nada, enseñe cómo adq
 **Regla núcleo (Dirección, 01/10):** la adquisición es el núcleo del producto y es lo primero que se ve, en el dossier y en la alerta. **Si el bloque de compra no está completo para la chain del activo, ni la alerta ni el dossier se emiten.**
 
 **Formato de entrega**
-- Archivo Markdown, uno por alerta: `02_Analisis/dossiers/dossier_<SYMBOL>_<mint8>_<YYYY-mm-dd_HHMMSS>.md`.
-- Va adjunto con `sendDocument` al grupo (`TELEGRAM_PUBLIC_CHAT_ID`), con un caption de ≤ 1024 caracteres: nombre, chain, wallet + DEX, slippage sugerido y ventana.
+- Archivo Markdown, uno por activo: `02_Analisis/dossiers/<chain>/<mint>.md`, más `<mint>.json` con el dict completo y sus datos de entrada (directiva Fase 3; reemplaza el nombre `dossier_<SYMBOL>_<mint8>_<ts>.md` de la v1.1). Lo genera `script_113` (§7).
+- [P] Va adjunto con `sendDocument` al grupo (`TELEGRAM_PUBLIC_CHAT_ID`), con un caption de ≤ 1024 caracteres: nombre, chain, wallet + DEX, slippage sugerido y ventana. Sin implementar: requiere enganchar `script_113` a `script_97` (workflow de producción, consultar antes).
 - Lo desconocido se escribe `n/d` con la fuente que lo resolvería. **Nunca** se rellena con valores por defecto.
 - Cada dato lleva su **fuente** y su **momento**: "al detectar" (archivo de detección) o "consulta del <fecha>" (dato actual).
 
@@ -368,9 +368,9 @@ Fuentes: doc 19 §4.2 y doc 21.
   | t+24h | $0,4448 | +158,45% | `final_verdict` NEUTRAL |
 
 - **Consulta del 01/10 (~31,5 h):** $0,5401 (+213,8%).
-- **Métrica dual de VSOF:**
-  - Primaria: [P] las fotos muestran que superó +20%, pero sin velas no se puede descartar una caída a −30% intermedia.
-  - Secundaria: [P] se resuelve después de las 17:13 UTC del 01/10.
+- **Métrica dual de VSOF** (velas de 15 min de GeckoTerminal, entrada $0,1721 a las 17:08 UTC del 29/09, consulta del 01/10 02:46 UTC, `script_113`):
+  - Primaria: **se cumplió** [V]. Tocó +20% a las 3,86 h; antes, el mínimo fue −0,9% (nunca se acercó a −30%). 135 velas, 0 ambiguas.
+  - Secundaria: [P] se resuelve a las 17:08 UTC del 01/10 (48 h desde la detección).
 - **Velocidad de la aceleración:** m5 / h1 `n/d` (no se guardaban en esa versión).
 
 ### 📚 4.7 Fuentes y trazabilidad
@@ -540,3 +540,41 @@ Filtros de emisión (`script_97`):
 - edad del par ≥ 30 min (edad desconocida = no emite);
 - **guía de compra completa para la chain**;
 - dedup por mint.
+
+---
+
+## 7. Implementación — `script_113_dossier_builder.py` (v1.0)
+
+**Funciones** (`04_Config/scripts/script_113_dossier_builder.py`):
+
+| Función | Qué hace |
+|---|---|
+| `load_alert_data(mint, chain)` | Junta el registro exacto de la alerta (`alerts/alert_<mint>_<ts>.json`; si no hay, el del acumulado), la entrada de `_all_alerts.json`, las señales on-chain (`signals/[<chain>/]<mint>.json`), las trazas git, la población del scorer, la calibración y la sombra |
+| `fetch_live(mint, chain, …)` | DexScreener, RugCheck (Solana), GoPlus (Solana y EVM), GeckoTerminal (velas de 1 h y de 15 min). Cada llamada queda registrada con URL, estado y momento |
+| `build_dossier(mint, chain, alert_data, live=None, now=None)` | Dict con la portada y las 7 secciones, más `missing` y `emitible` (checklist del Anexo A) |
+| `render_markdown(dossier)` | Markdown con 🛒 primero |
+| `save_dossier(dossier, path=None)` | `02_Analisis/dossiers/<chain>/<mint>.md` + `.json`. Si no es emitible, no escribe nada |
+| `generate_pdf(dossier)` | [P] No hay librería liviana instalada y no se agregan dependencias sin verificar su supply chain |
+
+**Uso:** `--dry-run` (VSOF con datos fijos, sin red) · `--mint <MINT> [--chain] [--offline] [--stdout] [--out]`.
+
+**Reutiliza, sin duplicar definiciones:**
+- de `script_97`: guías de compra, slippage, impacto, exploradores;
+- de `calibrate_threshold_v72`: métrica dual, Wilson, velas de 15 min y carga del scorer.
+
+**Agregados al diseño (precisión del método):**
+- **Desglose verificado contra el scorer.** Se reconstruye desde los motivos registrados (sin reloj ni estado) y solo se publica si la suma coincide con el score guardado. Un test lo compara con `script_82.score_token` en 400 casos sintéticos.
+- **Recálculo con el scorer vigente**, con el reloj fijado en la detección. VSOF: 95 → 45 [V].
+- **Métrica dual del activo** con las mismas velas y reglas que la calibración, más el **tiempo hasta +20%**. Resuelve el [P] de §4.6.
+- **Tamaño de orden con prima 1% / 3%**: Δ = x·L/2. Es la capacidad del pool, al lado de los impactos de $100, $1.000 y $10.000.
+- **Holders efectivos del top-10**: (Σp)²/Σp², la inversa del Herfindahl. VSOF: 10,0 (diez holders de ~1% cada uno).
+- **Percentil del score en la población** del scorer vigente (`_accumulated.json`). VSOF: 3 de 2.802 tokens quedan ≥ 56 (0,11%) [V].
+- **Consistencia entre fuentes**: diferencia relativa de la liquidez entre DexScreener y RugCheck y del precio entre DexScreener y GeckoTerminal. VSOF: 0,09% y 0,09%.
+- **Huella SHA-256** de los datos de entrada: el `.json` contiene `inputs` y cualquiera puede verificar que el dossier salió de esos datos.
+- **Blob con `git hash-object`**: coincide con `git ls-tree` aunque el checkout use CRLF (autocrlf en Windows).
+
+**Límites:**
+- No está enganchado al pipeline ni a `sendDocument`. Engancharlo toca un workflow de producción: consultar antes.
+- Categoría y narrativa: `n/d` [P]. CoinGecko `coins/{id}` necesita resolver el id del contrato.
+- Jupiter en vivo no se consulta: `lite-api.jup.ag` está prohibido y `api.jup.ag` requiere key [I]. Se usa el archivo de señales del repo si existe.
+- Los registros de alerta sin `scoring_version` (21 de las 35 de `_all_alerts.json` [V]) se rotulan `7.2-preR1` (convención de `monitor_shadow`).
