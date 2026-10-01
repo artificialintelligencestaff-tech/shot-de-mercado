@@ -20,7 +20,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 | Componente | Estado | Rótulo |
 |---|---|---|
 | Emisión | **Emisiones reales activas desde `6ff13c5`** (01/10 03:48 UTC): `SHADOW_MODE: "false"` en `pipeline_t0.yml`, destino **grupo privado** "La mano de Dios". Decisión de Dirección. Desde entonces `script_97` registró **2 alertas `active_tracking`**: DEGEN (`4vEX32…pump`, 04:12 UTC, score 100) y arc (`61V8vB…pump`, 08:40 UTC, score 72, con dossier). | [V] |
-| Entrega a Telegram | **Resuelta** (Dirección, 01/10 15:32 UTC): el grupo había migrado a supergrupo y los envíos daban 400. Secrets actualizados y `telegram_test_send` OK [reportado]. Detalle en §1.2. DEGEN y arc quedaron sin entregar. | [V] log · [reportado] fix |
+|| Entrega a Telegram | **Resuelta** (Dirección, 01/10 15:32 UTC): el grupo había migrado a supergrupo y los envíos daban 400. Secrets actualizados y `telegram_test_send` OK [reportado]. Detalle en §1.2. DEGEN y arc quedaron sin entregar. | [V] log · [reportado] fix |
 | Scorer | **v7.2.1** en main desde 2026-09-30 (`SCORING_VERSION = "7.2.1"`, `ACCEL_GATE_MIN_AGE = 60`). Cada token lleva `detected_at` y `scoring_version`. 1.ª corrida de producción (`detection_2026-09-30_055022`): 35/35 tokens con 7.2.1, **≥ 56: 2/35** (vs 19/29 y 23/33 en las dos corridas v7.2 previas). | [V] |
 | Filtros de emisión (script_97) | umbral `EMIT_MIN_SCORE = 56` · frescura R1 `CANDIDATE_MAX_AGE_MIN = 60` · **edad mínima del par `EMIT_MIN_AGE_MIN = 30`** (edad desconocida → no emite) · dedup PARASITE. | [V] |
 | Plantilla Telegram | **Framing neutral** (`c727ece`, Dirección): el proyecto informa con datos y método; **no juzga, no advierte, no disuade: el usuario decide**. Sin "ADVERTENCIA", sin "plan sugerido", sin "no invertir más de…". Bloques: 🪪 ACTIVO (nombre, chain, mint, creador) · **🛒 CÓMO ADQUIRIRLO primero** (guía por chain: wallets, fondeo, DEX + alternativas, 8 pasos, slippage por liquidez + impacto, verificación; **chain sin guía o sin mint = no se emite**, `acquisition_ready`; `7d77b72`, en main, commit y push de YIN) · 🕒 DETECCIÓN (hora, edad del par, creación del par, ventana < 48 h) · 🎯 PROBABILIDADES (primaria, secundaria y "después de tocar +20%, llegar a ≤ −99%" como **métrica**, no advertencia; "en validación" hasta `validated: true`) · 📊 DATOS · 🔎 motivos · 🔗 FUENTES VERIFICABLES (Solscan, DexScreener, pump.fun) · seguimiento. "n/d" para lo desconocido; Markdown de datos externos escapado (T4 `06fedff`). | [V] |
@@ -50,7 +50,6 @@ Corrección de Dirección (01/10): el destino es el **grupo privado**, así que 
 - Tests 100%.
 - **Si la primaria da < 20%** → relajar el gate a 30 min (no a 0).
 - El veredicto lo avisa `monitor_shadow_bot` una sola vez (clave `verdicts["shadow_verdict:7.2.1"]` en `_cycle_log.json`).
-
 
 ### 1.2 Incidente 01/10 — Migración del grupo a supergrupo
 
@@ -222,7 +221,7 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | Integración multi-chain: diseño en el doc 24 Anexo B (workflow propio, `script_115`, acumulado separado, `script_97` con dos fuentes, veredicto por grupo). Sin implementar. | doc 24 | P2 |
 | El scanner multi-chain v0 no corre solo: engancharlo a un workflow requiere consulta. El grupo b (preventa) no tiene fuente gratuita en CoinGecko. | T5 | P2 |
 | ~~`script_113` no está enganchado~~ **En main** (`15e9d1a`). Primer dossier real generado (arc, 08:40 UTC); la entrega quedó bloqueada por la migración a supergrupo (ver la fila siguiente). | Fase 3 | — |
-| ~~**Grupo migrado a supergrupo**~~ **Resuelta** (Dirección, 01/10 15:32 UTC; §1.2). Queda la prevención: el health check detecta el 400 de migración (`migrate_to_chat_id`). | Fase 5 | P2 (prevención) |
+|| ~~**Grupo migrado a supergrupo**~~ **Resuelta** (Dirección, 01/10 15:32 UTC; §1.2). Queda la prevención: el health check detecta el 400 de migración (`migrate_to_chat_id`). | Fase 5 | P2 (prevención) |
 | `script_97` no reintenta con `migrate_to_chat_id`: si el chat vuelve a migrar, las alertas se registran con `telegram_sent: false` y no se reenvían. Opción: el health check marca `telegram_sent: false` en alertas `active_tracking` recientes (invariante "emisión real = enviada"). | Fase 5 | P2 |
 | `bp_delta` inactivo en producción (ver §4): decidir si `script_82` persiste `buy_pressure` o se retira la componente. No tocado. | Fase 3 | P2 |
 | La batería con `python -m unittest discover` falla `test_lib_narrative.test_demo_dry_run_three_chains`: `test_bots.py` y `test_script_114_scanner.py` fijan `SHOT_ROOT` al importarse y el demo lee el registro de narrativas desde ese tmp. Preexistente (falla igual en HEAD sin cambios). Por archivo pasa 193/193. | Fase 3 | P3 |
