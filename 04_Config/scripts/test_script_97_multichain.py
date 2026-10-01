@@ -236,5 +236,25 @@ class MultichainEmision(unittest.TestCase):
         self.assertEqual(n, m.MULTICHAIN_MAX_PER_CYCLE)
         self.assertEqual([a["asset_key"] for a in self.alerts()], [evms[0]["key"], evms[1]["key"]])
 
+    def test_grupo_d_con_perps_de_hyperliquid_se_emite(self):
+        item = {"id": "hyperliquid", "symbol": "HYPE", "name": "Hyperliquid", "price_usd": 40.0, "mcap_usd": 1.3e10,
+                "fdv_usd": 1.3e10, "volume_24h_usd": 5e8, "change_24h": 12.0, "change_7d": 30.0,
+                "source": "decentralized-perpetuals"}
+        scan = dict(gov_scan(), groups={"d": {"items": [item]}})
+        (self.mc / "scan_latest.json").write_text(json.dumps(scan), encoding="utf-8")
+        t0, t1 = (NOW - timedelta(hours=24)).isoformat(), NOW.isoformat()
+        (self.mc / "_perps.json").write_text(json.dumps({"perps": {"HYPE": {
+            "funding_1h": -0.00002, "mark_px": 40.2, "oracle_px": 40.0}}, "oi_history": {"HYPE": [[t0, 100.0], [t1, 160.0]]}}),
+            encoding="utf-8")
+        self.tickers = Resp(200, {"tickers": [{"base": "HYPE", "target": "USDT", "market": {"identifier": "binance"}}]})
+        m = self.load()
+        m.main([])
+        rec = [a for a in self.alerts() if a.get("multichain")]
+        self.assertEqual([(r["asset_key"], r["group"], r["status"]) for r in rec],
+                         [("cg:hyperliquid", "d", "active_tracking_cex")])
+        self.assertIn("HYPE_USDT", self.posts[0]["data"]["caption"])
+        scores = json.loads((self.mc / "_scores.json").read_text(encoding="utf-8"))
+        self.assertEqual(scores["coverage_by_group"]["d"]["emittable"], 1)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -12,20 +12,21 @@ Cada scorer público devuelve (score, reasons, confidence), con confidence = cob
 detalle (componentes, versión, evento, si es emitible).
 
 Grupos: a memecoins · b preventa · c gobernanza · d sintéticos · e DePIN · f L1/L2 · g RWA · h blue chips ·
-i establecidos sin grupo. Emiten (si score >= umbral y cobertura >= 0,6): a, c, e, f, g, h. Solo registran: b, d, i
-(i por decisión de Dirección; b y d porque hoy no hay datos para la cobertura mínima).
+i establecidos sin grupo. Emiten (si score >= umbral y cobertura >= 0,6): a, c, d, e, f, g, h. Solo registran: b, i
+(i por decisión de Dirección; b porque antes del listing no hay ruta de compra).
 Todas las escalas, pesos y umbrales son HEURÍSTICOS, NO CALIBRADOS (doc 27).
 """
 import math
 import statistics
 from datetime import datetime, timezone
 
-EMIT_THRESHOLD = {g: 56 for g in "acefgh"}      # inicial 56 (directiva Fase 7), ajustable por grupo
+EMIT_THRESHOLD = {g: 56 for g in "acdefgh"}     # inicial 56 (directiva Fase 7), ajustable por grupo
 MIN_COVERAGE = 0.6
-REGISTER_ONLY = {"b": "preventa: sin fuente de precio previo ni calendario conectado",
-                 "d": "sintéticos: funding/OI/basis por token sin colectar",
+REGISTER_ONLY = {"b": "preventa: sin ruta de compra antes del listing",
                  "i": "establecidos sin grupo: se registran, no se emiten (Dirección, Fase 6)"}
-VERSION = "0.1"
+VERSION = "0.2"
+GOV_KEYWORDS = ("fee switch", "fee", "emission", "buyback", "burn", "tokenomics", "revenue", "reward", "inflation",
+                "staking")
 BLUE_CHIP_IDS = {"bitcoin": "BTC", "ethereum": "ETH", "solana": "SOL"}
 GT_TO_CHAIN = {"eth": "ethereum", "base": "base", "arbitrum": "arbitrum", "optimism": "optimism", "blast": "blast",
                "monad": "monad"}               # solana queda en la ruta rápida (script_82), no se duplica
@@ -251,19 +252,45 @@ def _vs_category(asset):
     return (None, None) if ch7 is None or med is None else ((ch7 - med) / 20, ch7 - med)
 
 
+def _fees_ratio(asset):
+    """ρ = (fees₇d·30/7)/fees₃₀d del protocolo (doc 27 §4.4): > 1 = fees acelerando."""
+    p = asset.get("protocol") or {}
+    f7, f30 = _f(p.get("fees_7d")), _f(p.get("fees_30d"))
+    return (f7 * 30 / 7) / f30 if f7 and f30 and f7 > 0 and f30 > 0 else None
+
+
+def _governance_event(asset):
+    """+1 si una propuesta activa de su espacio de Snapshot cierra en <= 48 h y toca fees/emisiones/buyback; 0 si
+    no hay ninguna así; None si Snapshot no cargó."""
+    gov = asset.get("governance") or {}
+    if not gov.get("loaded"):
+        return None, None
+    hits = [p for p in gov.get("matches") or []
+            if p.get("hours_left") is not None and 0 < p["hours_left"] <= 48
+            and any(k in str(p.get("title") or "").lower() for k in GOV_KEYWORDS)]
+    if hits:
+        return 1.0, f"{hits[0]['title'][:60]} (cierra en {hits[0]['hours_left']:.0f} h)"
+    return 0.0, f"{len(gov.get('matches') or [])} propuestas activas, ninguna de fees/emisiones en 48 h"
+
+
 def components_governance(asset):
-    """c: TVL del protocolo [H: en lugar de fees, sin colectar], valuación mcap/TVL, evento de gobernanza (n/d),
+    """c: crecimiento de fees (o de TVL si no hay fees), valuación mcap/TVL, evento de gobernanza (Snapshot),
     dilución FDV/mcap y momentum contra la mediana de la categoría."""
     g7, tvl = _protocol_tvl_growth(asset)
+    rho = _fees_ratio(asset)
     mcap = _f(asset.get("mcap_usd"))
     dil, ratio = _dilution(asset)
     rel, diff = _vs_category(asset)
     val = math.log(mcap / tvl) if mcap and tvl else None
-    return [comp("Crecimiento de TVL del protocolo (7d) [H: sustituye fees]", None if g7 is None else g7 / 0.10, 25,
-                 None if g7 is None else f"{g7:+.4f}", "DefiLlama /protocols"),
+    ev, ev_text = _governance_event(asset)
+    growth = (comp("Crecimiento de fees (7d vs 30d)", math.log(rho) / 0.5, 25, f"ρ {rho:.2f}", "DefiLlama overview/fees")
+              if rho is not None else
+              comp("Crecimiento de TVL del protocolo (7d) [H: sin fees]", None if g7 is None else g7 / 0.10, 25,
+                   None if g7 is None else f"{g7:+.4f}", "DefiLlama /protocols"))
+    return [growth,
             comp("Valuación mcap/TVL", None if val is None else -val / math.log(4), 20,
                  None if val is None else f"{mcap / tvl:.2f}", "CoinGecko + DefiLlama"),
-            comp("Evento de gobernanza (Snapshot)", None, 20, None, "Snapshot (sin colectar)"),
+            comp("Evento de gobernanza (Snapshot)", ev, 20, ev_text, "Snapshot GraphQL"),
             comp("Dilución FDV/mcap", dil, 15, None if ratio is None else f"{ratio:.2f}", "CoinGecko"),
             comp("Momentum vs categoría (7d)", rel, 20, None if diff is None else f"{diff:+.2f} pp", "CoinGecko")], \
         1.0, 0.0, [], {}
@@ -277,8 +304,12 @@ def components_depin(asset):
     dil, ratio = _dilution(asset)
     cat = _f(asset.get("category_vs_market_24h"))
     rel, diff = _vs_category(asset)
-    return [comp("Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red]", act, 30,
-                 None if act is None else f"{turn:.4f} vs mediana {med:.4f}", "CoinGecko"),
+    rho = _fees_ratio(asset)
+    first = (comp("Crecimiento de ingresos de red (fees 7d vs 30d)", math.log(rho) / 0.5, 30, f"ρ {rho:.2f}",
+                  "DefiLlama overview/fees") if rho is not None else
+             comp("Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red]", act, 30,
+                  None if act is None else f"{turn:.4f} vs mediana {med:.4f}", "CoinGecko"))
+    return [first,
             comp("Divergencia ingresos vs precio", None, 20, None, "DefiLlama fees (sin colectar)"),
             comp("Dilución FDV/mcap", dil, 20, None if ratio is None else f"{ratio:.2f}", "CoinGecko"),
             comp("Momentum de la categoría (24 h vs mediana de las 7)", None if cat is None else cat / 5, 15,
@@ -293,6 +324,14 @@ def is_stable_rwa(asset):
     return ch24 is not None and ch7 is not None and abs(ch24) < 0.5 and abs(ch7) < 2.0
 
 
+def _yield_comp(asset):
+    p = asset.get("protocol") or {}
+    f30, tvl = _f(p.get("fees_30d")), _f(p.get("tvl"))
+    y = f30 * 365 / 30 / tvl if f30 and tvl and f30 > 0 else None
+    return comp("Yield (fees/TVL anualizado; 5% = neutro)", None if y is None else math.log(y / 0.05) / math.log(4), 15,
+                None if y is None else f"{y * 100:.2f}%", "DefiLlama overview/fees + /protocols")
+
+
 def components_rwa(asset):
     """g: TVL de la plataforma, TVL vs mcap, yield (n/d), momentum de categoría y relativo."""
     g7, _ = _protocol_tvl_growth(asset)
@@ -304,19 +343,49 @@ def components_rwa(asset):
                  None if g7 is None else f"{g7:+.4f}", "DefiLlama /protocols"),
             comp("TVL vs mcap (7d)", None if gap is None else gap / 0.10, 25,
                  None if gap is None else f"{gap:+.4f}", "DefiLlama + CoinGecko"),
-            comp("Yield (fees/TVL)", None, 15, None, "DefiLlama fees (sin colectar)"),
+            _yield_comp(asset),
             comp("Momentum de la categoría (24 h vs mediana de las 7)", None if cat is None else cat / 5, 15,
                  None if cat is None else f"{cat:+.2f} pp", "CoinGecko coins/categories"),
             comp("Momentum vs categoría (7d)", rel, 15, None if diff is None else f"{diff:+.2f} pp", "CoinGecko")], \
         1.0, 0.0, [], {}
 
 
+def _oi_change_24h(asset):
+    """ln(OI_ahora / OI de hace ~24 h) con el historial de _perps.json (necesita >= 20 h de fotos)."""
+    hist = asset.get("oi_history") or []
+    if len(hist) < 2:
+        return None
+    try:
+        last_t = datetime.fromisoformat(str(hist[-1][0]).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    for t, oi in hist:
+        try:
+            age_h = (last_t - datetime.fromisoformat(str(t).replace("Z", "+00:00"))).total_seconds() / 3600
+        except ValueError:
+            continue
+        if 20 <= age_h <= 30 and oi and hist[-1][1]:
+            return math.log(hist[-1][1] / oi)
+    return None
+
+
 def components_synthetic(asset):
-    """d1: funding, OI, basis (sin colectar por token) y momentum 24 h."""
+    """d1: funding (contrarian en extremos), OI que confirma, basis (mark − oráculo) y momentum 24 h, con el perp del
+    token en Hyperliquid."""
     ch24 = _f(asset.get("change_24h"))
-    return [comp("Funding (contrarian en extremos)", None, 25, None, "Hyperliquid / dYdX (por token: sin colectar)"),
-            comp("Open interest que confirma", None, 25, None, "ídem"),
-            comp("Basis (mark − oráculo)", None, 20, None, "ídem"),
+    perp = asset.get("perp") or {}
+    fr = _f(perp.get("funding_1h"))
+    ann = fr * 24 * 365 if fr is not None else None
+    oi = _oi_change_24h(asset)
+    mark, oracle = _f(perp.get("mark_px")), _f(perp.get("oracle_px"))
+    basis = (mark - oracle) / oracle if mark and oracle else None
+    sign = 0 if ch24 is None else (1 if ch24 > 0 else -1 if ch24 < 0 else 0)
+    return [comp("Funding (contrarian en extremos)", None if ann is None else (-1 if ann >= 0.30 else 1 if ann <= -0.10 else 0),
+                 25, None if ann is None else f"{ann * 100:+.1f}% anualizado", "Hyperliquid"),
+            comp("Open interest que confirma (24 h)", None if oi is None else oi / 0.5 * sign, 25,
+                 None if oi is None else f"{oi:+.3f} log", "Hyperliquid (historial de _perps.json)"),
+            comp("Basis (mark − oráculo) [H: signo a medir]", None if basis is None else basis / 0.01, 20,
+                 None if basis is None else f"{basis * 100:+.3f}%", "Hyperliquid"),
             comp("Momentum 24 h", None if ch24 is None else ch24 / 20, 30,
                  None if ch24 is None else f"{ch24:+.2f}%", "CoinGecko")], 1.0, 0.0, [], {}
 
@@ -483,7 +552,8 @@ def _age_days(iso_text, now):
     return (now - (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc))).total_seconds() / 86400
 
 
-def build_assets(scan, cards=None, categories=None, protocols=None, now=None):
+def build_assets(scan, cards=None, categories=None, protocols=None, now=None, governance=None, perps=None,
+                 premarket=None, prelaunch=None):
     """Activos a puntuar: blue chips (fichas + Universo A), tokens de las categorías de CoinGecko, tokens nativos de
     las chains y pools en tendencia de GeckoTerminal fuera de Solana."""
     now = now or datetime.now(timezone.utc)
@@ -525,7 +595,29 @@ def build_assets(scan, cards=None, categories=None, protocols=None, now=None):
         a["protocol"] = protos.get(a["cg_id"])
         a["key"] = f"cg:{a['cg_id']}"
         a.setdefault("chain", BLUE_CHIP_IDS.get(a["cg_id"]) and a["cg_id"])
+    gov_loaded = bool((governance or {}).get("loaded"))
+    proposals = (governance or {}).get("proposals") or []
+    perp_rows = (perps or {}).get("perps") or {}
+    oi_hist = (perps or {}).get("oi_history") or {}
+    for a in by_id.values():
+        sym = str(a.get("symbol") or "").upper()
+        name = str(a.get("name") or "").lower()
+        a["governance"] = {"loaded": gov_loaded,
+                           "matches": [p for p in proposals if sym and (p.get("space_symbol") == sym or
+                                                                        (name and str(p.get("space_name") or "").lower() == name))]}
+        if sym in perp_rows:
+            a["perp"], a["oi_history"] = perp_rows[sym], oi_hist.get(sym) or []
     assets = list(by_id.values())
+    for m in (premarket or {}).get("markets") or []:
+        if m.get("underlying"):
+            assets.append({"key": f"pre:{str(m['underlying']).lower()}", "source": "premarket", "prelaunch": True,
+                           "symbol": m["underlying"], "name": m["underlying"], "price_usd": m.get("mark_price"),
+                           "premarket_type": m.get("type"), "categories": []})
+    for t in (prelaunch or {}).get("tge_upcoming") or []:
+        if isinstance(t, dict) and (t.get("symbol") or t.get("name")):
+            assets.append({"key": f"pre:{str(t.get('symbol') or t.get('name')).lower()}", "source": "prelaunch",
+                           "prelaunch": True, "symbol": t.get("symbol"), "name": t.get("name"),
+                           "days_to_listing": t.get("days_to_listing"), "categories": []})
     for net, entry in ((scan or {}).get("onchain") or {}).items():
         chain = GT_TO_CHAIN.get(net)
         if not chain:
@@ -586,10 +678,11 @@ def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None
             "pool_created_at": asset.get("pool_created_at"), "category": asset.get("category")}
 
 
-def evaluate_all(scan, cards=None, categories=None, protocols=None, memecoin_scorer=None, now=None):
+def evaluate_all(scan, cards=None, categories=None, protocols=None, memecoin_scorer=None, now=None, governance=None,
+                 perps=None, premarket=None, prelaunch=None):
     """Todos los activos del último scan, puntuados. Ordenados por (emitible, score)."""
     now = now or datetime.now(timezone.utc)
-    assets = build_assets(scan, cards, categories, protocols, now)
+    assets = build_assets(scan, cards, categories, protocols, now, governance, perps, premarket, prelaunch)
     peers = [c for c in (cards or {}).values()]
     eth = next((_f(a.get("change_7d")) for a in assets if a.get("cg_id") == "ethereum"), None)
     if memecoin_scorer is None and any(classify(a)[0] == "a" for a in assets):
