@@ -75,6 +75,37 @@ def fetch_dexscreener(mint):
         print(f"[ERROR] Dexscreener {mint}: {e}")
         return None
 
+GROUP_I_MIN_AGE_DAYS = 180          # Fase 8 (Dirección): par > 180 días = establecido sin grupo (doc 27 §4.10)
+GROUP_I_VERSION = "group_i"
+
+
+def apply_group_i(entry, now_ms=None):
+    """Par de más de 180 días: no es una memecoin nueva. Se registra como grupo i (doc 27 §4.10) con su propio score
+    (sin bonos de memecoin) y NO se emite (script_97 lo saltea). El score v7.2.1 queda en `memecoin_score`.
+    Devuelve True si reclasificó."""
+    dx = entry.get("dexscreener") or {}
+    created = dx.get("pairCreatedAt")
+    if not isinstance(created, (int, float)) or isinstance(created, bool) or created <= 0:
+        return False
+    now_ms = now_ms if now_ms is not None else time.time() * 1000
+    age_days = (now_ms - created) / 86_400_000
+    if age_days <= GROUP_I_MIN_AGE_DAYS:
+        return False
+    import sys as _sys
+    from pathlib import Path as _P
+    here = str(_P(__file__).resolve().parent)
+    if here not in _sys.path:
+        _sys.path.insert(0, here)
+    import lib_scoring_multichain as lsm
+    score, reasons, confidence = lsm.score_established({"volume_24h_usd": dx.get("volume24hUsd"),
+                                                         "liquidity_usd": dx.get("liquidityUsd"),
+                                                         "pair_age_days": age_days})
+    entry["memecoin_score"], entry["memecoin_reasons"] = entry.get("score"), entry.get("reasons")
+    entry.update(score=int(score or 0), reasons=[f"Grupo i: par de {age_days:.0f} días (> {GROUP_I_MIN_AGE_DAYS})"] + reasons,
+                 group="i", group_confidence=confidence, pair_age_days=round(age_days, 1))
+    return True
+
+
 def score_token(token_data, dexscreener_data=None):
     """Scoring adaptativo 0-100"""
     score = 0
@@ -493,6 +524,11 @@ def main():
         # R1: momento del scoring y versión, para que script_97 descarte candidatos viejos o de otro scorer
         enriched[mint]["detected_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         enriched[mint]["scoring_version"] = SCORING_VERSION
+        try:
+            if apply_group_i(enriched[mint]):          # Fase 8: par > 180 días -> grupo i (registro, no emisión)
+                enriched[mint]["scoring_version"] = GROUP_I_VERSION
+        except Exception as e:
+            print(f"  [WARN] grupo i: {type(e).__name__}: {e}")
         time.sleep(0.2)
     
     # ===== RESULTADOS =====
