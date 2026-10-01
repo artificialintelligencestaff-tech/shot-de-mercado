@@ -25,6 +25,8 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 PERSONAL, GRUPO = "111", "-100222"
 MARKET_WORKFLOWS = {"pipeline_t0.yml", "trust_update.yml", "prelaunch.yml", "telegram_test_send.yml"}
 OPS_WORKFLOWS = {"monitor_shadow_bot.yml", "health_check_bot.yml", "autorepair_bot.yml", "daily_summary_bot.yml"}
+# Únicos métodos de la API de Telegram permitidos en producción: los dos solo envían (texto y documento adjunto).
+SEND_METHODS = {"sendMessage", "sendDocument"}
 READ_PATTERNS = re.compile(r"getUpdates|setWebhook|deleteWebhook|CommandHandler|MessageHandler|start_polling|"
                            r"run_polling|infinity_polling|telebot|aiogram|telegram\.ext", re.IGNORECASE)
 
@@ -98,7 +100,7 @@ class SoloEmisorTest(unittest.TestCase):
             text = (SCRIPTS / name).read_text(encoding="utf-8")
             self.assertIsNone(READ_PATTERNS.search(text), f"{name} lee updates/comandos de Telegram")
             for call in re.findall(r"api\.telegram\.org/bot\{[^}]+\}/(\w+)", text):
-                self.assertEqual(call, "sendMessage", f"{name} llama a {call}")
+                self.assertIn(call, SEND_METHODS, f"{name} llama a {call}")
 
     def test_ningun_script_de_produccion_lee_el_chat_personal(self):
         for name in sorted(workflow_scripts() | {"lib_ops.py"}):

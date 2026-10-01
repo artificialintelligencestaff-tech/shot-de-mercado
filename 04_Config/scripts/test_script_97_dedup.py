@@ -42,6 +42,7 @@ class Script97TestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="s97_")
         os.environ["SHOT_ROOT"] = self.tmp
+        os.environ["DOSSIER_LIVE"] = "false"      # el dossier se arma sin red (solo con los archivos del tmp)
         spec = importlib.util.spec_from_file_location("script_97_under_test", SCRIPT)
         self.m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.m)
@@ -58,6 +59,7 @@ class Script97TestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
         os.environ.pop("SHOT_ROOT", None)
+        os.environ.pop("DOSSIER_LIVE", None)
 
     def write(self, path, data):
         path.write_text(data if isinstance(data, str) else json.dumps(data), encoding="utf-8")

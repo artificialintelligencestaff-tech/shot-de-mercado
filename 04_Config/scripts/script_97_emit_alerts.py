@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import importlib.util
 import json
 import re
 import sys
@@ -242,6 +243,122 @@ def send_telegram(text):
         print(text)
         return False
     return any(ok for _, ok in results)
+
+
+TELEGRAM_CAPTION_LIMIT = 1024   # límite de Telegram para el caption de un documento
+CAPTION_SUFFIX = "\n📎 Alerta completa y estudio de adquisición en el adjunto."
+ACQUISITION_MARK = "CÓMO ADQUIRIRLO"
+
+
+def _markdown_balanced(text):
+    """True si los '*', '_' y '`' sin escapar están cerrados (Markdown legacy de Telegram)."""
+    unescaped = re.sub(r"\\.", "", text)
+    return all(unescaped.count(ch) % 2 == 0 for ch in "*_`")
+
+
+def _cut_lines(text, budget):
+    """Corte en el último salto de línea que entra en `budget` y deja el Markdown balanceado."""
+    lines = text[:budget].split("\n")[:-1]   # descarta la línea cortada a la mitad
+    while lines and not _markdown_balanced("\n".join(lines)):
+        lines.pop()
+    return "\n".join(lines).rstrip()
+
+
+def document_caption(text, limit=TELEGRAM_CAPTION_LIMIT):
+    """Caption del dossier: la alerta entera si entra en `limit`. Si no, se arma por bloques (separados por línea
+    en blanco): encabezado + bloque 🛒 COMPLETO siempre (regla núcleo) + el resto, en el orden del mensaje,
+    mientras entren enteros; al final, la referencia al adjunto. Nunca supera `limit` ni corta una entidad
+    Markdown (Telegram rechazaría el envío). Si ni el 🛒 entra, se corta por líneas."""
+    if len(text) <= limit:
+        return text
+    budget = limit - len(CAPTION_SUFFIX)
+    head, *blocks = [b for b in text.split("\n\n") if b.strip()]
+    order = sorted(range(len(blocks)), key=lambda i: ACQUISITION_MARK not in blocks[i])   # el 🛒 primero
+    chosen, size = set(), len(head)
+    for i in order:
+        if size + 2 + len(blocks[i]) <= budget and _markdown_balanced(blocks[i]):
+            chosen.add(i)
+            size += 2 + len(blocks[i])
+    if not any(ACQUISITION_MARK in blocks[i] for i in chosen):
+        return _cut_lines(text, budget) + CAPTION_SUFFIX
+    return "\n\n".join([head.rstrip()] + [blocks[i].rstrip() for i in sorted(chosen)]) + CAPTION_SUFFIX
+
+
+def send_telegram_document(file_path, caption, chat_id, filename=None):
+    """sendDocument: adjunta el dossier (Markdown) con un caption de ≤ 1024 caracteres. True si Telegram lo aceptó."""
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
+    data = {"chat_id": chat_id, "caption": document_caption(caption), "parse_mode": "Markdown"}
+    try:
+        with open(file_path, "rb") as f:
+            r = requests.post(url, data=data, timeout=30,
+                              files={"document": (filename or os.path.basename(file_path), f, "text/markdown")})
+        if r.status_code == 200:
+            print(f"[INFO] Dossier enviado a Telegram ({chat_id}).")
+            return True
+        print(f"[ERROR] Telegram sendDocument error ({chat_id}): {r.status_code} - {r.text}")
+        return False
+    except Exception as e:
+        print(f"[ERROR] Telegram sendDocument exception ({chat_id}): {e}")
+        return False
+
+
+def send_alert(msg, dossier_path=None, filename=None):
+    """Alerta con el dossier adjunto (caption = la alerta). Si no hay dossier o el documento no llega a ningún
+    destino, se envía el mensaje normal: el adjunto nunca hace perder la alerta.
+    Devuelve (alerta enviada, dossier enviado)."""
+    dests = telegram_destinations()
+    if dossier_path and TELEGRAM_BOT_TOKEN and dests:
+        results = []
+        for i, (_, chat_id) in enumerate(dests):
+            if i:
+                time.sleep(TELEGRAM_PAUSE_S)
+            results.append(send_telegram_document(dossier_path, msg, chat_id, filename))
+        if any(results):
+            return True, True
+        print("[WARN] Falló sendDocument: se envía solo el mensaje.")
+    return send_telegram(msg), False
+
+
+def load_dossier_builder():
+    """script_113 (dossier por activo, doc 24) se carga al emitir y no al importar este módulo: script_113 importa
+    script_97 para reutilizar las guías de compra (importarlo arriba sería circular) y toma sus rutas del
+    SHOT_ROOT vigente. Si no se puede cargar, las alertas salen igual, sin documento."""
+    try:
+        path = _Path(__file__).resolve().parent / "script_113_dossier_builder.py"
+        spec = importlib.util.spec_from_file_location("script_113_dossier_builder", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    except Exception as e:   # el adjunto es opcional: ningún error del builder frena la emisión
+        print(f"[WARN] script_113 no disponible; las alertas salen sin dossier: {e}")
+        return None
+
+
+def generate_dossier(builder, mint):
+    """Arma y guarda el dossier del mint recién alertado, con el registro y el historial ya persistidos.
+    Consultas gratuitas en vivo salvo DOSSIER_LIVE=false. Devuelve (ruta, nombre del adjunto) o (None, None):
+    un dossier incompleto (regla núcleo del doc 24) o un error no frenan la alerta."""
+    if builder is None:
+        return None, None
+    try:
+        alert_data = builder.load_alert_data(mint)
+        if alert_data is None:
+            print(f"[WARN] Dossier de {mint[:10]}...: sin registro de la alerta.")
+            return None, None
+        record = alert_data["record"]
+        chain = detection_facts(record)["chain"]
+        live = builder.fetch_live(mint, chain, record) if os.getenv("DOSSIER_LIVE", "true").strip().lower() in TRUTHY else None
+        dossier = builder.build_dossier(mint, chain, alert_data, live=live, mode="live" if live else "offline")
+        if not dossier["emitible"]:
+            print(f"[WARN] Dossier de {mint[:10]}... incompleto ({'; '.join(dossier['missing'])}): no se adjunta.")
+            return None, None
+        path = builder.save_dossier(dossier)
+        symbol = re.sub(r"[^A-Za-z0-9]+", "", str(dossier["asset"]["symbol"] or ""))[:20] or "token"
+        print(f"[INFO] Dossier guardado: {path}")
+        return path, f"dossier_{symbol}_{mint[:8]}.md"
+    except Exception as e:   # ídem: la alerta sale aunque el dossier falle
+        print(f"[WARN] No se pudo generar el dossier de {mint[:10]}...: {e}")
+        return None, None
 
 
 def test_send():
@@ -594,6 +711,7 @@ def main(argv=None):
         print(f"[SKIP] {skip['mint'][:10]}... {skip['reason']} (edad: {skip['age_min']})")
     print(f"[INFO] Emitiendo {len(to_emit)} alertas en este ciclo.")
 
+    builder = load_dossier_builder() if to_emit else None   # dossier por alerta (doc 24), adjunto al enviar
     emitted_count = 0
 
     for mint, token in to_emit:
@@ -639,7 +757,16 @@ def main(argv=None):
         all_alerts.append(alert_record)
         write_json_atomic(ALL_ALERTS_FILE, all_alerts)
 
-        alert_record["telegram_sent"] = False if shadow else send_telegram(msg)
+        # Dossier del activo: se arma con el registro ya persistido; en sombra se guarda sin enviarse
+        dossier_path, dossier_name = generate_dossier(builder, mint)
+        if dossier_path:
+            alert_record["dossier"] = _Path(os.path.relpath(dossier_path, PROJECT_ROOT)).as_posix()
+        if shadow:
+            if dossier_path:
+                print(f"[INFO] Sombra: dossier en {dossier_path}, no se envía.")
+            alert_record["telegram_sent"] = False
+        else:
+            alert_record["telegram_sent"], alert_record["dossier_sent"] = send_alert(msg, dossier_path, dossier_name)
         write_json_atomic(ALL_ALERTS_FILE, all_alerts)
         emitted_count += 1
         time.sleep(1) # rate limit telegram
