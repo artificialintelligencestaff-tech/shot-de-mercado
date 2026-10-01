@@ -13,11 +13,11 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 
 ---
 
-## 1. Estado (cierre de sesión 2026-10-01 ~03:40 UTC)
+## 1. Estado (cierre de sesión 2026-10-01 ~05:00 UTC)
 
 | Componente | Estado | Rótulo |
 |---|---|---|
-| Emisión | **SHADOW** (`SHADOW_MODE: "true"`, `PAUSE_EMISSIONS: "false"` en `pipeline_t0.yml`). Las alertas se registran con `status: "shadow"` y `telegram_sent: false`. **No reactivar emisiones reales sin validar v7.2.1** (criterios en §1.1). | [V] |
+| Emisión | **FUERA DE SOMBRA desde el 01/10 03:48 UTC**: `SHADOW_MODE: "false"` en `pipeline_t0.yml` (`6ff13c5`, commit del bot/YIN, mensaje "validado v7.2.1"). Decisión de Dirección. **Dato [V] a esa hora:** el monitor registraba para v7.2.1 n = 2 primarias resueltas (1/2, IC90 12–88%) y 50% de alertas en tokens < 60 min; los criterios de §1.1 piden n ≥ 20 y < 20%. Hasta el cierre no hubo alertas nuevas (la última, 30/09 12:48 UTC, en sombra). | [V] |
 | Scorer | **v7.2.1** en main desde 2026-09-30 (`SCORING_VERSION = "7.2.1"`, `ACCEL_GATE_MIN_AGE = 60`). Cada token lleva `detected_at` y `scoring_version`. 1.ª corrida de producción (`detection_2026-09-30_055022`): 35/35 tokens con 7.2.1, **≥ 56: 2/35** (vs 19/29 y 23/33 en las dos corridas v7.2 previas). | [V] |
 | Filtros de emisión (script_97) | umbral `EMIT_MIN_SCORE = 56` · frescura R1 `CANDIDATE_MAX_AGE_MIN = 60` · **edad mínima del par `EMIT_MIN_AGE_MIN = 30`** (edad desconocida → no emite) · dedup PARASITE. | [V] |
 | Plantilla Telegram | **Framing neutral** (`c727ece`, Dirección): el proyecto informa con datos y método; **no juzga, no advierte, no disuade: el usuario decide**. Sin "ADVERTENCIA", sin "plan sugerido", sin "no invertir más de…". Bloques: 🪪 ACTIVO (nombre, chain, mint, creador) · **🛒 CÓMO ADQUIRIRLO primero** (guía por chain: wallets, fondeo, DEX + alternativas, 8 pasos, slippage por liquidez + impacto, verificación; **chain sin guía o sin mint = no se emite**, `acquisition_ready`; `7d77b72`, en main, commit y push de YIN) · 🕒 DETECCIÓN (hora, edad del par, creación del par, ventana < 48 h) · 🎯 PROBABILIDADES (primaria, secundaria y "después de tocar +20%, llegar a ≤ −99%" como **métrica**, no advertencia; "en validación" hasta `validated: true`) · 📊 DATOS · 🔎 motivos · 🔗 FUENTES VERIFICABLES (Solscan, DexScreener, pump.fun) · seguimiento. "n/d" para lo desconocido; Markdown de datos externos escapado (T4 `06fedff`). | [V] |
@@ -27,8 +27,8 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 | Destinos de Telegram | **Mercado** (alertas `script_97`, trust updates `script_98`, pre-launch `script_99`) → `TELEGRAM_PUBLIC_CHAT_ID`. **Sistema** (4 bots, `lib_ops`) → `TELEGRAM_OPS_CHAT_ID`. Los dos apuntan al grupo privado "La mano de Dios" (solo owner + bot), con prefijos distintos [reportado por Dirección]. **Chat personal (`TELEGRAM_CHAT_ID`) deprecado:** ningún script de producción lo lee y ningún workflow lo pasa. `--test-send` / `telegram_test_send.yml` apuntan solo al grupo. **En main** (push ff `b560a7a..2c44332`). Test-send run 36799931771: **grupo OK**, un solo destino en el log (el chat personal no se intentó). | [V] |
 | Resumen diario (ops) | Formato legible por secciones, calidad separada por versión (T1 `7b14a58`); un envío por día UTC con `last_sent_date`, `--force` para reenviar (T2 `dd48a77`). | [V] |
 | Scanner multi-chain v0 | `script_114_multichain_scanner.py` (T5 `3694aa8`): grupos h, f, c, g, d, e (CoinGecko sin key) + a (GeckoTerminal: solana, base, eth, blast, monad). Solo recolección + marca de aceleración [H]; sin score, sin emisión, **no enganchado a ningún workflow**. Humo real: 13 llamadas, 0 errores. | [V] |
-| Tests | **193/193** corriendo **cada archivo por separado** (13 archivos `04_Config/scripts/test_*.py`, unittest, sin red). Con `unittest discover` falla 1 test preexistente (ver §7). | [V] |
-| Dossier por activo | **`script_113_dossier_builder.py` v1.0** (doc 24 §7): 7 secciones con 🛒 primero, `--dry-run` VSOF sin red, `--mint` con consultas gratuitas (DexScreener, RugCheck, GoPlus, GeckoTerminal), salida `02_Analisis/dossiers/<chain>/<mint>.md` + `.json`, checklist del Anexo A (incompleto = no se guarda). 31 tests + 9/9 mutaciones detectadas. **Rama `claude/dossier-builder`, sin commit (lo hace YIN). No enganchado al pipeline ni a `sendDocument`.** | [V] |
+| Tests | **237/237** corriendo **cada archivo por separado** (16 archivos `04_Config/scripts/test_*.py`, unittest, sin red). Con `unittest discover` falla 1 test preexistente (ver §7). | [V] |
+| Dossier por activo | **`script_113` v1.1 en main** (Fase 3: `8bf26f1`). **Fase 4, rama `claude/dossier-envio`, sin push:**<br>• `script_97` arma el dossier de cada alerta: en sombra lo guarda; fuera de sombra lo manda con `sendDocument` al grupo, con caption ≤ 1024 que lleva el 🛒 completo, y con fallback a `sendMessage`.<br>• Ruta CEX confirmada por contrato (CoinGecko + Binance `data-api` + Coinbase) con enlaces sin código de referido; categorías de CoinGecko, scanner y registro de narrativas.<br>• Doc 24 §8. | [V] |
 | Alertas acumuladas (`_all_alerts.json` en `3694aa8`) | 35 en total: **26 `shadow`** (de 2026-09-30 03:55 a 12:48 UTC; ninguna más hasta el cierre), **7 `active_tracking`** (la última del 2026-09-29 17:55 UTC, anterior a SHADOW), 2 `DESCARTAR_NOPAR`. `telegram_sent: true` = 0. | [V] |
 | Hashes de cierre | Sesión 1: T3 `26ce5b7` · T4 `3ef7b50` · bots `daf9cc4` · docs 22/23 `63a1b95`. Sesión 2: framing `c727ece` (aplicado por Dirección/YIN) · push fast-forward `77b2a1c..3694aa8` con T1 `7b14a58` · T2 `dd48a77` · T3 `ba44f21` + `68953b8` · T4 `06fedff` · T5 `3694aa8`. | [V] |
 | Incidente | Dirección reportó el sistema caído y luego **recuperado** ("GitHub Actions funcionando") [reportado]. Verificación propia: `pipeline_t0` y `trust_update` con runs `success` cada ~20 min hasta 23:05 UTC. | [V] |
@@ -144,6 +144,9 @@ Universos: **A** = BTC/ETH/SOL · **B** = UNI/ICP/APT/PSG · **C** = memecoins/B
 | GeckoTerminal API v2 (OHLCV minuto) | velas para la métrica dual | 429 frecuentes → intervalo 6,5 s + reintentos con backoff; cache/offline en calibrate | [V] |
 | DexScreener | pares, `pairCreatedAt`, m5/h1 | sin key | [V] |
 | Jupiter Tokens V2 (`api.jup.ag`) | dev, audit, holders, verificación (Cap. II) | sin key; **no** `lite-api.jup.ag` | [V] |
+| CoinGecko `coins/{platform}/contract/{addr}` (sin key) | ficha por contrato: categorías y pares en Binance/Coinbase/Kraken. **Sus `trade_url` de Binance traen código de referido: no se usan** | ~1 request/15 s | [V] |
+| Binance `data-api.binance.vision/api/v3/exchangeInfo` · Coinbase `api.exchange.coinbase.com/products/{SYM}-USD` | par existente por símbolo (sin confirmar contrato) | sin key | [V] |
+| **User-Agent** | debe ser ASCII: con "investigación" en el UA, 4chan, Cointelegraph, Decrypt y The Block devolvían 403 | — | [V] |
 | Wikipedia Pageviews / Wikidata SPARQL | señales de atención (Universo A/B) | sin key | [V] |
 | Binance data-api | velas Universo A | público | [V] |
 | `gh` CLI / API REST de GitHub | runs, jobs, issues (bots) | GITHUB_TOKEN del workflow | [V] |
@@ -189,18 +192,21 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | `script_82` guarda los motivos del score pero no los puntos: el desglose del dossier se reconstruye. Agregar `score_breakdown`. | doc 24 | P2 |
 | Integración multi-chain: diseño en el doc 24 Anexo B (workflow propio, `script_115`, acumulado separado, `script_97` con dos fuentes, veredicto por grupo). Sin implementar. | doc 24 | P2 |
 | El scanner multi-chain v0 no corre solo: engancharlo a un workflow requiere consulta. El grupo b (preventa) no tiene fuente gratuita en CoinGecko. | T5 | P2 |
-| `script_113` no está enganchado: falta que `script_97` lo llame al emitir y lo mande con `sendDocument` (caption ≤ 1024). Toca un workflow de producción: consultar. | Fase 3 | P1 |
+| ~~`script_113` no está enganchado~~ Enganchado en la rama `claude/dossier-envio` (Fase 4). Falta el push (YIN) y verificar la primera alerta real en el grupo (Dirección). | Fase 3 | P1 |
 | `bp_delta` inactivo en producción (ver §4): decidir si `script_82` persiste `buy_pressure` o se retira la componente. No tocado. | Fase 3 | P2 |
 | La batería con `python -m unittest discover` falla `test_lib_narrative.test_demo_dry_run_three_chains`: `test_bots.py` y `test_script_114_scanner.py` fijan `SHOT_ROOT` al importarse y el demo lee el registro de narrativas desde ese tmp. Preexistente (falla igual en HEAD sin cambios). Por archivo pasa 193/193. | Fase 3 | P3 |
 | Dossier: categoría y narrativa `n/d` (CoinGecko `coins/{id}` necesita resolver el id), ruta CEX sin verificar (`tickers`), PDF [P] sin librería verificada. | Fase 3 | P3 |
 | Métrica de repetición (doc 26): Fase 0 sin implementar; antes, verificar las fuentes desde Actions. | Fase 3 | P2 |
+| Sonda de fuentes desde Actions pendiente: `probe_narrative_sources.yml` es manual y necesita estar en main. Local: 6/6 familias, 14/17 endpoints (Reddit 429 por IP). | Fase 4 | P1 |
+| Salida de sombra (`6ff13c5`) sin los criterios de §1.1 cumplidos (n = 2). La decisión es de Dirección; el monitor sigue midiendo por versión. | Fase 4 | P1 (Dirección) |
+| El dossier suma ~7 requests (~10–15 s) por alerta antes del envío. Si una API se cuelga, el timeout es de 15 s por request; el peor caso es de ~2 min por alerta, dentro del límite de 15 min del job. | Fase 4 | P3 |
 
 ---
 
 ## 8. Próximos pasos
 
-1. **Dossier:** YIN commitea y pushea `claude/dossier-builder` (`script_113` + tests + docs 24/25/26/22). Después, con consulta: engancharlo a `script_97` y mandarlo con `sendDocument` al grupo (doc 24 §1).
-2. **Repetición mediática (doc 26):** verificar las fuentes desde Actions → Fase 0 (`script_116_social_scan.py`, solo registro, sin efecto en el score).
+1. **Fase 4:** YIN commitea y pushea `claude/dossier-envio`. Después, Dirección verifica la primera alerta con dossier en el grupo y alguien dispara `probe_narrative_sources.yml` (manual) para medir las fuentes desde Actions.
+2. **Repetición mediática (doc 26):** con ≥ 3 familias OK desde Actions y aprobación del workflow nuevo → Fase 0 como **colector propio** (doc 26 §9), sin tocar `script_82` / `script_97` ni el score. `lib_repetition.py` ya tiene parsers y fórmula.
 3. **Medir la exposición a tokens < 60 min solo sobre alertas v7.2.1 (A-b)** (criterio < 20%). Al cierre, la muestra v7.2.1 era mínima (primaria 0/1) y no hubo alertas nuevas después de las 12:48 UTC.
 4. Confirmar que el trust loop procesa bien las 7 `active_tracking` previas a SHADOW (A-c).
 5. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
@@ -219,3 +225,4 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | 2026-10-01 | Redirección exclusiva al grupo + hardening | `script_97`, `script_98` y `script_99` envían solo a `TELEGRAM_PUBLIC_CHAT_ID`; ningún workflow pasa `TELEGRAM_CHAT_ID`; bot solo emisor (sin `getUpdates`/webhooks/polling, verificado y con test de regresión); rama `claude/destino-grupo` sin push |
 | 2026-10-01 (cont.) | Cierre de fase: push destinos + dossier | Push ff `b560a7a..2c44332` (destinos solo al grupo + hardening) · test-send: grupo OK · doc 24 (diseño del dossier por activo + anexo multi-chain), ejemplo VSOF con score 95 reproducido con el `script_82` de `be8e7d3` y 45 con v7.2.1 · BotFather pendiente (Dirección) · bug del tramo −35 inalcanzable registrado |
 | 2026-10-01 (madrugada) | Fase 3: dossier + herramientas + repetición | Adquisición primero en main (`7d77b72`, YIN) · `script_113_dossier_builder.py` v1.0 (31 tests, 9/9 mutaciones, dry-run VSOF sin red, vivo con 6 fuentes gratuitas) · VSOF primaria cumplida [V] · doc 24 v1.2 (§7 implementación) · doc 25 (Agent-Reach no, Patchright Enhanced descartado — URL 404 y sin licencia, Scrapling condicional) · doc 26 (repetición: fórmula v0 + v0.1 con Poisson, entropía y suavizado; sombra → event study → bonus) · rama `claude/dossier-builder` sin commit (YIN) |
+| 2026-10-01 (mañana) | Fase 4: dossier en la emisión + campos + sonda | `script_97` adjunta el dossier (sombra: guarda; real: `sendDocument` con caption que lleva el 🛒 completo y fallback a `sendMessage`); 11 tests + 6/6 mutaciones · `script_113`: ruta CEX confirmada por contrato, sin código de referido, y categorías (12/12 mutaciones) · `lib_repetition` + `probe_narrative_sources` + workflow manual (local 6/6 familias) · T4 sin implementar (falta la sonda desde Actions) · producción salió de sombra en `6ff13c5` (Dirección) · 237/237 tests · rama `claude/dossier-envio` sin push (YIN) |

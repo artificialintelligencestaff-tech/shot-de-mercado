@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO (no implementado)
+status: DISEÑO + librería y sonda (lib_repetition, probe_narrative_sources); Fase 0 sin implementar
 last_updated: 2026-10-01
-version: 0.1
+version: 0.2
 ---
 
 # 26 — Métrica de repetición mediática ("masa social ansiosa")
@@ -185,7 +185,44 @@ Solo si la Fase 1 muestra un efecto con IC90 que no cruza el baseline del tramo 
 
 ## 8. Pendientes
 
-1. [P] Verificar desde Actions: Reddit RSS, `t.me/s`, 4chan, RSS de noticias, GDELT.
+1. [P] Verificar desde Actions: workflow manual `probe_narrative_sources.yml` (§9). Requiere que esté en main y un dispatch.
 2. [P] Lista curada de canales públicos de Telegram y de subreddits, con criterio explícito (volumen, idioma, foco en Solana/Base). Dirección la valida.
-3. [P] `script_116_social_scan.py` + tests con fixtures: parser de Atom, parser de `t.me/s`, deduplicación, `S_eff`, sorpresa de Poisson y casos A/B/C de §3.3.
+3. ~~Parsers, deduplicación, `S_eff`, sorpresa de Poisson y casos A/B/C~~ → hechos en `lib_repetition.py` (15 tests, §9). Falta el colector de la Fase 0.
 4. [P] Fase 1 cuando haya ≥ 20 tokens por tramo.
+
+---
+
+## 9. Librería, sonda y sonda local (Fase 4)
+
+**`lib_repetition.py`** (solo stdlib, sin red, **no conectada al pipeline**):
+- parsers de RSS/Atom, vista web de Telegram, catálogo de 4chan, HN, CoinGecko trending y GDELT;
+- coincidencia ponderada (contrato 1,0 · cashtag 0,5 · nombre 0,25) con deduplicación por fuente + texto normalizado;
+- `effective_sources`, `poisson_log_sf` / `surprise` (estable en espacio log), `intensity_v0`, `intensity_v01`;
+- `repetition_snapshot`: última hora contra las 24 previas.
+- Los tests reproducen los números de §3.3 (21,3 · 27,8 · 31,3 nats · p = 0,090 · 2,7·10⁻⁷ · S_eff 3,32 / 1,67) [V].
+
+**`probe_narrative_sources.py` + `probe_narrative_sources.yml`** (workflow manual, sin secretos):
+- por endpoint registra estado, latencia, tamaño, encabezados de límite de tasa e **ítems parseados** con su antigüedad. Una fuente vale si responde 200 **y** trae ítems;
+- guarda `02_Analisis/diagnostics/narrative_sources_probe.json` con historial de 20 corridas, para comparar IP local vs Actions;
+- criterio: Fase 0 habilitada por la sonda si ≥ 3 familias de fuentes de menciones están OK.
+
+**Sonda local** (01/10 ~04:30 UTC, IP residencial) [V]: **6/6 familias, 14/17 endpoints**.
+
+| Familia | Resultado |
+|---|---|
+| Reddit RSS | 2/5 (las otras tres respondieron 429: Reddit limita el RSS anónimo por IP después de varias requests; pausa ahora de 10 s) |
+| Telegram `t.me/s` | 4/4: `cointelegraph`, `WatcherGuru`, `whale_alert_io`, `pumpfun`. Otros canales (`solana`, `coindesk`, `dexscreener`, `solanafloor`) redirigen sin vista previa |
+| 4chan /biz/ | 201 hilos |
+| HN Algolia | OK |
+| Noticias RSS | 4/4 |
+| GDELT | OK en esta corrida (12,6 s; antes, 429) |
+| CoinGecko trending | OK |
+
+- **User-Agent:** con un User-Agent **no ASCII** ("investigación"), 4chan, Cointelegraph, Decrypt y The Block respondían **403**; con ASCII, 200 [V]. Queda fijado en ASCII, con un test que lo vigila.
+- **Profundidad de los feeds:** el RSS de un subreddit trae 25 posts. En r/CryptoMoonShots eso cubrió ~17 h; en subreddits activos cubre menos. La vista de Telegram trae ~20 mensajes. **Un baseline de 24 h necesita un colector continuo**: una consulta en el momento de la alerta no alcanza.
+
+**Fase 0, ubicación propuesta** (la directiva la deja a criterio del implementador):
+- un **colector propio**: workflow cada 20 min, como los bots, con concurrency propia y commit solo de sus archivos. **No** dentro de `script_82` ni de `script_97`, para no sumar latencia ni puntos de falla a la emisión.
+- **Por ítem guarda** los identificadores extraídos (direcciones base58 / `0x…` y cashtags encontrados), `ts`, fuente, hash del texto normalizado y hash con sal del autor. **Sin texto ni handles.**
+- `script_97` / `script_113` solo **leen** el snapshot (`02_Analisis/narrative/<mint>.json`) y lo muestran en el dossier. El score no cambia.
+- **Se habilita** cuando la sonda desde Actions dé ≥ 3 familias OK y Dirección apruebe el workflow nuevo.

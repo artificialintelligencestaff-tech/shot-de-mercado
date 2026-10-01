@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO + IMPLEMENTADO en script_113 v1.0 (sin enganchar al pipeline ni al envío)
+status: IMPLEMENTADO — script_113 v1.1, enganchado a script_97 (rama claude/dossier-envio, sin push)
 last_updated: 2026-10-01
-version: 1.2
+version: 1.3
 ---
 
 # 24 — Dossier por activo (diseño) + integración multi-chain
@@ -19,7 +19,9 @@ Que cada alerta llegue con un documento que, **antes que nada, enseñe cómo adq
 
 **Formato de entrega**
 - Archivo Markdown, uno por activo: `02_Analisis/dossiers/<chain>/<mint>.md`, más `<mint>.json` con el dict completo y sus datos de entrada (directiva Fase 3; reemplaza el nombre `dossier_<SYMBOL>_<mint8>_<ts>.md` de la v1.1). Lo genera `script_113` (§7).
-- [P] Va adjunto con `sendDocument` al grupo (`TELEGRAM_PUBLIC_CHAT_ID`), con un caption de ≤ 1024 caracteres: nombre, chain, wallet + DEX, slippage sugerido y ventana. Sin implementar: requiere enganchar `script_113` a `script_97` (workflow de producción, consultar antes).
+- Va adjunto con `sendDocument` al grupo (`TELEGRAM_PUBLIC_CHAT_ID`), nombrado `dossier_<SYMBOL>_<mint8>.md` (Fase 4, §8).
+  - **Caption de ≤ 1024 caracteres:** la alerta entera si entra; si no, se arma por bloques: encabezado + **bloque 🛒 completo** (pasos 1 a 8) + los bloques que entren enteros, sin cortar una entidad Markdown + "📎 Alerta completa y estudio de adquisición en el adjunto".
+  - Si el documento no llega, se envía el mensaje normal completo. En sombra se guarda y no se envía.
 - Lo desconocido se escribe `n/d` con la fuente que lo resolvería. **Nunca** se rellena con valores por defecto.
 - Cada dato lleva su **fuente** y su **momento**: "al detectar" (archivo de detección) o "consulta del <fecha>" (dato actual).
 
@@ -574,7 +576,42 @@ Filtros de emisión (`script_97`):
 - **Blob con `git hash-object`**: coincide con `git ls-tree` aunque el checkout use CRLF (autocrlf en Windows).
 
 **Límites:**
-- No está enganchado al pipeline ni a `sendDocument`. Engancharlo toca un workflow de producción: consultar antes.
-- Categoría y narrativa: `n/d` [P]. CoinGecko `coins/{id}` necesita resolver el id del contrato.
+- Categoría: CoinGecko por contrato (§8). Sin ficha (memecoins nuevas) queda `n/d`.
 - Jupiter en vivo no se consulta: `lite-api.jup.ag` está prohibido y `api.jup.ag` requiere key [I]. Se usa el archivo de señales del repo si existe.
 - Los registros de alerta sin `scoring_version` (21 de las 35 de `_all_alerts.json` [V]) se rotulan `7.2-preR1` (convención de `monitor_shadow`).
+
+---
+
+## 8. Integración con la emisión y campos nuevos (Fase 4, v1.1 de `script_113`)
+
+**Envío** (`script_97`):
+1. Se persiste la alerta (registro + historial).
+2. `load_dossier_builder()` carga `script_113` recién al emitir:
+   - `script_113` importa `script_97` para reutilizar las guías, así que importarlo arriba sería circular;
+   - toma sus rutas del `SHOT_ROOT` vigente;
+   - si no carga, la alerta sale igual, sin dossier.
+3. `generate_dossier(builder, mint)`: `load_alert_data` → `fetch_live` (salvo `DOSSIER_LIVE=false`) → `build_dossier` → `save_dossier`.
+   - Si el dossier queda incompleto (regla núcleo) o algo falla, no se adjunta. La alerta nunca se frena por el adjunto.
+4. En sombra: dossier guardado, `telegram_sent: false`.
+5. Fuera de sombra: `send_alert` → `sendDocument` con caption (`document_caption`); si falla → `sendMessage` con la alerta completa. Quedan registrados `dossier`, `telegram_sent` y `dossier_sent` en `_all_alerts.json`.
+6. Los dossiers quedan en `02_Analisis/dossiers/<chain>/` y los commitea `pipeline_t0` (`git add -A`). No hizo falta tocar el workflow.
+
+**Hardening:** los únicos métodos de la API de Telegram permitidos en producción son `sendMessage` y `sendDocument` (los dos solo envían). Lo vigila `test_telegram_hardening.py`.
+
+**Ruta por exchange centralizado** (`cex_route`):
+- **CoinGecko** `coins/{platform}/contract/{addr}` identifica el activo **por contrato** y lista sus pares en Binance, Coinbase y Kraken.
+- **Binance** `data-api.binance.vision/api/v3/exchangeInfo` y **Coinbase** `api.exchange.coinbase.com/products/{SYM}-USD` confirman el par **por símbolo**.
+- Un exchange se enlaza **solo si CoinGecko confirma ese contrato en ese exchange**. Un par con el mismo símbolo sin confirmación se informa ("puede ser otro token con el mismo símbolo") y no se enlaza.
+- **Enlaces armados sin parámetros:** los `trade_url` de CoinGecko para Binance traen un código de referido (`?ref=…`) [V].
+- Blue chips (BTC/ETH/SOL): Binance, Coinbase y Kraken directos.
+- **Resultados [V, 01/10]:**
+  - VSOF → CoinGecko 404, Binance "Invalid symbol" (400), Coinbase 404 → "no cotiza en Binance ni en Coinbase".
+  - BONK → confirmado en Binance (BONK/USDT), Coinbase (BONK-USD) y Kraken (BONK-USD).
+
+**Categoría y narrativa** (`categories_text`):
+- categorías de CoinGecko (por contrato);
+- grupo del scanner multi-chain (`02_Analisis/multichain/scan_latest.json`, por contrato o por id de CoinGecko);
+- narrativas del registro curado (`04_Config/narrative_registry.json`, por contrato).
+- Sin dato: `n/d` con el motivo.
+
+**Costo por dossier:** 7 requests gratuitas (DexScreener, RugCheck, GoPlus, GeckoTerminal, CoinGecko, Binance, Coinbase) con 1 s de pausa; ~10–15 s por alerta y ≤ 3 alertas por ciclo [I].
