@@ -276,8 +276,8 @@ class FichasTest(unittest.TestCase):
         self.assertEqual(set(r), {"generated_at", "scanner_version", "accel_rule", "groups", "onchain", "not_covered",
                                   "accelerating", "errors", "calls"})
         self.assertEqual(set(r["groups"]["h"]["items"][0]), {"id", "symbol", "name", "price_usd", "mcap_usd",
-                                                              "volume_24h_usd", "change_1h", "change_24h", "change_7d",
-                                                              "source"})
+                                                              "fdv_usd", "volume_24h_usd", "change_1h", "change_24h",
+                                                              "change_7d", "source"})   # v0.3 suma fdv_usd
 
     def test_cobertura_de_la_directiva(self):
         self.assertEqual(list(s114.CATEGORIES), ["layer-1", "layer-2", "governance", "depin", "real-world-assets-rwa",
@@ -300,9 +300,54 @@ class FichasTest(unittest.TestCase):
         self.assertEqual(s114.main(["--groups", "h", "--networks", "", "--chains", "base", "--out", str(out)],
                                    http=http), 0)
         self.assertEqual(sorted(p.name for p in out.parent.iterdir()),
-                         ["_categories.json", "_history.jsonl", "base.json", "scan_latest.json"])
+                         ["_categories.json", "_history.jsonl", "_protocols.json", "base.json", "scan_latest.json"])
         with self.assertRaises(SystemExit):
             s114.main(["--chains", "dogechain", "--out", str(out)], http=http)
+
+class UniversoATest(unittest.TestCase):
+    """v0.3: velas de Binance, Fear & Greed, funding de Hyperliquid (POST) y TVL por protocolo."""
+
+    def test_universo_a_y_protocolos(self):
+        kl = [[1790000000000 + i * 86400000, "1", "2", "0.5", str(100 + i), "10", 1790000000000 + (i + 1) * 86400000 - 1]
+              for i in range(3)]
+        routes = {"klines?symbol=BTCUSDT": FakeResp(200, kl), "klines?symbol=ETHUSDT": FakeResp(451),
+                  "klines?symbol=SOLUSDT": FakeResp(200, [["x"]]),
+                  "alternative.me": FakeResp(200, {"data": [{"value": "23", "value_classification": "Extreme Fear",
+                                                             "timestamp": "1790800000"}]}),
+                  "/protocols": FakeResp(200, [{"gecko_id": "uniswap", "name": "Uniswap V3", "category": "Dexs",
+                                                "tvl": 4e9, "change_1d": 1.0, "change_7d": 5.0, "mcap": 6e9},
+                                               {"gecko_id": "uniswap", "name": "Uniswap V2", "tvl": 1e9},
+                                               {"gecko_id": "otro", "tvl": 1}])}
+        posted = []
+
+        def get(url):
+            for k, r in routes.items():
+                if k in url:
+                    return r
+            return FakeResp(404)
+
+        def post(url, payload):
+            posted.append((url, payload))
+            return FakeResp(200, [{"universe": [{"name": "BTC"}, {"name": "DOGE"}, {"name": "ETH"}]},
+                                  [{"funding": "0.0000125", "openInterest": "1000", "premium": "0.0001",
+                                    "markPx": "77000", "oraclePx": "76990"}, {"funding": "1"}, {"funding": "-0.00001"}]])
+        clock = iter(range(0, 1_000_000, 100))
+        http = s114.Http(get=get, post=post, sleep=lambda s: None, clock=lambda: next(clock))
+        src = []
+        ua = s114.universe_a(http, src)
+        self.assertEqual(len(ua["klines_1d"]["BTC"]), 3)
+        self.assertEqual(ua["klines_1d"]["BTC"][-1][4], 102.0)
+        self.assertIsNone(ua["klines_1d"]["ETH"])                      # 451: sin datos, no inventa
+        self.assertIsNone(ua["klines_1d"]["SOL"])                      # fila inválida descartada
+        self.assertEqual(ua["fear_greed"]["value"], 23.0)
+        self.assertEqual(set(ua["perps"]), {"BTC", "ETH"})              # DOGE fuera
+        self.assertAlmostEqual(ua["perps"]["BTC"]["funding_1h"], 1.25e-5)
+        self.assertEqual(posted, [(s114.HYPERLIQUID, {"type": "metaAndAssetCtxs"})])
+        report = {"groups": {"c": {"items": [{"id": "uniswap"}]}}}
+        prot = s114.protocols_index(http, report, src)
+        self.assertEqual(list(prot), ["uniswap"])
+        self.assertEqual(prot["uniswap"]["tvl"], 4e9)                  # el de mayor TVL entre los homónimos
+        self.assertIn({"source": "defillama:/protocols", "status": 200}, src)
 
 def tearDownModule():
     shutil.rmtree(TMP, ignore_errors=True)
