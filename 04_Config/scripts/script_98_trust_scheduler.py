@@ -10,18 +10,21 @@ PROJECT_ROOT = _Path(os.getenv("SHOT_ROOT", str(_Path(__file__).resolve().parent
 load_dotenv(PROJECT_ROOT / "04_Config" / ".env")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# Trust updates = mensajes de mercado: van SOLO al grupo (TELEGRAM_PUBLIC_CHAT_ID). El chat personal
+# (TELEGRAM_CHAT_ID) está deprecado y no se lee. El bot es solo emisor: no lee updates ni comandos.
+TELEGRAM_PUBLIC_CHAT_ID = os.getenv("TELEGRAM_PUBLIC_CHAT_ID")
 ALERTS_DIR = str(PROJECT_ROOT / "02_Analisis" / "alerts")
 ALL_ALERTS_FILE = os.path.join(ALERTS_DIR, "_all_alerts.json")
 PRECISION_LOG = os.path.join(ALERTS_DIR, "_precision_log.json")
 DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens/"
 
 def send_telegram(text):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print(f"[WARN] Telegram missing. Msg: {text[:50]}...")
+    chat_id = (TELEGRAM_PUBLIC_CHAT_ID or "").strip()
+    if not TELEGRAM_BOT_TOKEN or not chat_id:
+        print(f"[WARN] Sin TELEGRAM_PUBLIC_CHAT_ID o sin token: no se envía. Msg: {text[:50]}...")
         return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": True}
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": True}
     try:
         r = requests.post(url, json=payload, timeout=15)
         return r.status_code == 200
