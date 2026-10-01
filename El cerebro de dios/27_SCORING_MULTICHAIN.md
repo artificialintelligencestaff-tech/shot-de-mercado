@@ -281,7 +281,6 @@ score_i = clip(50 + 50·D, 0, 100) − 10·[edad del par > 365 días]      (cobe
 2. Mapeo `gecko_id` → protocolo de DefiLlama.
 3. Medición en sombra con el evento de f (+20% antes de −15% en 48 h).
 4. Decisión de Dirección.
-
 ## 5. Cómo integrar al pipeline multi-chain (diseño)
 
 ### 5.1 Flujo

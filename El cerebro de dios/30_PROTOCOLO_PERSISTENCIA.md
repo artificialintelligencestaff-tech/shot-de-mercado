@@ -5,7 +5,7 @@ last_updated: 2026-10-01
 version: 1.0
 ---
 
-# 29 — Protocolo de auto-persistencia por operación
+# 30 — Protocolo de auto-persistencia por operación
 
 Regla (Dirección, Fase 9): **toda operación significativa deja su resultado en el repo y es recuperable desde él.** Sin excepción.
 
