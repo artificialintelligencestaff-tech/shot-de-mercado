@@ -419,13 +419,17 @@ def market_snapshot(token):
 
 # El pipeline de script_82 es Solana; un token de otra cadena trae "chain" (multi-chain, doc 23).
 DEFAULT_CHAIN = "solana"
-CHAIN_LABELS = {"solana": "Solana", "base": "Base", "ethereum": "Ethereum", "blast": "Blast", "monad": "Monad"}
+CHAIN_LABELS = {"solana": "Solana", "base": "Base", "ethereum": "Ethereum", "arbitrum": "Arbitrum",
+                "optimism": "Optimism", "blast": "Blast", "monad": "Monad"}
 # Exploradores por cadena (nombre, URL). Cadena sin explorador conocido = sin link (no se inventa).
 EXPLORERS = {"solana": ("Solscan", "https://solscan.io/token/{addr}"),
              "base": ("BaseScan", "https://basescan.org/token/{addr}"),
              "ethereum": ("Etherscan", "https://etherscan.io/token/{addr}"),
-             "blast": ("BlastScan", "https://blastscan.io/token/{addr}")}
-DEXSCREENER_CHAINS = {"solana", "base", "ethereum", "blast"}
+             "arbitrum": ("Arbiscan", "https://arbiscan.io/token/{addr}"),
+             "optimism": ("Optimistic Etherscan", "https://optimistic.etherscan.io/token/{addr}"),
+             "blast": ("BlastScan", "https://blastscan.io/token/{addr}"),
+             "monad": ("MonadScan", "https://monadscan.com/token/{addr}")}
+DEXSCREENER_CHAINS = {"solana", "base", "ethereum", "arbitrum", "optimism", "blast"}
 SIGNAL_WINDOW_H = 48   # horizonte de la métrica dual: la señal se evalúa dentro de las 48 h
 
 
@@ -470,6 +474,19 @@ ACQUISITION_GUIDES = {
     "base": {"wallets": [("MetaMask", "https://metamask.io"), ("Coinbase Wallet", "https://www.coinbase.com/wallet")],
              "dexes": [("Aerodrome", "https://aerodrome.finance"), ("Uniswap", "https://app.uniswap.org")],
              "fund": "ETH o USDC en la red Base", "native": "ETH", "address_word": "contrato"},
+    # Fase 6 (Dirección, 01/10): L2 y L1 nuevas. Dominios oficiales [I: no verificados por HTTP desde la sesión].
+    "arbitrum": {"wallets": [("MetaMask", "https://metamask.io"), ("Rabby", "https://rabby.io")],
+                 "dexes": [("Uniswap", "https://app.uniswap.org"), ("1inch", "https://app.1inch.io")],
+                 "fund": "ETH o USDC en la red Arbitrum", "native": "ETH", "address_word": "contrato"},
+    "optimism": {"wallets": [("MetaMask", "https://metamask.io"), ("Rabby", "https://rabby.io")],
+                 "dexes": [("Uniswap", "https://app.uniswap.org")],
+                 "fund": "ETH o USDC en la red Optimism (OP Mainnet)", "native": "ETH", "address_word": "contrato"},
+    "blast": {"wallets": [("MetaMask", "https://metamask.io")],
+              "dexes": [("Thruster", "https://thruster.finance"), ("Blasterswap", "https://blasterswap.com")],
+              "fund": "ETH en la red Blast", "native": "ETH", "address_word": "contrato"},
+    # Monad: sin DEX definido todavía (Dirección) -> guía incompleta -> no se emite hasta agregarlo.
+    "monad": {"wallets": [("MetaMask", "https://metamask.io")], "dexes": [],
+              "fund": "MON", "native": "MON", "address_word": "contrato"},
 }
 FUNDING_EXCHANGES = "Binance, Coinbase o Kraken"
 # Slippage por liquidez del par [H, doc 24 §1.2]: < $50K 10% · < $250K 5% · < $1M 3% · resto 1%.
@@ -488,19 +505,35 @@ def price_impact(usd, liquidity):
     return 2 * usd / liquidity if liquidity else None
 
 
+def guide_for(chain):
+    """Guía de compra COMPLETA de la chain (>= 1 wallet y >= 1 DEX, todos con URL), o None.
+
+    Única fuente de verdad para la alerta (script_97) y el dossier (script_113): una chain con la guía a medias
+    (p. ej., Monad sin DEX) cuenta como sin guía.
+    """
+    guide = ACQUISITION_GUIDES.get(str(chain or "").lower())
+    if not guide:
+        return None
+    for key in ("wallets", "dexes"):
+        entries = guide.get(key) or []
+        if not entries or not all(name and url for name, url in entries):
+            return None
+    return guide
+
+
 def acquisition_ready(token, mint=None):
-    """Regla núcleo: se emite solo si hay guía de compra para la chain y un mint/contrato para pegar."""
+    """Regla núcleo: se emite solo si hay guía de compra completa para la chain y un mint/contrato para pegar."""
     mint = mint or (token.get("token") or {}).get("mint") or token.get("mint")
-    return bool(mint) and detection_facts(token)["chain"] in ACQUISITION_GUIDES
+    return bool(mint) and guide_for(detection_facts(token)["chain"]) is not None
 
 
 def acquisition_block(mint, facts, snap):
     """Bloque 🛒: wallet, fondeo, DEX, mint, slippage + impacto estimado, verificación, swap y confirmación."""
     chain_text = CHAIN_LABELS.get(facts["chain"], facts["chain"])
-    guide = ACQUISITION_GUIDES.get(facts["chain"])
+    guide = guide_for(facts["chain"])
     if not guide:
         return f"🛒 *CÓMO ADQUIRIRLO* — {chain_text}\n• Sin guía de compra verificada para esta chain\n"
-    (w1, wu1), (w2, wu2) = guide["wallets"][:2]
+    wallets = " o ".join(f"{name} ({url})" for name, url in guide["wallets"][:2])
     (d1, du1), *alts = guide["dexes"]
     liq = snap["liquidity"]
 
@@ -513,11 +546,11 @@ def acquisition_block(mint, facts, snap):
     pair_url = (f"https://dexscreener.com/{facts['chain']}/{facts['pair'] or mint}"
                 if facts["chain"] in DEXSCREENER_CHAINS and (facts["pair"] or mint) else "n/d")
     pool = f" (liquidez principal en {md(facts['dex'])})" if facts.get("dex") else ""
-    alternatives = ", ".join(f"{name} ({url})" for name, url in alts)
+    alternatives = f" · alternativas: {', '.join(f'{name} ({url})' for name, url in alts)}" if alts else ""
     return (f"🛒 *CÓMO ADQUIRIRLO* — {chain_text}\n"
-            f"1. Wallet: {w1} ({wu1}) o {w2} ({wu2})\n"
+            f"1. Wallet: {wallets}\n"
             f"2. Fondear con {guide['fund']} (comprados en {FUNDING_EXCHANGES}); dejar {guide['native']} para comisiones\n"
-            f"3. Conectar la wallet a {d1} ({du1}){pool} · alternativas: {alternatives}\n"
+            f"3. Conectar la wallet a {d1} ({du1}){pool}{alternatives}\n"
             f"4. Pegar el {guide['address_word']} (coincidencia exacta): {f'`{mint}`' if mint else 'n/d'}\n"
             f"5. Slippage sugerido: {suggested_slippage(liq)} (liquidez {f'${liq:,.0f}' if liq else 'n/d'}) · "
             f"impacto estimado: $100 → {impact(100)} · $1,000 → {impact(1000)}\n"

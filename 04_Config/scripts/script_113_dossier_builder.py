@@ -811,7 +811,7 @@ def build_dossier(mint, chain, alert_data, live=None, now=None, mode="live"):
     onchain = ((signals or {}).get("signals") or {}).get("onchain") or {}
 
     # --- 🛒 1. Cómo adquirir -------------------------------------------------------------------
-    guide = s97.ACQUISITION_GUIDES.get(chain)
+    guide = s97.guide_for(chain)               # solo guías completas (regla núcleo)
     explorer = s97.EXPLORERS.get(chain)
     pair_det = facts["pair"]
     pair_now = (lds or {}).get("pair") or pair_det

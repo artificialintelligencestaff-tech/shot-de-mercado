@@ -189,7 +189,8 @@ class TemplateTest(unittest.TestCase):
     def test_sin_guia_de_compra_o_sin_mint_no_esta_listo(self):
         self.assertTrue(self.m.acquisition_ready(self.full_token()))
         self.assertTrue(self.m.acquisition_ready(self.full_token(chain="ethereum")))
-        for chain in ("monad", "blast"):
+        self.assertTrue(self.m.acquisition_ready(self.full_token(chain="blast")))     # guía agregada en la Fase 6
+        for chain in ("monad", "tron"):                                               # Monad sin DEX · sin guía
             self.assertFalse(self.m.acquisition_ready(self.full_token(chain=chain)))
         sin_mint = {"token": {"symbol": "X"}, "score": 60}
         self.assertFalse(self.m.acquisition_ready(sin_mint))
