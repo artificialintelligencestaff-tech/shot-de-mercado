@@ -13,7 +13,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 
 ---
 
-## 1. Estado (cierre de sesión 2026-10-01 ~00:45 UTC)
+## 1. Estado (cierre de sesión 2026-10-01 ~01:10 UTC)
 
 | Componente | Estado | Rótulo |
 |---|---|---|
@@ -24,7 +24,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 | Trust loop (script_98) | Solo procesa `status == "active_tracking"` (ignora sombra). | [V] |
 | Bots gemelos | `monitor_shadow_bot` (6 h), `health_check_bot` (2 h), `autorepair_bot` (4 h), `daily_summary_bot` (06:00 UTC). Los 4 verificados con workflow_dispatch el 2026-09-30 05:50 UTC (success + commit de su log). | [V] |
 | Telegram de operaciones | Los bots escriben SOLO a `TELEGRAM_OPS_CHAT_ID` (grupo "La mano de Dios"). Secret cargado por Dirección el 2026-09-30 06:05 UTC; primer envío (resumen diario por dispatch, run 36677130640) a las 06:13 UTC con `notified: sent`. | [V] API · **recepción confirmada por Dirección** |
-| Destinos de Telegram | **Mercado** (alertas `script_97`, trust updates `script_98`, pre-launch `script_99`) → `TELEGRAM_PUBLIC_CHAT_ID`. **Sistema** (4 bots, `lib_ops`) → `TELEGRAM_OPS_CHAT_ID`. Los dos apuntan al grupo privado "La mano de Dios" (solo owner + bot), con prefijos distintos [reportado por Dirección]. **Chat personal (`TELEGRAM_CHAT_ID`) deprecado:** ningún script de producción lo lee y ningún workflow lo pasa. `--test-send` / `telegram_test_send.yml` apuntan solo al grupo. Rama `claude/destino-grupo` (`77c441a`, `e69ea5e`, `bbf9d1a`, `5816a1b`), **sin push**. Antes de este cambio, el test-send llegó a ambos destinos (confirmado por Dirección). | [V] código y tests · push [P] |
+| Destinos de Telegram | **Mercado** (alertas `script_97`, trust updates `script_98`, pre-launch `script_99`) → `TELEGRAM_PUBLIC_CHAT_ID`. **Sistema** (4 bots, `lib_ops`) → `TELEGRAM_OPS_CHAT_ID`. Los dos apuntan al grupo privado "La mano de Dios" (solo owner + bot), con prefijos distintos [reportado por Dirección]. **Chat personal (`TELEGRAM_CHAT_ID`) deprecado:** ningún script de producción lo lee y ningún workflow lo pasa. `--test-send` / `telegram_test_send.yml` apuntan solo al grupo. **En main** (push ff `b560a7a..2c44332`). Test-send run 36799931771: **grupo OK**, un solo destino en el log (el chat personal no se intentó). | [V] |
 | Resumen diario (ops) | Formato legible por secciones, calidad separada por versión (T1 `7b14a58`); un envío por día UTC con `last_sent_date`, `--force` para reenviar (T2 `dd48a77`). | [V] |
 | Scanner multi-chain v0 | `script_114_multichain_scanner.py` (T5 `3694aa8`): grupos h, f, c, g, d, e (CoinGecko sin key) + a (GeckoTerminal: solana, base, eth, blast, monad). Solo recolección + marca de aceleración [H]; sin score, sin emisión, **no enganchado a ningún workflow**. Humo real: 13 llamadas, 0 errores. | [V] |
 | Tests | **151/151** (11 archivos `04_Config/scripts/test_*.py`, unittest, sin red). | [V] |
@@ -170,14 +170,17 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | ~~**Falta el secret `TELEGRAM_PUBLIC_CHAT_ID`**~~ Cargado por Dirección; el test-send llegó a ambos destinos (confirmado por Dirección). | T3 sesión 2 | — |
 | Scripts viejos que no corre ningún workflow (`script_20*`, `script_37*`, `script_38b`, `script_40`) siguen leyendo `TELEGRAM_CHAT_ID`: si alguien los corre a mano, escriben al chat personal. | hardening | P3 |
 | El paso de detección (`script_82`) recibe `TELEGRAM_BOT_TOKEN` sin usar Telegram (mínimo privilegio: se podría quitar). | hardening | P3 |
+| **BotFather (Dirección):** `/setjoingroups` → Disable (nadie puede agregar el bot a otros grupos) y `/setprivacy` → Enable. | hardening | P1 (Dirección) |
+| Bug en `script_82.score_token`: el tramo "Venta agresiva (buy_pressure < 30%) −35" está en un `elif` detrás de `< 40%`, así que nunca se alcanza (todo < 30% cae en −20). Encontrado al documentar el Anexo C del doc 24; no se tocó. | doc 24 | P2 |
+| `script_82` guarda los motivos del score pero no los puntos: el desglose del dossier se reconstruye. Agregar `score_breakdown`. | doc 24 | P2 |
+| Integración multi-chain: diseño en el doc 24 Anexo B (workflow propio, `script_115`, acumulado separado, `script_97` con dos fuentes, veredicto por grupo). Sin implementar. | doc 24 | P2 |
 | El scanner multi-chain v0 no corre solo: engancharlo a un workflow requiere consulta. El grupo b (preventa) no tiene fuente gratuita en CoinGecko. | T5 | P2 |
 
 ---
 
 ## 8. Próximos pasos
 
-1. **Push de `claude/destino-grupo`** (todo mensaje de mercado solo al grupo + hardening), pendiente de autorización. Después: re-disparar `telegram_test_send` (esperado: grupo OK; el chat personal no recibe nada).
-2. **Próxima fase: knowledge sheet / dossier por activo** (Dirección, sesión 2). Diseñar primero el template y después `script_113_dossier_builder.py` (nombre tentativo). Un dossier por alerta con: (1) identificación completa (nombre, symbol, mint, chain, deployer, auditoría); (2) método de detección: datos usados, cálculos, probabilidad; (3) vigencia de la señal; (4) adquisición paso a paso; (5) fuentes verificables; (6) documentación de cálculos para que el usuario audite el método. Información educativa, sin secciones de advertencia.
+1. **Dossier por activo: implementar el diseño del doc 24** (`24_DOSSIER_POR_ACTIVO.md`: 7 secciones, template, ejemplo VSOF reproducido, checklist): `script_113_dossier_builder.py` + `score_breakdown` en `script_82` + envío con `sendDocument` al grupo. Pendiente de autorización.
 3. **Medir la exposición a tokens < 60 min solo sobre alertas v7.2.1 (A-b)** (criterio < 20%). Al cierre, la muestra v7.2.1 era mínima (primaria 0/1) y no hubo alertas nuevas después de las 12:48 UTC.
 4. Confirmar que el trust loop procesa bien las 7 `active_tracking` previas a SHADOW (A-c).
 5. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
@@ -194,3 +197,4 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | 2026-09-30 | Directiva ampliada (máximo aprovechamiento) | T1 v7.2.1 en main (sombra) · T2 fase2-p1 en main · T3 gate de edad 30 min · T4 advertencia crítica · bots gemelos desplegados y verificados (4/4 success) · 1.ª corrida v7.2.1 verificada (35/35 tokens 7.2.1, ≥56: 2/35) · doc 22 creado · doc 23 (8 grupos, 42 fuentes, 12 propuestas de innovación) · ops chat "La mano de Dios" operativo (confirmado) · 4 anomalías del primer resumen registradas en §7 (A-c P0) |
 | 2026-09-30 (noche) | Post-incidente + mejoras operativas | Framing neutral en main (`c727ece`, aplicado por Dirección/YIN) · T1 resumen legible · T2 resumen idempotente · T3 alertas a personal + grupo, `--test-send`, pausa 0,5 s · T4 template con ACTIVO / DETECCIÓN / FUENTES · T5 scanner multi-chain v0 · push ff `77b2a1c..3694aa8` · 151/151 tests · test-send: personal OK, grupo sin secret · A-c: las `active_tracking` son todas previas a SHADOW |
 | 2026-10-01 | Redirección exclusiva al grupo + hardening | `script_97`, `script_98` y `script_99` envían solo a `TELEGRAM_PUBLIC_CHAT_ID`; ningún workflow pasa `TELEGRAM_CHAT_ID`; bot solo emisor (sin `getUpdates`/webhooks/polling, verificado y con test de regresión); rama `claude/destino-grupo` sin push |
+| 2026-10-01 (cont.) | Cierre de fase: push destinos + dossier | Push ff `b560a7a..2c44332` (destinos solo al grupo + hardening) · test-send: grupo OK · doc 24 (diseño del dossier por activo + anexo multi-chain), ejemplo VSOF con score 95 reproducido con el `script_82` de `be8e7d3` y 45 con v7.2.1 · BotFather pendiente (Dirección) · bug del tramo −35 inalcanzable registrado |
