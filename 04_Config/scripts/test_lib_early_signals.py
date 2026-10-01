@@ -66,6 +66,15 @@ class Libro(unittest.TestCase):
         self.assertLess(s["imbalance"], 0)
         self.assertEqual(s["s"], 0.0)
 
+    def test_clmm_liquidez_debajo_del_precio(self):
+        pts = [(0.985, 800), (0.995, 400), (1.005, 100), (1.015, 50), (0.90, 99999), (1.2, 99999)]   # fuera de ±2 %
+        s = es.clmm_imbalance(pts, 1.0)
+        self.assertGreater(s["imbalance"], 0.5)
+        self.assertEqual(s["s"], 1.0)
+        self.assertEqual(es.clmm_imbalance([(0.99, 10), (1.01, 90)], 1.0)["s"], 0.0)   # arriba: 0, no resta
+        self.assertIsNone(es.clmm_imbalance([(0.5, 10)], 1.0))
+        self.assertIsNone(es.clmm_imbalance(pts, None))
+
     def test_libro_cruzado_o_vacio(self):
         self.assertIsNone(es.orderbook_imbalance([], [[1, 1]]))
         self.assertIsNone(es.orderbook_imbalance([[10, 1]], [[9, 1]]))

@@ -17,17 +17,19 @@ Señales:
   7. social_velocity       sorpresa de menciones (doc 26) + aceleración 1 h vs. 1 h previa + CoinGecko trending.
   8. funding_squeeze       funding anómalamente negativo con OI subiendo (setup de short squeeze, perps).
   9. fear_greed_extreme    Fear & Greed <= 20 (contrarian).
+ 10. clmm_imbalance        (0.2, Fase 10b) liquidez concentrada debajo vs. encima del precio en un pool CLMM de
+                           Solana (Raydium /pools/line/position): el "order book" de un AMM concentrado.
 
 Parámetros heurísticos [H], no calibrados: se calibran con historical_alerts.jsonl cuando haya n suficiente.
 """
 import math
 import statistics
 
-VERSION = "early-0.1"
+VERSION = "early-0.2"
 BONUS_CAP = 8                       # puntos máximos sobre el score (0..100)
 POINTS = {"volume_acceleration": 3, "buy_pressure_shift": 2, "quiet_accumulation": 3, "liquidity_inflow": 2,
           "orderbook_imbalance": 3, "holder_accumulation": 2, "social_velocity": 3, "funding_squeeze": 2,
-          "fear_greed_extreme": 1}
+          "fear_greed_extreme": 1, "clmm_imbalance": 3}
 MIN_TXNS_M5 = 10                    # menos trades en 5 min = ruido
 QUIET_PRICE_M5 = 5.0                # % — "precio todavía quieto"
 OB_DEPTH_PCT = 0.02                 # ±2 % del mid
@@ -147,6 +149,30 @@ def orderbook_imbalance(bids, asks, depth_pct=OB_DEPTH_PCT, lo=0.15, hi=0.5):
     imb = (b - a) / (b + a)
     sig = _signal("orderbook_imbalance", (imb - lo) / (hi - lo),
                   f"bid/ask ±{depth_pct:.0%}: {imb:+.2f} (bid ${b:,.0f} · ask ${a:,.0f})")
+    sig["imbalance"] = round(imb, 4)
+    return sig
+
+
+def clmm_imbalance(points, price, depth_pct=OB_DEPTH_PCT, lo=0.15, hi=0.5):
+    """points: [(precio, liquidez)] de un pool de liquidez concentrada. La liquidez por debajo del precio actual
+    compra si el precio baja (lado bid) y la de arriba vende si sube (lado ask). (bid − ask) / (bid + ask) dentro
+    de ±depth_pct. Unidades de liquidez del pool (no USD): vale como proporción en una banda angosta [H]."""
+    p = _num(price)
+    if p is None or p <= 0:
+        return None
+    bid = ask = 0.0
+    for px, liq in points or []:
+        px, liq = _num(px), _num(liq)
+        if px is None or liq is None or liq <= 0:
+            continue
+        if p * (1 - depth_pct) <= px < p:
+            bid += liq
+        elif p <= px <= p * (1 + depth_pct):
+            ask += liq
+    if bid + ask <= 0:
+        return None
+    imb = (bid - ask) / (bid + ask)
+    sig = _signal("clmm_imbalance", (imb - lo) / (hi - lo), f"CLMM ±{depth_pct:.0%}: {imb:+.2f}")
     sig["imbalance"] = round(imb, 4)
     return sig
 

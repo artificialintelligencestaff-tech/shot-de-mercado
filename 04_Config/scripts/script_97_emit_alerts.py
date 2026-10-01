@@ -746,24 +746,32 @@ def load_multichain_inputs(now=None, max_age_min=MULTICHAIN_MAX_AGE_MIN):
 
 
 EARLY_DIR = PROJECT_ROOT / "02_Analisis" / "early"
-EARLY_ALERTS_FILE = EARLY_DIR / "_early_alerts.json"
+EARLY_ALERTS_FILE = EARLY_DIR / "_early_alerts.json"     # v0.1 (una sola instancia); se sigue leyendo
+EARLY_CLAIMS_DIR = EARLY_DIR / "alerts"                 # Fase 10b: un archivo por mint (reclamo entre instancias)
 EARLY_SIGNALS_MAX_AGE_MIN = 20       # script_116 los reescribe cada 2 min mientras corre
-EARLY_WORKFLOW = "early_watch.yml"
+EARLY_WORKFLOWS = ("early_watch.yml", "early_watch_b.yml")
 
 
 def load_early_signals(now=None, max_age_min=EARLY_SIGNALS_MAX_AGE_MIN):
-    """Fase 10: {key: bono anticipatorio} de script_116 (order book / funding / F&G), o None si no está fresco."""
+    """Fase 10: {key: bono anticipatorio} de script_116 (order book / funding / F&G), o None si no hay nada fresco.
+    Fase 10b: un archivo por instancia (_signals_<inst>.json, y el _signals.json de la v0.1); por activo gana
+    el archivo más reciente."""
     now = now or datetime.now(timezone.utc)
-    data = _read_json_file(EARLY_DIR / "_signals.json")
-    if not isinstance(data, dict):
-        return None
-    try:
-        at = datetime.fromisoformat(str(data.get("generated_at")).replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if (now - at).total_seconds() / 60 > max_age_min:
-        return None
-    return data.get("signals") or None
+    fresh = []
+    for path in EARLY_DIR.glob("_signals*.json"):
+        data = _read_json_file(path)
+        if not isinstance(data, dict):
+            continue
+        try:
+            at = datetime.fromisoformat(str(data.get("generated_at")).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if (now - at).total_seconds() / 60 <= max_age_min:
+            fresh.append((at, data.get("signals") or {}))
+    merged = {}
+    for _, signals in sorted(fresh, key=lambda x: x[0]):
+        merged.update(signals)
+    return merged or None
 
 
 def load_multichain_extras():
@@ -1016,8 +1024,9 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
 # ---------------------------------------------------------------------------
 
 def early_watch_active(get=None, repo=None, token=None):
-    """True si hay una corrida de early_watch.yml en curso (API de Actions con GITHUB_TOKEN). Sin token, sin repo o
-    con error: False (pipeline_t0 sigue emitiendo como siempre). EARLY_HANDOFF=false lo desactiva."""
+    """True si hay una corrida en curso de early_watch.yml o early_watch_b.yml (API de Actions con GITHUB_TOKEN).
+    Sin token, sin repo o con error: False (pipeline_t0 sigue emitiendo como siempre). EARLY_HANDOFF=false lo
+    desactiva."""
     if (os.getenv("EARLY_HANDOFF") or "true").strip().lower() not in TRUTHY:
         return False
     repo = repo or os.getenv("GITHUB_REPOSITORY")
@@ -1025,35 +1034,67 @@ def early_watch_active(get=None, repo=None, token=None):
     if not repo or not token:
         return False
     get = get or requests.get
-    url = f"https://api.github.com/repos/{repo}/actions/workflows/{EARLY_WORKFLOW}/runs?status=in_progress&per_page=1"
-    try:
-        r = get(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
-                timeout=15)
-        return r.status_code == 200 and (r.json() or {}).get("total_count", 0) > 0
-    except Exception:
-        return False
+    for wf in EARLY_WORKFLOWS:
+        url = f"https://api.github.com/repos/{repo}/actions/workflows/{wf}/runs?status=in_progress&per_page=1"
+        try:
+            r = get(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                    timeout=15)
+            if r.status_code == 200 and (r.json() or {}).get("total_count", 0) > 0:
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _local_early_records():
+    data = _read_json_file(EARLY_ALERTS_FILE, [])
+    out = [r for r in data if isinstance(r, dict)] if isinstance(data, list) else []
+    if EARLY_CLAIMS_DIR.is_dir():
+        for path in sorted(EARLY_CLAIMS_DIR.glob("*.json")):
+            rec = _read_json_file(path)
+            if isinstance(rec, dict):
+                out.append(rec)
+    return out
 
 
 def load_early_alerts(fresh=False, run=None):
-    """Registros de script_116. fresh=True: primero la versión de origin/main (git fetch), para no re-emitir algo
-    que early_watch pusheó después del checkout de esta corrida; si git falla, el archivo local."""
-    if fresh:
-        import subprocess
-        run = run or subprocess.run
-        rel = EARLY_ALERTS_FILE.relative_to(PROJECT_ROOT).as_posix()
-        try:
-            if run(["git", "fetch", "-q", "origin", "main"], cwd=str(PROJECT_ROOT), capture_output=True,
-                   timeout=60).returncode == 0:
-                r = run(["git", "show", f"FETCH_HEAD:{rel}"], cwd=str(PROJECT_ROOT), capture_output=True, text=True,
-                        timeout=30)
-                if r.returncode == 0:
-                    data = json.loads(r.stdout)
-                    if isinstance(data, list):
-                        return data
-        except Exception:
-            pass
-    data = _read_json_file(EARLY_ALERTS_FILE, [])
-    return data if isinstance(data, list) else []
+    """Registros de script_116: early/alerts/<mint>.json (Fase 10b) + _early_alerts.json (v0.1).
+    fresh=True: además los de origin/main recién traídos (git fetch), para no re-emitir algo que early_watch
+    pusheó después del checkout de esta corrida; si git falla, solo lo local."""
+    out = _local_early_records()
+    if not fresh:
+        return out
+    import subprocess
+    run = run or subprocess.run
+    root = str(PROJECT_ROOT)
+    have = {normalize_mint(r.get("mint")) for r in out}
+    try:
+        if run(["git", "fetch", "-q", "origin", "main"], cwd=root, capture_output=True, timeout=60).returncode != 0:
+            return out
+        for rel in (EARLY_ALERTS_FILE.relative_to(PROJECT_ROOT).as_posix(),):
+            r = run(["git", "show", f"FETCH_HEAD:{rel}"], cwd=root, capture_output=True, text=True, timeout=30)
+            if r.returncode == 0:
+                data = json.loads(r.stdout)
+                for rec in data if isinstance(data, list) else []:
+                    if isinstance(rec, dict) and normalize_mint(rec.get("mint")) not in have:
+                        out.append(rec)
+                        have.add(normalize_mint(rec.get("mint")))
+        claims = EARLY_CLAIMS_DIR.relative_to(PROJECT_ROOT).as_posix()
+        r = run(["git", "ls-tree", "--name-only", "FETCH_HEAD", f"{claims}/"], cwd=root, capture_output=True,
+                text=True, timeout=30)
+        for rel in (r.stdout.split() if r.returncode == 0 else []):
+            mint = rel.rsplit("/", 1)[-1][:-5] if rel.endswith(".json") else ""
+            if not mint or normalize_mint(mint) in have:
+                continue
+            shown = run(["git", "show", f"FETCH_HEAD:{rel}"], cwd=root, capture_output=True, text=True, timeout=30)
+            if shown.returncode == 0:
+                rec = json.loads(shown.stdout)
+                if isinstance(rec, dict):
+                    out.append(rec)
+                    have.add(normalize_mint(mint))
+    except Exception:
+        pass
+    return out
 
 
 def adopt_early_alerts(all_alerts, early_alerts, shadow=False, builder_loader=None):

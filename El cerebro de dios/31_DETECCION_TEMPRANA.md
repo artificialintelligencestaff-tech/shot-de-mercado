@@ -2,7 +2,7 @@
 owner: Claude Code (implementador) — pendiente auditoría YANG
 status: VIVO
 last_updated: 2026-10-01
-version: 0.1
+version: 0.2
 ---
 
 # 31 — Detección temprana (Fase 10)
@@ -102,7 +102,7 @@ Cada poll:
    script_97: dentro de los 60 min de la detección vale el score de detección si es mayor. Después se suma el bono.
 4. Se emite si:
    - `score + bono ≥ 56`;
-   - edad ≥ `EARLY_MIN_AGE_MIN` (por defecto = `EMIT_MIN_AGE_MIN` = 30, configurable por env);
+   - edad ≥ edad mínima: **10 min desde la Fase 10b** (decisión de Dirección; §9.1). En la 0.1 era 30;
    - hay guía de compra;
    - el par tiene menos de 180 días (grupo i: no se emite).
 
@@ -169,3 +169,104 @@ Con gate G, el piso es G + 1 min.
 | ≥ 3 señales anticipatorias | implementadas | **9** [V] |
 | Polling ≤ 10 min | intervalo | **2 min** [V código, P producción] |
 | ≥ 30 % de alertas dentro de los primeros 5 min del pump | `within_5min_pct` | [P] misma medición |
+
+## 9. Fase 10b — ajustes post-integración
+
+### 9.1 Edad mínima 10 min (T1)
+
+- `script_116.EARLY_MIN_AGE_MIN_DEFAULT = 10`. Se resuelve en cada poll con este orden de precedencia:
+  1. `EARLY_MIN_AGE_MIN` (env, solo para pruebas manuales; ningún workflow lo fija);
+  2. `02_Analisis/early/_gate.json`;
+  3. 10.
+- La edad mínima de emisión de `script_97` (`EMIT_MIN_AGE_MIN = 30`) **no cambia**. Rige solo cuando no corre
+  ningún early watch.
+- Cada alerta temprana guarda `gate_min`, la edad mínima con la que salió.
+- **Monitoreo de 24 h:** `early_review.py` + `early_review.yml`, cada 6 h a los :41.
+  - Mide la primaria de las alertas con `gate_min ≤ 10`. Usa velas de 15 min de GeckoTerminal y la misma
+    `evaluate_outcome` del monitor de sombra.
+  - Decide cuando pasaron ≥ 24 h desde la primera alerta del ensayo y hay ≥ 5 primarias resueltas. Si la tasa da
+    < 40 %, escribe `_gate.json = 15`.
+  - La suba no se revierte sola.
+  - Estados posibles: `en_prueba`, `sin_datos_suficientes`, `mantener`, `subir`, `ya_subido`.
+  - Salida en `02_Analisis/diagnostics/early_review.json`.
+- Piso nuevo [I]: edad al emitir ≈ 10 + 2/2 = **11 min**. Antes ~44 min con pipeline_t0 y ~31 min con el early
+  watch 0.1.
+
+### 9.2 Segundo early watch (T2)
+
+- **Instancias:**
+  - `early_watch.yml`, instancia `a`, arranca a los :07 y :37;
+  - `early_watch_b.yml`, instancia `b`, arranca a los :22 y :52.
+
+  Cada una tiene su propio grupo de concurrencia, así que hay **dos conexiones a PumpPortal en paralelo**,
+  desfasadas 15 min.
+- **Dedup entre instancias.** La dedup por mint de `_all_alerts.json` no alcanza: las dos instancias pueden ver
+  el mismo token en el mismo minuto, antes de que la otra pushee. Por eso cada alerta es un archivo por mint,
+  `02_Analisis/early/alerts/<mint>.json`, que funciona como **reclamo** (`Git.claim`):
+  1. Antes de enviar a Telegram, la instancia commitea el reclamo.
+  2. Hace `git fetch`. Si el reclamo ya está en `origin/main`, lo tiene la otra instancia: se deshace el commit
+     local con `reset --soft` (nunca `--hard`) y no se envía.
+  3. Si no está, hace pull --rebase y push. Si dos instancias pushean juntas, la segunda falla el push, reintenta,
+     encuentra el reclamo y desiste.
+  4. Si el push no sale por la red tras 4 intentos, se envía igual (el registro queda local y sube en el próximo
+     commit).
+- **Archivos por instancia** (ningún archivo lo escriben las dos instancias):
+  - `_watch_<inst>.json`, `_signals_<inst>.json`;
+  - bitácora `early_watch_<inst>`;
+  - `_early_alerts.json` de la 0.1 se sigue leyendo, pero ya no se escribe.
+- **script_97:**
+  - el hand-off mira las dos instancias (`EARLY_WORKFLOWS`);
+  - adopta los reclamos, los locales y los de `origin/main` (`git ls-tree` + `git show`);
+  - combina `_signals_*.json`: por activo gana el archivo más fresco.
+- **Cobertura esperada: ~100 %** [I].
+  - Con una sola instancia ya hay cobertura continua mientras el scheduler se atrase menos de 10 min sobre la
+    corrida anterior: el bucle dura 40 min y la corrida siguiente queda encolada. Los huecos aparecen con retrasos
+    mayores y en los ~30–60 s de arranque de cada job.
+  - Con dos instancias desfasadas, un hueco de una lo cubre la otra.
+- **Medición:** cada instancia guarda los intervalos de conexión suscripta de PumpPortal (`listener_intervals`, 26
+  h) y `early_review.py` calcula la unión en 24 h. La referencia es script_82: 25 %.
+- **Costo:** dos jobs casi permanentes. El repo es público, así que los minutos de Actions no tienen límite.
+  DexScreener: ~30 lotes por instancia cada 2 min, muy por debajo de 300/min.
+
+### 9.3 Cloudflare Workers (T3): exploración. **Factible solo con un Durable Object; no con un cron trigger simple**
+
+Límites del plan Free, tomados de `cloudflare-docs` (`workers/platform/limits.mdx` y
+`durable-objects/platform/limits.mdx`) [V]:
+
+| Recurso | Free | Implicancia |
+|---|---|---|
+| CPU por invocación de cron trigger | **10 ms** | Re-puntuar cientos de tokens por minuto no entra con margen [I]. Sí entra un poll liviano (fetch + umbral), porque la espera de red no cuenta como CPU. |
+| Subrequests por invocación | **50** | Un poll con DexScreener en lotes (~30) + Telegram + GitHub entra justo. |
+| Cron triggers por cuenta | **5** | Cada 1 min es posible (1.440 invocaciones por día). |
+| Requests por día | 100.000 | Sobra. |
+| Durable Objects (solo SQLite) | 100.000 req/día · **13.000 GB-s/día** · CPU 30 s por request | Un DO con el WebSocket saliente de PumpPortal abierto todo el día: 0,125 GB × 86.400 s ≈ **10.800 GB-s/día**, dentro del tier Free [I]. La hibernación no aplica a WebSockets salientes. |
+
+Diseño posible:
+- un Durable Object con el WebSocket de PumpPortal y una alarma cada 60 s;
+- en cada alarma: DexScreener, score, bono, Telegram;
+- estado en el SQLite del propio DO;
+- reclamos y registros a GitHub vía API REST, con un token en un secret de Workers.
+
+Costo de llevarlo a cabo:
+- **portar `score_token` v7.2.1, `lib_early_signals`, el formato de alerta y las guías de compra a JavaScript.**
+  Son dos implementaciones del scorer y hay riesgo de divergencia: harían falta tests de paridad contra Python.
+  Python Workers (Pyodide) evitaría el port, pero no está verificado con Durable Objects desde acá [P].
+- **Dirección:** una cuenta de Cloudflare (Free, sin tarjeta), un token de API para desplegar y un token de GitHub
+  con permiso de escritura. Desde el contenedor no se llega a `developers.cloudflare.com` ni se puede desplegar.
+
+Ganancia sobre 9.2: la latencia de poll baja de ~1 min de media (poll de 2 min) a ~30 s. Ya no hay huecos de
+arranque de job. El cron de GitHub deja de importar.
+
+Recomendación: medir primero 24–48 h de 9.2 (cobertura y gap con `latency_analysis.yml`). Workers se justifica
+si la cobertura queda bajo ~95 % o si los 2 min de poll pesan en el gap.
+
+### 9.4 Order book en Solana (T4)
+
+| Fuente | Qué da | Estado |
+|---|---|---|
+| **Raydium API v3** `api-v3.raydium.io/pools/line/position?id=<pool>` | Liquidez por precio de un pool **CLMM**: precio → liquidez | **Integrada.** Ruta y forma `{price, liquidity}` tomadas de `raydium-sdk-V2` (`src/api/url.ts`, `getClmmPoolLines`) [V código del SDK]. Sin key. `script_116` la consulta para tokens del watch en pools Raydium con etiqueta CLMM, al alcance del bono (hasta 6 por poll, cada 4 min). Señal `clmm_imbalance` (liquidez debajo vs. encima del precio, ±2 %, hasta 3 puntos). |
+| **Phoenix** `perp-api.phoenix.trade/v1/view/orderbook/{symbol}` | L2 de perps nativos de Solana | **Integrada como 3.er respaldo** de perps (Hyperliquid → dYdX → Phoenix). Pública, sin key [búsqueda]. El formato de respuesta no está verificado desde el contenedor: el parser acepta listas o dicts [I]. |
+| **Orca Whirlpools** `api.orca.so/v2/solana` (14 endpoints sin key, incluye `pools/liquidity_map`) | Liquidez por tick | Encontrada; parámetros no verificados (docs bloqueados en el contenedor) [P]. `clmm_imbalance` ya sirve para ese formato. |
+| **Meteora DLMM** `dlmm.datapi.meteora.ag` (30 req/s, sin key) | Pools, OHLCV, volumen | Encontrada. El endpoint de bins no está confirmado [P]. |
+| **OpenBook v2** | CLOB on-chain | Sin REST pública propia: hace falta leer las cuentas por RPC o pasar por proveedores (Bitquery, bloXroute, con cuenta). No integrada. |
+| PumpSwap / Raydium CPMM (donde vive la mayoría de las memecoins) | Producto constante | No hay "libro": la profundidad es simétrica por construcción, así que un desequilibrio no informa nada. Para memecoins vale la serie de liquidez del pool (`liquidity_inflow`). |

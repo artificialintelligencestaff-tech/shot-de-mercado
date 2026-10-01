@@ -13,18 +13,23 @@ el workflow lo relanza cada 30 min) y:
      (v7.2.1, sin cambios) y suma el bono anticipatorio de lib_early_signals (solo suma, tope 8):
        flujo (aceleración de volumen, presión compradora, acumulación con precio quieto, entrada de liquidez),
        on-chain (RugCheck: holders/min y top-10, T5) y social (script_115 / doc 26 + CoinGecko trending, T6).
-  3. Emite en cuanto score + bono >= EMIT_MIN_SCORE (56) con edad >= EARLY_MIN_AGE_MIN (por defecto el mismo
-     EMIT_MIN_AGE_MIN de script_97 = 30; configurable) y guía de compra (regla núcleo). Mensaje = el de script_97.
-     Registro ANTES de enviar en 02_Analisis/early/_early_alerts.json (push inmediato). pipeline_t0 adopta esos
-     registros en _all_alerts.json (script_98 los sigue) y les adjunta el dossier.
-  4. Multi-chain (T4): order book de Hyperliquid (l2Book; dYdX v4 de respaldo) + funding/OI propios para los
-     activos de multichain/_scores.json con perp -> 02_Analisis/early/_signals.json, que script_97 suma como bono.
+  3. Emite en cuanto score + bono >= EMIT_MIN_SCORE (56) con edad >= la edad mínima y guía de compra (regla
+     núcleo). Edad mínima (Fase 10b): 10 min por defecto; early_review.py la sube a 15 en _gate.json si la
+     primaria de las alertas tempranas da < 40 %; EARLY_MIN_AGE_MIN (env) la fija a mano. Mensaje = el de script_97.
+  4. Dos instancias en paralelo (EARLY_INSTANCE a = early_watch.yml en :07/:37, b = early_watch_b.yml en :22/:52):
+     PumpPortal escuchado por dos conexiones desfasadas. Sin doble emisión: antes de enviar, cada instancia
+     pushea el reclamo 02_Analisis/early/alerts/<mint>.json; si ya está en origin/main, lo emitió la otra y no se
+     envía (Git.claim). pipeline_t0 adopta esos registros en _all_alerts.json (script_98 los sigue) con dossier.
+  5. Order book (T4): Hyperliquid l2Book -> dYdX v4 -> Phoenix para perps multi-chain (+ funding/OI) ->
+     _signals_<inst>.json, que script_97 suma como bono; Raydium CLMM (/pools/line/position) para tokens Solana
+     en pools concentrados.
 
-Mientras este workflow está corriendo, script_97 deja la ruta Solana en sus manos (sin doble emisión): ver
+Mientras alguna instancia está corriendo, script_97 deja la ruta Solana en sus manos: ver
 script_97.early_watch_active.
 
-Archivos (solo los suyos): 02_Analisis/early/{_watch.json, _early_alerts.json, _signals.json} y los
-alert_<mint>_<ts>.json de sus alertas. Bitácora lib_persist "early_watch".
+Archivos propios por instancia: 02_Analisis/early/{_watch_<inst>.json, _signals_<inst>.json}; compartidos sin
+conflicto (un archivo por mint): early/alerts/<mint>.json y alert_<mint>_<ts>.json. Bitácora "early_watch_<inst>".
+Cobertura de PumpPortal: listener_intervals en _watch_<inst>.json (early_review.py mide la unión en 24 h).
 
 Uso: python 04_Config/scripts/script_116_early_watch.py [--loop-minutes 40] [--poll-seconds 120] [--once]
                                                        [--no-git] [--no-listen] [--dry-run]
@@ -45,8 +50,14 @@ sys.path.insert(0, str(SCRIPTS))
 import lib_early_signals as es  # noqa: E402
 
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
-VERSION = "116-0.1"
+VERSION = "116-0.2"
+INSTANCE = (os.environ.get("EARLY_INSTANCE") or "a").strip().lower() or "a"   # Fase 10b: a (:07/:37), b (:22/:52)
 EARLY_DIR_REL = "02_Analisis/early"
+CLAIMS_REL = f"{EARLY_DIR_REL}/alerts"      # un archivo por mint = reclamo de la emisión entre instancias
+GATE_FILE_REL = f"{EARLY_DIR_REL}/_gate.json"
+EARLY_MIN_AGE_MIN_DEFAULT = 10              # Fase 10b (Dirección): 30 -> 10; early_review puede subirlo a 15
+PHOENIX_BOOK = "https://perp-api.phoenix.trade/v1/view/orderbook/{symbol}"
+RAYDIUM_LINE = "https://api-v3.raydium.io/pools/line/position?id={pool}"
 DEX_BATCH_URL = "https://api.dexscreener.com/tokens/v1/solana/{mints}"
 DEX_BATCH = 30
 RUGCHECK_URL = "https://api.rugcheck.xyz/v1/tokens/{mint}/report"
@@ -67,8 +78,34 @@ RUGCHECK_REFRESH_S = 300
 OB_TOP_N = 25
 SERIES_KEEP = 40                # puntos de liquidez / holders / funding guardados por activo
 COMMIT_EVERY_S = 600
-GROUP_I_MIN_AGE_MIN = 180 * 1440
-STORED_SCORE_MAX_AGE_MIN = 60      # script_97.CANDIDATE_MAX_AGE_MIN   # script_82.GROUP_I_MIN_AGE_DAYS
+GROUP_I_MIN_AGE_MIN = 180 * 1440   # script_82.GROUP_I_MIN_AGE_DAYS
+STORED_SCORE_MAX_AGE_MIN = 60      # script_97.CANDIDATE_MAX_AGE_MIN
+CLMM_PER_POLL = 6
+CLMM_REFRESH_S = 240
+COVERAGE_KEEP_S = 26 * 3600        # intervalos de conexión de PumpPortal que se guardan (early_review mide 24 h)
+
+
+def instance_paths(instance=None):
+    """Archivos propios de una instancia: dos early watch en paralelo nunca escriben el mismo archivo."""
+    inst = instance or INSTANCE
+    return {"watch": f"{EARLY_DIR_REL}/_watch_{inst}.json", "signals": f"{EARLY_DIR_REL}/_signals_{inst}.json",
+            "op": f"early_watch_{inst}"}
+
+
+def claim_rel(mint):
+    return f"{CLAIMS_REL}/{mint}.json"
+
+
+def resolve_min_age(root, env=None):
+    """Edad mínima de emisión: EARLY_MIN_AGE_MIN (env, manual) > _gate.json (early_review) > 10 por defecto."""
+    env = os.environ if env is None else env
+    if (env.get("EARLY_MIN_AGE_MIN") or "").strip():
+        return int(env["EARLY_MIN_AGE_MIN"])
+    gate = read_json(Path(root) / GATE_FILE_REL, {})
+    try:
+        return int(gate.get("early_min_age_min"))
+    except (TypeError, ValueError, AttributeError):
+        return EARLY_MIN_AGE_MIN_DEFAULT
 
 
 def now_iso(ts=None):
@@ -149,6 +186,7 @@ def flatten_pair(best):
         "txns_h1_sells": int(_f((txns.get("h1") or {}).get("sells"))),
         "priceChange_m5": _f(change.get("m5")), "priceChange_h1": _f(change.get("h1")),
         "pairCreatedAt": int(_f(best.get("pairCreatedAt"))),
+        "labels": list(best.get("labels") or []),
     }
 
 
@@ -263,7 +301,8 @@ def evaluate(mint, entry, dx, state, now, scorer, root, min_age_min, threshold):
                                    f"> re-score {base}: vale el de detección (paridad con script_97)"]
         base = int(stored)
     liq = push_series(state, "liquidity", mint, [now, dx.get("liquidityUsd")])
-    signals = es.dex_signals(dx, [(t, v) for t, v in liq]) + [holders_signal(state, mint), narrative_signal(root, mint)]
+    signals = es.dex_signals(dx, [(t, v) for t, v in liq]) + [holders_signal(state, mint), narrative_signal(root, mint),
+                                                              clmm_signal(state, mint, now)]
     early = es.combine(signals)
     score = es.apply_bonus(base, early)
     created = dx.get("pairCreatedAt") or 0
@@ -281,7 +320,9 @@ def evaluate(mint, entry, dx, state, now, scorer, root, min_age_min, threshold):
     else:
         why = "emitible"
     return {"mint": mint, "score_base": base, "early": early, "score": score, "reasons": reasons,
-            "age_min": round(age, 1) if age is not None else None, "emittable": why == "emitible", "why": why}
+            "age_min": round(age, 1) if age is not None else None, "emittable": why == "emitible", "why": why,
+            "pool": dx.get("pairAddress"), "dex_id": dx.get("dexId"), "labels": dx.get("labels") or [],
+            "price": dx.get("priceUsd")}
 
 
 def rugcheck_targets(results, state, now, threshold, per_poll=RUGCHECK_PER_POLL, refresh_s=RUGCHECK_REFRESH_S):
@@ -308,6 +349,57 @@ def fetch_rugcheck(get, mint, now):
         return None
 
 
+def is_clmm(result):
+    return str(result.get("dex_id") or "").lower() == "raydium" and any(
+        "clmm" in str(x).lower() for x in result.get("labels") or [])
+
+
+def clmm_targets(results, state, now, threshold, per_poll=CLMM_PER_POLL, refresh_s=CLMM_REFRESH_S):
+    """Pools CLMM de Raydium al alcance del bono, sin snapshot reciente."""
+    out = []
+    for r in sorted(results, key=lambda r: -(r.get("score_base") or 0)):
+        if r.get("score_base") is None or r["score_base"] + NEAR_THRESHOLD < threshold or not is_clmm(r):
+            continue
+        last = (state.get("clmm") or {}).get(r["mint"])
+        if last and now - last["ts"] < refresh_s:
+            continue
+        out.append(r)
+        if len(out) >= per_poll:
+            break
+    return out
+
+
+def raydium_line_points(data):
+    """/pools/line/position -> [(precio, liquidez)]. Acepta la lista directa o {"data": {"line": [...]}}."""
+    body = data.get("data") if isinstance(data, dict) else data
+    if isinstance(body, dict):
+        body = body.get("line") or body.get("data") or []
+    out = []
+    for p in body or []:
+        if isinstance(p, dict):
+            out.append((p.get("price"), p.get("liquidity")))
+        elif isinstance(p, (list, tuple)) and len(p) >= 2:
+            out.append((p[0], p[1]))
+    return out
+
+
+def fetch_clmm(get, result, now):
+    try:
+        r = get(RAYDIUM_LINE.format(pool=result["pool"]), timeout=15)
+        pts = raydium_line_points(r.json()) if r.status_code == 200 else []
+    except Exception:
+        pts = []
+    sig = es.clmm_imbalance(pts, result.get("price")) if pts else None
+    return {"ts": now, "signal": sig} if sig else None
+
+
+def clmm_signal(state, mint, now, max_age_s=2 * CLMM_REFRESH_S):
+    snap = (state.get("clmm") or {}).get(mint)
+    if not snap or now - snap["ts"] > max_age_s:
+        return None
+    return snap["signal"]
+
+
 # ---------------------------------------------------------------------------
 # Multi-chain: order book + funding (T4)
 # ---------------------------------------------------------------------------
@@ -332,6 +424,35 @@ def dydx_book(get, ticker):
     if not isinstance(data, dict) or not data.get("bids") or not data.get("asks"):
         return None
     return data["bids"], data["asks"]
+
+
+def _book_side(levels):
+    out = []
+    for lv in levels or []:
+        if isinstance(lv, (list, tuple)) and len(lv) >= 2:
+            out.append([lv[0], lv[1]])
+        elif isinstance(lv, dict):
+            px = lv.get("price", lv.get("px", lv.get("p")))
+            sz = lv.get("size", lv.get("sz", lv.get("quantity", lv.get("q"))))
+            out.append([px, sz])
+    return out
+
+
+def phoenix_book(get, symbol):
+    """Phoenix (perps nativos de Solana, API pública sin key). Formato de respuesta no verificado desde el
+    contenedor [I]: se aceptan bids/asks como listas [px, size] o dicts, en la raíz o bajo orderbook/data."""
+    try:
+        r = get(PHOENIX_BOOK.format(symbol=symbol), timeout=15)
+        data = r.json() if r.status_code == 200 else None
+    except Exception:
+        data = None
+    if not isinstance(data, dict):
+        return None
+    book = data.get("orderbook") or data.get("data") or data
+    if not isinstance(book, dict):
+        return None
+    bids, asks = _book_side(book.get("bids")), _book_side(book.get("asks"))
+    return (bids, asks) if bids and asks else None
 
 
 def hyperliquid_ctxs(post):
@@ -374,6 +495,9 @@ def multichain_signals(targets, state, now, post, get, ctxs=None, fear_greed=Non
         if book is None:
             book = dydx_book(get, sym)
             source = "dydx" if book else None
+        if book is None:
+            book = phoenix_book(get, sym)
+            source = "phoenix" if book else None
         if book:
             sigs.append(es.orderbook_imbalance(book[0], book[1]))
         ctx = (ctxs or {}).get(sym)
@@ -401,6 +525,14 @@ class LaunchListener(threading.Thread):
         super().__init__(daemon=True)
         self.filter_fn, self._buf, self._lock, self.stop_flag = filter_fn, [], threading.Lock(), False
         self.seen, self.connected_s = 0, 0.0
+        self._intervals, self._open = [], None
+
+    def intervals(self, now=None):
+        """[inicio, fin] de cada conexión suscripta (la abierta, hasta now): mide la cobertura efectiva."""
+        out = [list(i) for i in self._intervals]
+        if self._open is not None:
+            out.append([self._open, now if now is not None else time.time()])
+        return out
 
     def drain(self):
         with self._lock:
@@ -415,6 +547,9 @@ class LaunchListener(threading.Thread):
                 asyncio.run(self._listen())
             except Exception as e:
                 print(f"[WS] {type(e).__name__}: {e}")
+            if self._open is not None:
+                self._intervals.append([self._open, time.time()])
+                self._open = None
             self.connected_s += time.time() - t0
             time.sleep(3)
 
@@ -422,6 +557,7 @@ class LaunchListener(threading.Thread):
         import websockets
         async with websockets.connect(PUMPPORTAL_WS, ping_interval=20) as ws:
             await ws.send(json.dumps({"method": "subscribeNewToken"}))
+            self._open = time.time()
             while not self.stop_flag:
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=10)
@@ -477,15 +613,57 @@ class Git:
         return False
 
 
+    def claim(self, paths, message, key, attempts=4):
+        """Commit + push de un reclamo (archivo nuevo `key`). "ok": quedó en main y esta instancia emite.
+        "lost": otra instancia ya lo tenía en main; se deshace el commit local (reset --soft, nunca --hard) y se
+        borran los archivos propios. "error": sin push tras los reintentos (red); el registro queda local."""
+        if not self.enabled:
+            return "ok"
+        for p in paths:
+            self._git("add", "--", p)
+        self._git("commit", "-q", "-m", message)
+        for i in range(attempts):
+            if self._git("fetch", "-q", "origin", "main").returncode == 0 and \
+                    self._git("cat-file", "-e", f"FETCH_HEAD:{key}").returncode == 0:
+                self._git("reset", "-q", "--soft", "HEAD~1")
+                self._git("reset", "-q", "--", *paths)
+                for p in paths:
+                    try:
+                        Path(self.root, p).unlink()
+                    except OSError:
+                        pass
+                return "lost"
+            if self._git("pull", "-q", "--rebase", "--autostash", "origin", "main").returncode == 0 and \
+                    self._git("push", "-q", "origin", "HEAD:main").returncode == 0:
+                return "ok"
+            self._git("rebase", "--abort")
+            time.sleep(2 * (i + 1))
+        return "error"
+
+
+def early_records(root):
+    """Registros de alertas tempranas: un archivo por mint en early/alerts/ + el _early_alerts.json de la v0.1."""
+    root = Path(root)
+    out = []
+    legacy = read_json(root / EARLY_DIR_REL / "_early_alerts.json", [])
+    out += [a for a in legacy if isinstance(a, dict)] if isinstance(legacy, list) else []
+    d = root / CLAIMS_REL
+    if d.is_dir():
+        for f in sorted(d.glob("*.json")):
+            rec = read_json(f, None)
+            if isinstance(rec, dict):
+                out.append(rec)
+    return out
+
+
 def alerted_mints(root):
-    """Mints ya alertados: _all_alerts.json (pipeline_t0) + _early_alerts.json (este proceso)."""
+    """Mints ya alertados: _all_alerts.json (pipeline_t0) + alertas tempranas (ambas instancias)."""
     root = Path(root)
     out = set()
-    for path in (root / "02_Analisis" / "alerts" / "_all_alerts.json", root / EARLY_DIR_REL / "_early_alerts.json"):
-        data = read_json(path, [])
-        for a in data if isinstance(data, list) else []:
-            if isinstance(a, dict):
-                out.add(normalize_mint(a.get("mint")))
+    data = read_json(root / "02_Analisis" / "alerts" / "_all_alerts.json", [])
+    for a in (data if isinstance(data, list) else []) + early_records(root):
+        if isinstance(a, dict):
+            out.add(normalize_mint(a.get("mint")))
     return out - {""}
 
 
@@ -501,8 +679,9 @@ def alert_token(entry, dx, result, now):
             "detected_at": now_iso(now), "scoring_version": "7.2.1+" + es.VERSION, "early_watch": VERSION}
 
 
-def emit_early(s97, root, mint, token, git, shadow, dry_run, now):
-    """Registro -> push -> Telegram -> actualización del registro. Devuelve el registro."""
+def emit_early(s97, root, mint, token, git, shadow, dry_run, now, gate_min=None):
+    """Reclamo (registro + push) -> Telegram -> actualización del registro. None si no se emite (sin precio o
+    reclamo perdido contra la otra instancia)."""
     root = Path(root)
     ts = datetime.fromtimestamp(now, timezone.utc).strftime("%Y-%m-%d_%H%M%S")
     price = s97.get_current_price(token)
@@ -515,27 +694,27 @@ def emit_early(s97, root, mint, token, git, shadow, dry_run, now):
               "confidence": confidence, "initial_price": price,
               "status": "shadow" if shadow else "active_tracking", "trust_updates": [], "early": True,
               "age_min_at_alert": round((now - (token["dexscreener"].get("pairCreatedAt") or 0) / 1000) / 60, 1),
-              "telegram_sent": None}
-    alerts_path = root / EARLY_DIR_REL / "_early_alerts.json"
+              "gate_min": gate_min, "instance": INSTANCE, "early_watch": VERSION, "telegram_sent": None}
+    claim_path = root / claim_rel(mint)
     detail_rel = f"02_Analisis/alerts/alert_{mint}_{ts}.json"
     if not dry_run:
         write_json_atomic(root / detail_rel, token)
-        alerts = read_json(alerts_path, [])
-        alerts.append(record)
-        write_json_atomic(alerts_path, alerts)
-        git.commit_push([f"{EARLY_DIR_REL}/_early_alerts.json", detail_rel], f"early_watch alert: {symbol} {ts}")
+        write_json_atomic(claim_path, record)
+        status = git.claim([claim_rel(mint), detail_rel], f"early_watch {INSTANCE} alert: {symbol} {ts}",
+                           claim_rel(mint))
+        if status == "lost":
+            print(f"[EARLY] {symbol}: la otra instancia ya lo emitió; no se envía.")
+            return None
+        if status == "error":
+            print(f"[WARN] {symbol}: reclamo sin push (red); se envía igual y el registro sube en el próximo commit.")
     sent = False
     if not shadow and not dry_run:
         sent = bool(s97.send_telegram(msg))
     record["telegram_sent"] = sent
     if not dry_run:
-        alerts = read_json(alerts_path, [])
-        for a in alerts:
-            if a.get("mint") == mint and a.get("timestamp") == ts:
-                a["telegram_sent"] = sent
-        write_json_atomic(alerts_path, alerts)
+        write_json_atomic(claim_path, record)
     print(f"[EARLY] {symbol} score {token['score']} (base {token.get('score_base')} + bono {token['early']['bonus']})"
-          f" edad {record['age_min_at_alert']} min · enviado={sent}")
+          f" edad {record['age_min_at_alert']} min · instancia {INSTANCE} · enviado={sent}")
     return record
 
 
@@ -546,8 +725,10 @@ def emit_early(s97, root, mint, token, git, shadow, dry_run, now):
 def poll_once(ctx, now):
     """Un ciclo completo. ctx: dict con root, get, post, state, watch, scorer, s97, git, flags."""
     root, state = Path(ctx["root"]), ctx["state"]
-    threshold, min_age = ctx["threshold"], ctx["min_age_min"]
     ctx["git"].pull()
+    threshold = ctx["threshold"]
+    min_age = ctx["min_age_min"] if ctx.get("min_age_min") is not None else resolve_min_age(root)
+    paths = instance_paths(ctx.get("instance"))
     alerted = alerted_mints(root)
     acc = read_json(root / "02_Analisis" / "shadow_v4" / "_accumulated.json", {})
     watch = ctx["watch"]
@@ -563,6 +744,12 @@ def poll_once(ctx, now):
             snap = fetch_rugcheck(ctx["get"], mint, now)
             if snap:
                 push_series(state, "holders", mint, snap)
+    # Order book de Solana (T4, Fase 10b): distribución de liquidez de pools CLMM de Raydium
+    for r in clmm_targets(ctx.get("prev_results") or [], state, now, threshold):
+        if r["mint"] in watch:
+            snap = fetch_clmm(ctx["get"], r, now)
+            if snap:
+                state.setdefault("clmm", {})[r["mint"]] = snap
     dexs = dexscreener_batch(ctx["get"], list(watch), ctx.get("sleep", time.sleep))
     results = []
     for mint, dx in dexs.items():
@@ -583,10 +770,10 @@ def poll_once(ctx, now):
         token = alert_token(entry, dx, r, now)
         if not ctx["s97"].acquisition_ready(token, r["mint"]):
             continue
-        rec = emit_early(ctx["s97"], root, r["mint"], token, ctx["git"], ctx["shadow"], ctx["dry_run"], now)
+        rec = emit_early(ctx["s97"], root, r["mint"], token, ctx["git"], ctx["shadow"], ctx["dry_run"], now, min_age)
+        watch.pop(r["mint"], None)          # emitida o reclamada por la otra instancia: sale de la vigilancia
         if rec:
             emitted.append(rec)
-            watch.pop(r["mint"], None)
 
     mc = {}
     if ctx.get("multichain", True):
@@ -598,7 +785,11 @@ def poll_once(ctx, now):
                                 hyperliquid_ctxs(ctx["post"]), fng)
 
     top = sorted(results, key=lambda r: -r["score"])[:15]
-    snapshot = {"version": VERSION, "updated_at": now_iso(now), "poll_seconds": ctx["poll_seconds"],
+    listener = ctx.get("listener")
+    intervals = [i for i in (ctx.get("intervals_prev") or []) + (listener.intervals(now) if listener else [])
+                 if i[1] >= now - COVERAGE_KEEP_S]
+    snapshot = {"version": VERSION, "instance": ctx.get("instance") or INSTANCE, "updated_at": now_iso(now),
+                "poll_seconds": ctx["poll_seconds"], "listener_intervals": intervals,
                 "threshold": threshold, "early_min_age_min": min_age, "watch_size": len(watch),
                 "dex_hits": len(dexs), "listener_seen": getattr(ctx.get("listener"), "seen", None),
                 "emitted": [{"mint": e["mint"], "symbol": e["symbol"], "score": e["score"],
@@ -608,13 +799,13 @@ def poll_once(ctx, now):
                          "why": r["why"]} for r in top]}
     ctx["last"] = snapshot
     if not ctx["dry_run"]:
-        early_dir = root / EARLY_DIR_REL
-        write_json_atomic(early_dir / "_signals.json", {"version": VERSION, "generated_at": now_iso(now),
-                                                        "lib": es.VERSION, "signals": mc})
+        write_json_atomic(root / paths["signals"], {"version": VERSION, "generated_at": now_iso(now),
+                                                    "lib": es.VERSION, "signals": mc})
         state_out = {k: v for k, v in state.items()}
         state_out["holders"] = {m: v for m, v in (state.get("holders") or {}).items() if m in watch}
         state_out["liquidity"] = {m: v for m, v in (state.get("liquidity") or {}).items() if m in watch}
-        write_json_atomic(early_dir / "_watch.json", dict(snapshot, state=state_out,
+        state_out["clmm"] = {m: v for m, v in (state.get("clmm") or {}).items() if m in watch}
+        write_json_atomic(root / paths["watch"], dict(snapshot, state=state_out,
                                                           watch={m: {"source": e.get("source"), "since": e.get("since")}
                                                                  for m, e in watch.items()}))
     return snapshot
@@ -623,6 +814,8 @@ def poll_once(ctx, now):
 def run_loop(ctx, loop_minutes, poll_seconds, clock=time.time, sleep=time.sleep):
     start, last_commit, polls = clock(), clock(), 0
     root = Path(ctx["root"])
+    paths = instance_paths(ctx.get("instance"))
+    own = [paths["watch"], paths["signals"], CLAIMS_REL]
     while True:
         t = clock()
         try:
@@ -633,20 +826,19 @@ def run_loop(ctx, loop_minutes, poll_seconds, clock=time.time, sleep=time.sleep)
         except Exception as e:
             print(f"[ERROR] poll: {type(e).__name__}: {e}")
         if clock() - last_commit >= COMMIT_EVERY_S:
-            ctx["git"].commit_push([f"{EARLY_DIR_REL}/_watch.json", f"{EARLY_DIR_REL}/_signals.json"],
-                                   f"early_watch: {now_iso()}")
+            ctx["git"].commit_push(own, f"early_watch {ctx.get('instance') or INSTANCE}: {now_iso()}")
             last_commit = clock()
         if clock() - start + poll_seconds > loop_minutes * 60:
             break
         sleep(max(1.0, poll_seconds - (clock() - t)))
     try:
         import lib_persist
-        lib_persist.log_operation("early_watch", "script_116", [root / EARLY_DIR_REL / "_watch.json"], polls=polls,
+        lib_persist.log_operation(paths["op"], "script_116", [root / paths["watch"]], polls=polls,
                                   listener_seen=getattr(ctx.get("listener"), "seen", None))
     except Exception:
         pass
-    ctx["git"].commit_push([f"{EARLY_DIR_REL}/_watch.json", f"{EARLY_DIR_REL}/_signals.json",
-                            "02_Analisis/operations/early_watch.jsonl"], f"early_watch: {now_iso()}")
+    ctx["git"].commit_push(own + [f"02_Analisis/operations/{paths['op']}.jsonl"],
+                           f"early_watch {ctx.get('instance') or INSTANCE}: {now_iso()}")
     return polls
 
 
@@ -665,19 +857,19 @@ def main(argv=None):
     import requests
     s97 = _load_module("script_97_emit_alerts", "script_97_emit_alerts.py")
     s82 = _load_module("script_82_final_detection", "script_82_final_detection.py")
-    min_age = int(os.environ.get("EARLY_MIN_AGE_MIN") or s97.EMIT_MIN_AGE_MIN)
     shadow = (os.environ.get("SHADOW_MODE") or "").strip().lower() in {"1", "true", "yes", "on"}
-    prev = read_json(ROOT / EARLY_DIR_REL / "_watch.json", {})
+    prev = read_json(ROOT / instance_paths()["watch"], {})
     listener = None
     if not args.no_listen:
         listener = LaunchListener(s82.filter_pumpportal_tokens)
         listener.start()
     ctx = {"root": ROOT, "get": requests.get, "post": requests.post, "state": prev.get("state") or {},
            "watch": {}, "scorer": isolated_scorer(s82.score_token), "s97": s97, "git": Git(ROOT, enabled=not args.no_git),
-           "shadow": shadow, "dry_run": args.dry_run, "threshold": s97.EMIT_MIN_SCORE, "min_age_min": min_age,
-           "poll_seconds": args.poll_seconds, "listener": listener}
-    print(f"[EARLY] {VERSION} · poll {args.poll_seconds}s · bucle {args.loop_minutes} min · umbral "
-          f"{s97.EMIT_MIN_SCORE} · edad mínima {min_age} min · sombra={shadow}")
+           "shadow": shadow, "dry_run": args.dry_run, "threshold": s97.EMIT_MIN_SCORE, "min_age_min": None,
+           "poll_seconds": args.poll_seconds, "listener": listener, "instance": INSTANCE,
+           "intervals_prev": prev.get("listener_intervals") or []}
+    print(f"[EARLY] {VERSION} · instancia {INSTANCE} · poll {args.poll_seconds}s · bucle {args.loop_minutes} min · "
+          f"umbral {s97.EMIT_MIN_SCORE} · edad mínima {resolve_min_age(ROOT)} min · sombra={shadow}")
     if args.once:
         if listener:
             time.sleep(min(args.poll_seconds, 60))   # junta lanzamientos antes del único poll

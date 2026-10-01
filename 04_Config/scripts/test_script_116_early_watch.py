@@ -107,7 +107,8 @@ class EarlyWatch(unittest.TestCase):
                 "score": score, "detected_at": ew.now_iso(NOW - detected_min_ago * 60), "scoring_version": "7.2.1"}
 
     def early_alerts(self):
-        return json.loads((self.tmp / "02_Analisis" / "early" / "_early_alerts.json").read_text())
+        d = self.tmp / "02_Analisis" / "early" / "alerts"
+        return [json.loads(f.read_text()) for f in sorted(d.glob("*.json"))] if d.is_dir() else []
 
     # -----------------------------------------------------------------------------------------------------------
 
@@ -193,13 +194,137 @@ class EarlyWatch(unittest.TestCase):
         (mc / "bitcoin.json").write_text(json.dumps({"universe_a": {"fear_greed": {"value": 10}}}))
         self.accumulate({})
         ew.poll_once(self.ctx(multichain=True), NOW)
-        sig = json.loads((self.tmp / "02_Analisis" / "early" / "_signals.json").read_text())["signals"]
+        sig = json.loads((self.tmp / "02_Analisis" / "early" / "_signals_a.json").read_text())["signals"]
         self.assertEqual(set(sig), {"cg:lido-dao", "cg:curve"})          # b (preventa) no
         self.assertEqual(sig["cg:lido-dao"]["book_source"], "hyperliquid")
         self.assertEqual(sig["cg:curve"]["book_source"], "dydx")           # sin perp en Hyperliquid
         self.assertIn("orderbook_imbalance", sig["cg:lido-dao"]["active"])
         self.assertIn("fear_greed_extreme", sig["cg:lido-dao"]["active"])
         self.assertGreaterEqual(sig["cg:lido-dao"]["bonus"], 3)
+
+    # --- Fase 10b -----------------------------------------------------------------------------------------------
+
+    def test_edad_minima_por_defecto_10_gate_y_env(self):
+        self.assertEqual(ew.resolve_min_age(self.tmp, {}), 10)
+        (self.tmp / "02_Analisis" / "early" / "_gate.json").write_text(json.dumps({"early_min_age_min": 15}))
+        self.assertEqual(ew.resolve_min_age(self.tmp, {}), 15)
+        self.assertEqual(ew.resolve_min_age(self.tmp, {"EARLY_MIN_AGE_MIN": "7"}), 7)
+        # en el poll: sin min_age_min en el contexto se resuelve (gate 15 -> un par de 12 min no sale)
+        self.accumulate({MINT_A: self.acc_entry(MINT_A)})
+        self.scores[MINT_A] = 70
+        self.pairs = [pair(MINT_A, 12)]
+        snap = ew.poll_once(self.ctx(min_age_min=None), NOW)
+        self.assertEqual((snap["early_min_age_min"], snap["emitted"]), (15, []))
+        (self.tmp / "02_Analisis" / "early" / "_gate.json").unlink()
+        snap = ew.poll_once(self.ctx(min_age_min=None), NOW)
+        self.assertEqual(len(snap["emitted"]), 1)
+        self.assertEqual(self.early_alerts()[0]["gate_min"], 10)
+
+    def test_reclamo_perdido_no_envia_y_sale_de_la_vigilancia(self):
+        self.accumulate({MINT_A: self.acc_entry(MINT_A)})
+        self.scores[MINT_A] = 70
+        self.pairs = [pair(MINT_A, 35)]
+
+        class LostGit(ew.Git):
+            def pull(self):
+                return True
+
+            def claim(self, paths, message, key, attempts=4):
+                for p in paths:
+                    Path(self.root, p).unlink()
+                return "lost"
+
+        c = self.ctx(git=LostGit(self.tmp))
+        snap = ew.poll_once(c, NOW)
+        self.assertEqual(snap["emitted"], [])
+        self.assertFalse(self.posts)                      # sin Telegram
+        self.assertNotIn(MINT_A, c["watch"])
+        self.assertEqual(self.early_alerts(), [])
+
+    def test_la_otra_instancia_ya_lo_reclamo(self):
+        d = self.tmp / "02_Analisis" / "early" / "alerts"
+        d.mkdir(parents=True)
+        (d / f"{MINT_A}.json").write_text(json.dumps({"mint": MINT_A, "instance": "b"}))
+        self.accumulate({MINT_A: self.acc_entry(MINT_A)})
+        self.scores[MINT_A] = 70
+        self.pairs = [pair(MINT_A, 35)]
+        self.assertIn(MINT_A, ew.alerted_mints(self.tmp))
+        snap = ew.poll_once(self.ctx(instance="a"), NOW)
+        self.assertEqual(snap["emitted"], [])
+
+    def test_git_claim_ok_lost_y_error(self):
+        class R:
+            def __init__(self, rc):
+                self.returncode = rc
+
+        def git_with(script):
+            calls, it = [], iter(script)
+
+            def run(args, **kw):
+                calls.append(args[1])
+                return R(next(it))
+            return ew.Git(self.tmp, run=run), calls
+
+        (self.tmp / "c.json").write_text("{}")
+        with mock.patch.object(ew.time, "sleep", lambda s: None):
+            g, calls = git_with([0, 0, 0, 0, 1, 0, 0])       # add add commit fetch cat-file(no está) pull push
+            self.assertEqual(g.claim(["c.json", "d.json"], "m", "c.json"), "ok")
+            self.assertEqual(calls, ["add", "add", "commit", "fetch", "cat-file", "pull", "push"])
+            g, calls = git_with([0, 0, 0, 0, 0, 0, 0])       # cat-file encuentra el reclamo en origin
+            self.assertEqual(g.claim(["c.json"], "m", "c.json"), "lost")
+            self.assertEqual(calls, ["add", "commit", "fetch", "cat-file", "reset", "reset"])
+            self.assertFalse((self.tmp / "c.json").exists())
+            g, calls = git_with([0, 0] + [1, 1] * 4)          # fetch falla siempre -> pull falla -> abort
+            g._git = (lambda orig: (lambda *a, **k: R(1) if a[0] in ("fetch", "pull") else orig(*a, **k)))(g._git)
+            self.assertEqual(g.claim(["x.json"], "m", "x.json", attempts=2), "error")
+
+    def test_intervalos_del_listener(self):
+        listener = ew.LaunchListener(lambda toks: (toks, []))
+        listener._intervals = [[NOW - 600, NOW - 300]]
+        listener._open = NOW - 100
+        self.assertEqual(listener.intervals(NOW), [[NOW - 600, NOW - 300], [NOW - 100, NOW]])
+        self.accumulate({})
+        c = self.ctx(listener=listener, intervals_prev=[[NOW - 30 * 3600, NOW - 29 * 3600], [NOW - 3600, NOW - 1800]])
+        snap = ew.poll_once(c, NOW)
+        self.assertEqual(len(snap["listener_intervals"]), 3)          # el de hace 29 h se descarta
+        saved = json.loads((self.tmp / "02_Analisis" / "early" / "_watch_a.json").read_text())
+        self.assertEqual(saved["instance"], "a")
+
+    def test_phoenix_de_respaldo_y_formatos(self):
+        def get(url, timeout=None, headers=None):
+            if "phoenix" in url:
+                return Resp({"orderbook": {"bids": [{"price": 150.0, "size": 900}], "asks": [[150.1, 10]]}})
+            return Resp({}, 404)
+        book = ew.phoenix_book(get, "SOL")
+        self.assertEqual(book, ([[150.0, 900]], [[150.1, 10]]))
+        out = ew.multichain_signals([{"key": "cg:solana", "symbol": "SOL", "hl": False}], {}, NOW,
+                                    lambda *a, **k: Resp({}, 404), get)
+        self.assertEqual(out["cg:solana"]["book_source"], "phoenix")
+        self.assertIsNone(ew.phoenix_book(lambda *a, **k: Resp({"bids": []}), "X"))
+
+    def test_clmm_de_raydium_para_pools_concentrados(self):
+        self.assertEqual(ew.raydium_line_points({"data": {"line": [{"price": "1", "liquidity": "5"}]}}), [("1", "5")])
+        self.assertEqual(ew.raydium_line_points([[1, 2]]), [(1, 2)])
+        self.accumulate({MINT_A: self.acc_entry(MINT_A)})
+        self.scores[MINT_A] = 50
+        p = pair(MINT_A, 20, vol_m5=500, vol_h1=12000, buys=5, sells=5)
+        p.update(dexId="raydium", labels=["CLMM"], priceUsd="1.0")
+        self.pairs = [p]
+        lines = {"data": {"line": [{"price": 0.99, "liquidity": 900}, {"price": 1.01, "liquidity": 100}]}}
+        base_get = self.fake_get
+
+        def get(url, timeout=None, headers=None):
+            if "raydium" in url:
+                self.gets.append(url)
+                return Resp(lines)
+            return base_get(url, timeout, headers)
+
+        c = self.ctx(get=get)
+        ew.poll_once(c, NOW)
+        ew.poll_once(c, NOW + 120)
+        self.assertTrue(any("raydium" in u and "position?id=P" in u for u in self.gets))
+        r = [x for x in c["prev_results"] if x["mint"] == MINT_A][0]
+        self.assertIn("clmm_imbalance", r["early"]["active"])
 
     def test_lanzamientos_en_vivo_y_poda(self):
         w = ew.merge_launches({}, [{"mint": MINT_A, "timestamp": ew.now_iso(NOW - 200 * 60)},

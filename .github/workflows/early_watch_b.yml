@@ -1,20 +1,20 @@
-name: early_watch
+name: early_watch_b
 
 # Fase 10 (T3): vigilancia temprana. Un job largo (40 min) que hace poll cada 2 min (script_116): PumpPortal en
 # continuo + re-scoring v7.2.1 con DexScreener fresco + bono anticipatorio (lib_early_signals) + order book de
 # Hyperliquid/dYdX para multi-chain. El cron lo relanza cada 30 min en minutos fuera del pico (:07 y :37) y la
 # concurrencia encola la corrida siguiente: cobertura continua aunque el scheduler se atrase.
 # Mientras corre, script_97 (pipeline_t0) le cede la ruta Solana y adopta sus alertas en _all_alerts.json.
-# Fase 10b: instancia "a". La "b" (early_watch_b.yml) corre desfasada 15 min (:22/:52): dos conexiones a
+# Fase 10b: instancia "b" de early_watch.yml (copia desfasada 15 min: :22/:52). La "a" corre en :07/:37: dos conexiones a
 # PumpPortal. Sin doble emisión: reclamo por mint en 02_Analisis/early/alerts/ (script_116, Git.claim).
 # Edad mínima: 10 min (script_116; early_review.yml la sube a 15 si la primaria da < 40 % en 24 h).
 # Repo público: minutos de Actions sin límite en runners estándar.
-# Escribe solo sus archivos (_watch_a.json, _signals_a.json, early/alerts/<mint>.json, alert_<mint>_<ts>.json y
+# Escribe solo sus archivos (_watch_b.json, _signals_b.json, early/alerts/<mint>.json, alert_<mint>_<ts>.json y
 # su bitácora); pushea con pull --rebase.
 
 on:
   schedule:
-    - cron: '7,37 * * * *'
+    - cron: '22,52 * * * *'
   workflow_dispatch:
     inputs:
       loop_minutes:
@@ -26,11 +26,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: early-watch
+  group: early-watch-b
   cancel-in-progress: false
 
 jobs:
-  early_watch:
+  early_watch_b:
     runs-on: ubuntu-24.04
     timeout-minutes: 55
 
@@ -63,7 +63,7 @@ jobs:
           PYTHONIOENCODING: utf-8
           PAUSE_EMISSIONS: "false"
           SHADOW_MODE: "false"
-          EARLY_INSTANCE: "a"
+          EARLY_INSTANCE: "b"
           EARLY_POLL_SECONDS: "120"
           EARLY_LOOP_MINUTES: ${{ github.event.inputs.loop_minutes || '40' }}
         run: python 04_Config/scripts/script_116_early_watch.py

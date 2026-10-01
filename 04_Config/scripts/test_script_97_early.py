@@ -110,8 +110,60 @@ class Early(base.MultichainEmision):
             return R(0, json.dumps([early_record()])) if args[1] == "show" else R(0)
 
         self.assertEqual(m.load_early_alerts(fresh=True, run=run)[0]["mint"], EARLY_MINT)
-        self.assertEqual(calls, ["fetch", "show"])
+        self.assertEqual(calls, ["fetch", "show", "ls-tree"])
         self.assertEqual(m.load_early_alerts(fresh=True, run=lambda *a, **k: R(1)), [])
+
+    def test_reclamos_por_mint_locales_y_de_origin(self):
+        """Fase 10b: early/alerts/<mint>.json (local) + los que sólo están en origin/main (otra instancia)."""
+        m = self.load()
+        d = Path(self.tmp) / "02_Analisis" / "early" / "alerts"
+        d.mkdir(parents=True)
+        (d / f"{EARLY_MINT}.json").write_text(json.dumps(early_record()))
+        self.assertEqual([r["mint"] for r in m.load_early_alerts()], [EARLY_MINT])
+        other = early_record(SOL_MINT)
+
+        class R:
+            def __init__(self, rc, out=""):
+                self.returncode, self.stdout = rc, out
+
+        def run(args, **kw):
+            if args[1] == "ls-tree":
+                return R(0, f"02_Analisis/early/alerts/{EARLY_MINT}.json\n02_Analisis/early/alerts/{SOL_MINT}.json\n")
+            if args[1] == "show":
+                return R(0, json.dumps(other)) if SOL_MINT in args[2] else R(128)
+            return R(0)
+
+        got = m.load_early_alerts(fresh=True, run=run)
+        self.assertEqual(sorted(r["mint"] for r in got), sorted([EARLY_MINT, SOL_MINT]))
+        # y con early watch apagado, script_97 no re-emite el mint que reclamó la otra instancia
+        self.acc.write_text(json.dumps({SOL_MINT: base.solana_candidate()}), encoding="utf-8")
+        with mock.patch.object(m, "early_watch_active", lambda: False), \
+                mock.patch.object(m, "load_early_alerts", lambda fresh=False: got):
+            m.main([])
+        self.assertFalse([p for p in self.posts if p["method"] == "sendMessage"])
+        self.assertEqual(sorted(a["mint"] for a in self.alerts()), sorted([EARLY_MINT, SOL_MINT]))
+
+    def test_hand_off_con_la_instancia_b(self):
+        m = self.load()
+        seen = []
+
+        def get(url, **kw):
+            seen.append(url)
+            return Resp(200, {"total_count": 1 if "early_watch_b.yml" in url else 0})
+
+        self.assertTrue(m.early_watch_active(get, "o/r", "tok"))
+        self.assertEqual(len(seen), 2)
+
+    def test_senales_de_las_dos_instancias(self):
+        m = self.load()
+        d = Path(self.tmp) / "02_Analisis" / "early"
+        d.mkdir(parents=True, exist_ok=True)
+        old = (NOW - timedelta(minutes=5)).isoformat(timespec="seconds")
+        (d / "_signals_a.json").write_text(json.dumps({"generated_at": old, "signals": {
+            "cg:x": {"bonus": 1}, "cg:y": {"bonus": 2}}}))
+        (d / "_signals_b.json").write_text(json.dumps({"generated_at": NOW.isoformat(timespec="seconds"),
+                                                       "signals": {"cg:x": {"bonus": 3}}}))
+        self.assertEqual(m.load_early_signals(NOW), {"cg:x": {"bonus": 3}, "cg:y": {"bonus": 2}})
 
     def test_bono_multichain_desde_signals(self):
         self.write_gov_inputs()

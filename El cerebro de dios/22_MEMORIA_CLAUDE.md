@@ -2,7 +2,7 @@
 owner: Claude Code (implementador) — pendiente auditoría YANG
 status: VIVO (se actualiza al cierre de cada sesión)
 last_updated: 2026-10-01
-version: 1.3
+version: 1.4
 ---
 
 # 22 — Memoria persistente de Claude Code
@@ -19,6 +19,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 
 | Componente | Estado | Rótulo |
 |---|---|---|
+| **Fase 10b** (rama, sin merge) | La edad mínima del early watch baja a **10 min** (Dirección). `early_review.yml` (cada 6 h) la sube a 15 si la primaria de las alertas con gate 10 da < 40 % tras 24 h. Hay **dos early watch** desfasados (a :07/:37, b :22/:52) con reclamo por mint vía git (`early/alerts/<mint>.json`): sin doble emisión y con cobertura de PumpPortal medida (`listener_intervals`). Order book en Solana: Raydium CLMM (`clmm_imbalance`) y Phoenix como 3.er respaldo de perps. Workers: factible con Durable Object, no implementado (doc 31 §9). | [V] código/tests · [P] producción |
 | **Fase 10 — detección temprana** (rama, sin merge) | **Latencia medida:** gap inicio del pump → emisión de **39,6–43,3 min**, acotado por el snapshot (4 alertas con pump desde el lanzamiento). Detección → emisión: mediana 38,4 min. Scheduler de Actions: +11,9 min de media sobre `*/20`. Escucha de PumpPortal: 5 de cada 20 min. **Nuevo:** `script_116_early_watch` + `early_watch.yml`, con poll **cada 2 min** dentro de un job de 40 min, PumpPortal en continuo, re-scoring v7.2.1 + bono anticipatorio (`lib_early_signals`, 9 señales, tope +8, solo suma) y order book de Hyperliquid/dYdX para multi-chain. `script_97` le cede la ruta Solana mientras corre y adopta sus alertas. Doc 31. | [V] código/tests · [P] producción |
 | Emisión | **Emisiones reales activas desde `6ff13c5`** (01/10 03:48 UTC): `SHADOW_MODE: "false"` en `pipeline_t0.yml`, destino **grupo privado** "La mano de Dios". Decisión de Dirección. Desde entonces `script_97` registró **2 alertas `active_tracking`**: DEGEN (`4vEX32…pump`, 04:12 UTC, score 100) y arc (`61V8vB…pump`, 08:40 UTC, score 72, con dossier). | [V] |
 | Entrega a Telegram | **Resuelta** (Dirección, 01/10 15:32 UTC): el grupo había migrado a supergrupo y los envíos daban 400. Secrets actualizados y `telegram_test_send` OK [reportado]. Detalle en §1.2. DEGEN y arc quedaron sin entregar. | [V] log · [reportado] fix |
@@ -240,7 +241,12 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 ## 8. Próximos pasos
 
-0. **Fase 10:**
+0. **Fase 10b:**
+   - Integrar y disparar `early_watch.yml` y `early_watch_b.yml`.
+   - A las 24 h, `early_review.yml`: cobertura (union) y decisión de la edad mínima.
+   - `latency_analysis.yml` para el gap con velas.
+   - Workers solo si la cobertura < ~95 %.
+   **Fase 10:**
    - YIN integra la rama.
    - `workflow_dispatch` de `early_watch.yml`: mirar `02_Analisis/early/_watch.json` (watch_size, listener_seen, top).
    - A las 24–48 h, `latency_analysis.yml` para el gap con velas de 1 min y el % de alertas dentro de los 5 min.
@@ -263,6 +269,7 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 | Fecha | Sesión | Resultado |
 |---|---|---|
+| 2026-10-01 (noche, Fase 10b) | Ajustes post-integración | T1: edad mínima 10 (`script_116`), `_gate.json` + `early_review.py`/`.yml` (primaria < 40 % tras 24 h → 15) · T2: `early_watch_b.yml` (:22/:52), reclamos por mint (`Git.claim`), archivos por instancia, hand-off y adopción de las dos instancias en script_97, cobertura por `listener_intervals` · T3: Workers explorado (CPU de 10 ms en cron; Durable Object con WebSocket ≈ 10.800 de 13.000 GB-s/día; requiere port a JS y cuenta) · T4: Raydium CLMM integrado, Phoenix de respaldo, Orca/Meteora encontrados [P], OpenBook sin REST · 386/386 |
 | 2026-10-01 (noche, Fase 10) | Detección temprana | T1 `latency_analysis.py` + `.json`: gap 39,6–43,3 min [V snapshot], scheduler +11,9 min, escucha 5/20 min · T2 `lib_early_signals` (9 señales, bono ≤ 8, solo suma; 17 tests) · T3 `script_116` + `early_watch.yml` (poll 2 min, PumpPortal continuo, paridad con script_97; 12 tests) · T4 Hyperliquid l2Book + dYdX (GMX sin libro, Jupiter lite prohibida) · T5 RugCheck holders/top-10 · T6 script_115 → `social_velocity` (X sin fuente gratuita) · script_97 hand-off + adopción + bono multi-chain (6 tests) · 370/370 · doc 31 |
 | 2026-09-30 | Directiva ampliada (máximo aprovechamiento) | T1 v7.2.1 en main (sombra) · T2 fase2-p1 en main · T3 gate de edad 30 min · T4 advertencia crítica · bots gemelos desplegados y verificados (4/4 success) · 1.ª corrida v7.2.1 verificada (35/35 tokens 7.2.1, ≥56: 2/35) · doc 22 creado · doc 23 (8 grupos, 42 fuentes, 12 propuestas de innovación) · ops chat "La mano de Dios" operativo (confirmado) · 4 anomalías del primer resumen registradas en §7 (A-c P0) |
 | 2026-09-30 (noche) | Post-incidente + mejoras operativas | Framing neutral en main (`c727ece`, aplicado por Dirección/YIN) · T1 resumen legible · T2 resumen idempotente · T3 alertas a personal + grupo, `--test-send`, pausa 0,5 s · T4 template con ACTIVO / DETECCIÓN / FUENTES · T5 scanner multi-chain v0 · push ff `77b2a1c..3694aa8` · 151/151 tests · test-send: personal OK, grupo sin secret · A-c: las `active_tracking` son todas previas a SHADOW |
