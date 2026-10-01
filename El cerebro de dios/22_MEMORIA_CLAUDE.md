@@ -181,12 +181,12 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 ## 8. Próximos pasos
 
 1. **Dossier por activo: implementar el diseño del doc 24** (`24_DOSSIER_POR_ACTIVO.md`: 7 secciones, template, ejemplo VSOF reproducido, checklist): `script_113_dossier_builder.py` + `score_breakdown` en `script_82` + envío con `sendDocument` al grupo. Pendiente de autorización.
-3. **Medir la exposición a tokens < 60 min solo sobre alertas v7.2.1 (A-b)** (criterio < 20%). Al cierre, la muestra v7.2.1 era mínima (primaria 0/1) y no hubo alertas nuevas después de las 12:48 UTC.
-4. Confirmar que el trust loop procesa bien las 7 `active_tracking` previas a SHADOW (A-c).
-5. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
-6. Con n ≥ 20 primarias resueltas → veredicto automático al chat de operaciones → decisión de Dirección.
-7. Si la primaria < 20% → gate a 30 min (rama aparte, sin merge sin validar).
-8. Expansión por fases según el doc 23 (Fase 1 = Universo A con `arch`; el scanner v0 de T5 es la base para h/f/c), más las propuestas P1 del doc 23 §8: I-1 rug-después-del-hit en vivo, I-2 enriquecimiento de riesgo en sombra, I-3 guardia de sombra.
+2. **Medir la exposición a tokens < 60 min solo sobre alertas v7.2.1 (A-b)** (criterio < 20%). Al cierre, la muestra v7.2.1 era mínima (primaria 0/1) y no hubo alertas nuevas después de las 12:48 UTC.
+3. Confirmar que el trust loop procesa bien las 7 `active_tracking` previas a SHADOW (A-c).
+4. Dejar correr los bots; leer el DÍA N del monitor en `_cycle_log.json → shadow_monitor`.
+5. Con n ≥ 20 primarias resueltas → veredicto automático al chat de operaciones → decisión de Dirección.
+6. Si la primaria < 20% → gate a 30 min (rama aparte, sin merge sin validar).
+7. Expansión por fases según el doc 23 (Fase 1 = Universo A con `arch`; el scanner v0 de T5 es la base para h/f/c), más las propuestas P1 del doc 23 §8: I-1 rug-después-del-hit en vivo, I-2 enriquecimiento de riesgo en sombra, I-3 guardia de sombra.
 
 ---
 
