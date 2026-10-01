@@ -1,0 +1,84 @@
+{
+  "key": "cg:solana",
+  "group": "h",
+  "group_rule": "1: blue chip",
+  "scoring_version": "mc-h-0.2",
+  "score": 58,
+  "confidence": 1.0,
+  "reasons": [
+    "Retorno 24 h / σ GARCH: +0.27% / σ 2.88% = z +0.09 → s=+0.05 (w 30)",
+    "Bollinger(20,2) con squeeze: ancho en percentil 0.77 · precio dentro de bandas → s=+0.00 (w 20)",
+    "Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia]: +4.8% anualizado → s=+0.00 (w 20)",
+    "Fear & Greed (contrarian en extremos): 74 → s=+0.00 (w 15)",
+    "Tendencia (MA20 ± ATR14): precio 118.65 · MA20 112.28 · ATR 5.84 → s=+1.00 (w 15)",
+    "Energía M = 1: DVOL (Deribit) sin colectar"
+  ],
+  "components": [
+    {
+      "name": "Retorno 24 h / σ GARCH",
+      "s": 0.0475,
+      "w": 30,
+      "value": "+0.27% / σ 2.88% = z +0.09",
+      "source": "Binance klines + CoinGecko"
+    },
+    {
+      "name": "Bollinger(20,2) con squeeze",
+      "s": 0,
+      "w": 20,
+      "value": "ancho en percentil 0.77 · precio dentro de bandas",
+      "source": "Binance klines"
+    },
+    {
+      "name": "Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia]",
+      "s": 0,
+      "w": 20,
+      "value": "+4.8% anualizado",
+      "source": "Hyperliquid"
+    },
+    {
+      "name": "Fear & Greed (contrarian en extremos)",
+      "s": 0,
+      "w": 15,
+      "value": "74",
+      "source": "alternative.me"
+    },
+    {
+      "name": "Tendencia (MA20 ± ATR14)",
+      "s": 1.0,
+      "w": 15,
+      "value": "precio 118.65 · MA20 112.28 · ATR 5.84",
+      "source": "Binance klines"
+    }
+  ],
+  "event": "tocar +2σ₄₈ antes de −2σ₄₈ (σ del GARCH(1,1))",
+  "threshold": 56,
+  "emittable": true,
+  "status_reason": "emitible",
+  "extra": {
+    "garch": {
+      "alpha": 0.14,
+      "beta": 0.72,
+      "omega": 0.000177,
+      "sigma_long": 0.035518,
+      "sigma_last": 0.029914,
+      "sigma_next": 0.028835,
+      "loglik": 1050.641177,
+      "n": 365
+    },
+    "barrier_pct": 8.156
+  },
+  "symbol": "SOL",
+  "name": "Solana",
+  "chain": "solana",
+  "cg_id": "solana",
+  "address": null,
+  "price_usd": 118.65,
+  "mcap_usd": 69792310521.0,
+  "volume_24h_usd": 3533188832.0,
+  "liquidity_usd": null,
+  "change_24h": 0.27419,
+  "change_7d": 1.0791,
+  "pool_address": null,
+  "pool_created_at": null,
+  "category": "layer-1"
+}
