@@ -1,60 +1,60 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: INVENTARIO v1.0 (Fase 8, T1); verificación en vivo en T2 (probe_inventario.yml)
+status: INVENTARIO v1.1 (Fase 9: +83 servicios, 22 MCP nuevos); verificación en vivo con probe_inventario.yml
 last_updated: 2026-10-01
-version: 1.0
+version: 1.1
 ---
 
 # 28 — Inventario completo de servicios gratuitos
 
-Rótulos: [V] verificado (HTTP o archivo en esta sesión o en un doc anterior, citado) · [I] inferido · [H] hipótesis · [P] pendiente de verificar (lo prueba T2 desde Actions).
+Rótulos: [V] verificado (HTTP, archivo o búsqueda en esta sesión o en un doc anterior, citado) · [I] inferido · [P] pendiente (licencia/actividad/acceso sin auditar; T2 prueba los endpoints desde Actions).
 
-**Fuente única:** `04_Config/inventario.json`. De ahí salen este documento y la lista de endpoints que prueba `probe_inventario.py` (workflow manual `probe_inventario.yml`, salida `02_Analisis/diagnostics/inventario_probe.json`). Agregar un servicio = agregar una entrada al JSON.
+**Fuente única:** `04_Config/inventario.json`. De ahí salen este documento y la lista que prueba `probe_inventario.py`. Agregar un servicio = agregar una entrada al JSON.
 
-**Criterio del proyecto** (doc 22 §3): 100% gratuito, sin key o con key gratuita sin tarjeta, licencia permisiva para código que se use, actividad < 6 meses, supply chain revisada. Lo que no cumple igual se lista con el motivo: sirve para no volver a evaluarlo.
+**Criterio del proyecto** (doc 22 §3): 100% gratuito, sin key o con key gratuita sin tarjeta, licencia permisiva para el código que se use, actividad < 6 meses, supply chain revisada (doc 25). Lo que no cumple se lista igual, con el motivo.
 
 ## 0. Resumen
 
-- **Servicios inventariados: 91** · con endpoint de prueba para T2: **68** · sin key: **77** · ya verificados en docs/fases anteriores: **58**.
-- **Grupos cubiertos: 9/9** (a memecoins, b preventa, c gobernanza, d sintéticos, e DePIN, f L1/L2, g RWA, h blue chips, i establecidos).
-- **Datasets públicos:** MemeChain (CC-BY-4.0, etiquetas de rug) y Binance public data (velas históricas masivas) son los dos integrables primero; MELT es no comercial (solo metodología).
-- **MCP servers:** ninguno aporta datos de mercado que el pipeline no obtenga ya por HTTP directo; los relevados se listan con su veredicto. No se buscaron repos nuevos fuera del alcance de la sesión: el relevamiento de directorios (awesome-mcp-servers, mcp.so, npm) queda [P] con el checklist del doc 25.
-- **Lo que sigue pago o con key** (no se usa): DefiLlama derivatives y emissions (402), Tally (401), RWA.xyz (404 sin key), Token Terminal, CryptoRank, CoinMarketCal, CryptoPanic, Etherscan v2, Solscan, CoinCap v3. Cada uno tiene su alternativa gratuita en la tabla de §1.
+- **Servicios inventariados: 174** (v1.0: 91 · Fase 9: +83) · con endpoint de prueba: **74** · sin key: **130** · verificados: **62**.
+- **Grupos cubiertos: 9/9.**
+- **MCP nuevos (Fase 9): 22**, más 6 directorios. El único sin key y oficial es el **MCP remoto de CoinGecko** (`mcp.api.coingecko.com`). Ninguno se integra al pipeline: el pipeline ya usa las mismas APIs por HTTP directo; los MCP sirven para investigación manual.
+- **Datasets:** integrados **MemeChain** (CC-BY-4.0, tasas base por chain y narrativa) y **Binance histórico** (velas diarias desde 2017). Prioridad P0 nueva: **jocry/Pumpfun_Memecoin_Corpus** en Hugging Face (798.430 lanzamientos de pump.fun de junio–julio 2026, con graduación etiquetada): es el universo exacto del grupo a.
 
 | Categoría | Servicios |
 |---|---|
-| Precios y mercado | 11 |
-| DEX, launchpads y seguridad de contratos | 9 |
-| Exploradores y RPC | 7 |
+| Precios y mercado | 17 |
+| DEX, launchpads y seguridad de contratos | 14 |
+| Exploradores, RPC y datos on-chain | 17 |
 | DeFi (TVL, fees, yields) | 9 |
-| Derivados | 6 |
+| Derivados | 10 |
 | Gobernanza | 2 |
-| RWA | 1 |
-| Sentimiento | 2 |
+| RWA | 5 |
+| Sentimiento | 4 |
 | Noticias | 7 |
 | Social | 6 |
-| Calendario y atención | 6 |
-| MCP servers | 10 |
-| Repos con lógica especial | 9 |
-| Datasets públicos | 6 |
+| Calendario y atención | 8 |
+| MCP servers y directorios | 38 |
+| Repos con lógica especial (NLP, régimen, modelos) | 19 |
+| Papers con código o datos | 6 |
+| Datasets públicos | 12 |
 
-## 1. Cobertura por grupo (qué fuente gratuita alimenta cada componente del doc 27)
+## 1. Cobertura por grupo
 
 | Grupo | Fuentes sin key (P0/P1) | Hueco / alternativa |
 |---|---|---|
-| a memecoins | DexScreener API, GeckoTerminal API v2, DexPaprika API, PumpPortal WebSocket, RugCheck API, GoPlus Security API, Honeypot.is, Blockscout API, Reddit RSS … | holders históricos (Blockscout / RPC público [P]) |
-| b preventa | Hyperliquid info API, Aevo API, Google News RSS, CoinDesk RSS, Cointelegraph RSS, Decrypt RSS, The Block RSS, Wikipedia Pageviews, Wikidata SPARQL … | calendario de TGEs: CryptoRank y CoinMarketCal piden key; three.ws (script_99) hoy devuelve vacío [V]; DefiLlama raises [P] como proxy |
+| a memecoins | DexScreener API, GeckoTerminal API v2, DexPaprika API, PumpPortal WebSocket, RugCheck API, GoPlus Security API, Honeypot.is, Blockscout API, Reddit RSS … | holders históricos (Blockscout / RPC público [P]); calibración: MemeChain (integrado) + Pumpfun Corpus (P0) |
+| b preventa | Hyperliquid info API, Aevo API, Google News RSS, CoinDesk RSS, Cointelegraph RSS, Decrypt RSS, The Block RSS, Wikipedia Pageviews, Wikidata SPARQL … | calendario de TGEs: CryptoRank, CoinMarketCal y Coindar piden key; three.ws (script_99) hoy vacío [V]; Apify unlocks (key gratuita) |
 | c gobernanza | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, Blockscout API, DefiLlama TVL, DefiLlama fees y DEX por chain/protocolo, DefiLlama yields, Snapshot GraphQL … | Tally pide key; unlocks de pago → proxy FDV/mcap |
-| d sintéticos | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, DefiLlama stablecoins, Hyperliquid info API, dYdX v4 indexer, Aevo API, Reddit RSS … | DefiLlama derivatives 402 → Hyperliquid + dYdX |
-| e DePIN | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, DefiLlama TVL, DefiLlama fees y DEX por chain/protocolo, Google News RSS, CoinDesk RSS, Cointelegraph RSS … | nodos/ingresos por proyecto (DePINscan sin API) → fees de DefiLlama solo para 9 protocolos |
+| d sintéticos | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, DefiLlama stablecoins, Hyperliquid info API, dYdX v4 indexer, Aevo API, Reddit RSS … | DefiLlama derivatives 402 → Hyperliquid (integrado) + dYdX + Gains + Drift |
+| e DePIN | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, DefiLlama TVL, DefiLlama fees y DEX por chain/protocolo, Google News RSS, CoinDesk RSS, Cointelegraph RSS … | nodos/ingresos por proyecto (DePINscan sin API) → fees de DefiLlama para 9 protocolos |
 | f L1/L2 | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, GeckoTerminal API v2, DexPaprika API, Blockscout API, DefiLlama TVL, DefiLlama fees y DEX por chain/protocolo … | staking flows sin fuente gratuita verificada |
-| g RWA | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, Blockscout API, DefiLlama TVL, DefiLlama fees y DEX por chain/protocolo, DefiLlama yields, Google News RSS … | RWA.xyz sin key → DefiLlama RWA + yields |
-| h blue chips | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, Kraken API pública, Hyperliquid info API, Deribit API pública, alternative.me Fear & Greed, Google News RSS … | DVOL de Deribit (gratuito, falta conectarlo) |
+| g RWA | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, Blockscout API, DefiLlama TVL, DefiLlama fees y DEX por chain/protocolo, DefiLlama yields, Google News RSS … | RWA.xyz sin key → DefiLlama RWA + Ondo / Centrifuge [P] |
+| h blue chips | CoinGecko API pública, CoinPaprika, Binance data-api, Coinbase Exchange API pública, Kraken API pública, Hyperliquid info API, Deribit API pública, alternative.me Fear & Greed, Google News RSS … | DVOL de Deribit (gratuito, falta conectarlo); historia completa: dataset Binance (integrado) |
 | i establecidos | DexScreener API, RugCheck API, GoPlus Security API, Blockscout API, DefiLlama TVL | holders con historia (Blockscout / RPC [P]) |
 
 ## 2. Servicios
 
-Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso propuesto · prioridad · verificación. El endpoint de prueba es el que usa T2.
+Formato por entrada: URL · licencia · API key · cobertura · uso propuesto · prioridad · verificación (· endpoint de prueba de T2).
 
 ### 2.1 Precios y mercado
 
@@ -168,6 +168,62 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Verificado: [P]
 - Endpoint de prueba (T2): `GET https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT`
 
+#### Pyth Hermes (precios de oráculo) — Fase 9
+- URL: https://docs.pyth.network
+- Licencia: ToS del proveedor
+- API key: no
+- Cobertura: d (sintéticos), h (blue chips), g (RWA)
+- Uso propuesto: precios de oráculo (basis contra spot)
+- Prioridad: P1
+- Verificado: [P]
+- Endpoint de prueba (T2): `GET https://hermes.pyth.network/v2/price_feeds?query=btc&asset_type=crypto`
+
+#### Chainlink price feeds (on-chain vía RPC) — Fase 9
+- URL: https://docs.chain.link/data-feeds
+- Licencia: ToS del proveedor
+- API key: no
+- Cobertura: d (sintéticos), g (RWA), h (blue chips)
+- Uso propuesto: precio de referencia on-chain
+- Prioridad: P3
+- Verificado: [P]
+
+#### Blockchair API — Fase 9
+- URL: https://blockchair.com/api/docs
+- Licencia: ToS del proveedor
+- API key: no
+- Cobertura: h (blue chips)
+- Uso propuesto: estadísticas de Bitcoin sin key con límite [I]
+- Prioridad: P3
+- Verificado: [P]
+- Endpoint de prueba (T2): `GET https://api.blockchair.com/bitcoin/stats`
+
+#### Mobula API — Fase 9
+- URL: https://docs.mobula.io
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), c (gobernanza), e (DePIN), f (L1/L2), g (RWA)
+- Uso propuesto: datos de mercado multi-chain
+- Prioridad: P3
+- Verificado: [P]
+
+#### Messari API — Fase 9
+- URL: https://docs.messari.io
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: métricas de activos y research
+- Prioridad: P3
+- Verificado: [P]
+
+#### CoinMarketCap API — Fase 9
+- URL: https://coinmarketcap.com/api/documentation/v1
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: c (gobernanza), d (sintéticos), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: mercado y categorías (plan gratuito con key)
+- Prioridad: P3
+- Verificado: [P]
+
 ### 2.2 DEX, launchpads y seguridad de contratos
 
 #### DexScreener API
@@ -260,7 +316,54 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Verificado: [V] doc 23
 - Endpoint de prueba (T2): `GET https://api.honeypot.is/v2/IsHoneypot?address=0x4200000000000000000000000000000000000006&chainID=8453`
 
-### 2.3 Exploradores y RPC
+#### Orca API (Whirlpools) — Fase 9
+- URL: https://docs.orca.so
+- Licencia: ToS del proveedor
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: pools de Orca en Solana [I]
+- Prioridad: P3
+- Verificado: [P]
+- Endpoint de prueba (T2): `GET https://api.orca.so/v2/solana/tokens?limit=1`
+
+#### Meteora DLMM API — Fase 9
+- URL: https://docs.meteora.ag
+- Licencia: ToS del proveedor
+- API key: no
+- Cobertura: a (memecoins), i (establecidos)
+- Uso propuesto: pools de Meteora (arc tiene su liquidez ahí [V])
+- Prioridad: P2
+- Verificado: [P]
+- Endpoint de prueba (T2): `GET https://dlmm-api.meteora.ag/pair/all_with_pagination?limit=1`
+
+#### Birdeye API — Fase 9
+- URL: https://docs.birdeye.so
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins)
+- Uso propuesto: datos de tokens Solana/EVM
+- Prioridad: P3
+- Verificado: [P]
+
+#### DEXTools API — Fase 9
+- URL: https://developer.dextools.io
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins)
+- Uso propuesto: pools y auditorías DEX
+- Prioridad: P3
+- Verificado: [P]
+
+#### Defined.fi API — Fase 9
+- URL: https://docs.defined.fi
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins)
+- Uso propuesto: datos DEX en tiempo real
+- Prioridad: P3
+- Verificado: [P]
+
+### 2.3 Exploradores, RPC y datos on-chain
 
 #### Etherscan API v2 (multi-chain: Ethereum, Base, Arbitrum, Optimism, Blast)
 - URL: https://docs.etherscan.io
@@ -331,6 +434,96 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Prioridad: P3
 - Verificado: [P]
 - Endpoint de prueba (T2): `GET https://blockstream.info/api/blocks/tip/height`
+
+#### Moralis API — Fase 9
+- URL: https://docs.moralis.com
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), i (establecidos)
+- Uso propuesto: holders y transferencias EVM/Solana
+- Prioridad: P3
+- Verificado: [P]
+
+#### GoldRush (Covalent) API — Fase 9
+- URL: https://goldrush.dev/docs
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), i (establecidos)
+- Uso propuesto: balances y transferencias multi-chain
+- Prioridad: P3
+- Verificado: [P]
+
+#### Alchemy API — Fase 9
+- URL: https://docs.alchemy.com
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), i (establecidos)
+- Uso propuesto: RPC y datos de tokens
+- Prioridad: P3
+- Verificado: [P]
+
+#### Bitquery API — Fase 9
+- URL: https://docs.bitquery.io
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), i (establecidos)
+- Uso propuesto: GraphQL on-chain multi-chain
+- Prioridad: P3
+- Verificado: [P]
+
+#### Dune API — Fase 9
+- URL: https://docs.dune.com/api-reference
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), c (gobernanza), d (sintéticos), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: consultas SQL on-chain
+- Prioridad: P3
+- Verificado: [P]
+
+#### Flipside API — Fase 9
+- URL: https://docs.flipsidecrypto.xyz
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), c (gobernanza), d (sintéticos), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: consultas SQL on-chain
+- Prioridad: P3
+- Verificado: [P]
+
+#### The Graph (subgraphs) — Fase 9
+- URL: https://thegraph.com/docs
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: c (gobernanza), d (sintéticos), g (RWA)
+- Uso propuesto: subgraphs de protocolos (Uniswap, Aave)
+- Prioridad: P3
+- Verificado: [P]
+
+#### Arkham Intelligence API — Fase 9
+- URL: https://arkham.com
+- Licencia: ToS del proveedor
+- API key: sí (de pago)
+- Cobertura: a (memecoins), h (blue chips)
+- Uso propuesto: etiquetas de entidades (ballenas)
+- Prioridad: P3
+- Verificado: [P]
+
+#### Glassnode API — Fase 9
+- URL: https://docs.glassnode.com
+- Licencia: ToS del proveedor
+- API key: sí (de pago)
+- Cobertura: h (blue chips)
+- Uso propuesto: métricas on-chain de BTC/ETH
+- Prioridad: P3
+- Verificado: [P]
+
+#### CryptoQuant API — Fase 9
+- URL: https://cryptoquant.com/docs
+- Licencia: ToS del proveedor
+- API key: sí (de pago)
+- Cobertura: h (blue chips)
+- Uso propuesto: flujos de exchanges
+- Prioridad: P3
+- Verificado: [P]
 
 ### 2.4 DeFi (TVL, fees, yields)
 
@@ -486,6 +679,43 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Verificado: [P]
 - Endpoint de prueba (T2): `GET https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT`
 
+#### Gains Network (gTrade) backend API — Fase 9
+- URL: https://docs.gains.trade/developer/integrators/backend
+- Licencia: [P]
+- API key: no
+- Cobertura: d (sintéticos), h (blue chips)
+- Uso propuesto: OI por par, funding, skew (perps sintéticos de cripto, forex y acciones)
+- Prioridad: P1
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Drift Protocol data API (Solana perps) — Fase 9
+- URL: https://data.api.drift.trade
+- Licencia: [P]
+- API key: no
+- Cobertura: d (sintéticos)
+- Uso propuesto: funding y OI de perps en Solana [I]
+- Prioridad: P2
+- Verificado: [P]
+- Endpoint de prueba (T2): `GET https://data.api.drift.trade/stats/markets`
+
+#### CoinGlass API — Fase 9
+- URL: https://docs.coinglass.com
+- Licencia: ToS CoinGlass
+- API key: sí (gratuita con registro)
+- Cobertura: d (sintéticos), h (blue chips)
+- Uso propuesto: funding/OI/liquidaciones agregadas: pide key
+- Prioridad: P3
+- Verificado: [P]
+
+#### Kaiko — Fase 9
+- URL: https://docs.kaiko.com
+- Licencia: ToS del proveedor
+- API key: sí (de pago)
+- Cobertura: d (sintéticos), h (blue chips)
+- Uso propuesto: datos institucionales de mercado
+- Prioridad: P3
+- Verificado: [P]
+
 ### 2.6 Gobernanza
 
 #### Snapshot GraphQL
@@ -520,6 +750,42 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Verificado: [V] doc 23 (404)
 - Endpoint de prueba (T2): `GET https://api.rwa.xyz/v3/assets`
 
+#### Ondo Finance API — Fase 9
+- URL: https://docs.ondo.finance/api-reference/overview
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: g (RWA)
+- Uso propuesto: Ondo Stocks (acciones tokenizadas) y portafolios: spec OpenAPI pública
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Centrifuge API — Fase 9
+- URL: https://docs.centrifuge.io
+- Licencia: [P]
+- API key: no
+- Cobertura: g (RWA)
+- Uso propuesto: pools de crédito tokenizado (TVL, NAV) [P]
+- Prioridad: P2
+- Verificado: [P]
+
+#### Polymesh (SubQuery / API pública) — Fase 9
+- URL: https://developers.polymesh.network
+- Licencia: [P]
+- API key: no
+- Cobertura: g (RWA)
+- Uso propuesto: activos de seguridad tokenizados [P]
+- Prioridad: P3
+- Verificado: [P]
+
+#### Maple Finance API — Fase 9
+- URL: https://docs.maple.finance
+- Licencia: [P]
+- API key: no
+- Cobertura: g (RWA)
+- Uso propuesto: préstamos institucionales on-chain [P]
+- Prioridad: P3
+- Verificado: [P]
+
 ### 2.8 Sentimiento
 
 #### alternative.me Fear & Greed
@@ -541,6 +807,24 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Prioridad: P0
 - Verificado: [V] doc 26
 - Endpoint de prueba (T2): `GET https://api.coingecko.com/api/v3/search/trending`
+
+#### Santiment API — Fase 9
+- URL: https://academy.santiment.net/sanapi
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: métricas sociales y on-chain
+- Prioridad: P3
+- Verificado: [P]
+
+#### LunarCrush API — Fase 9
+- URL: https://lunarcrush.com/developers
+- Licencia: ToS del proveedor
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: atención social por activo
+- Prioridad: P3
+- Verificado: [P]
 
 ### 2.9 Noticias
 
@@ -738,7 +1022,25 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Verificado: [P]
 - Endpoint de prueba (T2): `GET https://api.llama.fi/raises`
 
-### 2.12 MCP servers
+#### Apify: token unlocks calendar (actores gratuitos) — Fase 9
+- URL: https://apify.com/foxlabs/token-unlocks-calendar/api
+- Licencia: ToS Apify
+- API key: sí (gratuita con registro)
+- Cobertura: b (preventa), c (gobernanza), e (DePIN)
+- Uso propuesto: calendario de unlocks (~326 proyectos, base DefiLlama emissions)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Coindar — Fase 9
+- URL: https://coindar.org/en/api
+- Licencia: ToS Coindar
+- API key: sí (gratuita con registro)
+- Cobertura: b (preventa), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: eventos por activo [P]
+- Prioridad: P3
+- Verificado: [P]
+
+### 2.12 MCP servers y directorios
 
 #### modelcontextprotocol/servers (fetch, time, memory, git, filesystem)
 - URL: https://github.com/modelcontextprotocol/servers
@@ -830,7 +1132,260 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Prioridad: P3
 - Verificado: [V] doc 23
 
-### 2.13 Repos con lógica especial
+#### CoinGecko MCP remoto (free keyless) — Fase 9
+- URL: https://docs.coingecko.com/ai-integration/mcp-server
+- Licencia: oficial CoinGecko
+- API key: no
+- Cobertura: c (gobernanza), d (sintéticos), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: MCP oficial sin key (límite compartido): consultas de investigación
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+- Endpoint de prueba (T2): `GET https://mcp.api.coingecko.com/`
+
+#### Kukapay MCP suite — Fase 9
+- URL: https://github.com/kukapay/kukapay-mcp-servers
+- Licencia: [P]
+- API key: no
+- Cobertura: a (memecoins), c (gobernanza), d (sintéticos), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: suite de >100 MCP cripto; índice para elegir uno por fuente
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Kukapay dexscreener-mcp — Fase 9
+- URL: https://github.com/kukapay/dexscreener-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: pares y tokens de DexScreener vía MCP
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Kukapay crypto-feargreed-mcp — Fase 9
+- URL: https://github.com/kukapay/crypto-feargreed-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: h (blue chips)
+- Uso propuesto: Fear & Greed vía MCP
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Kukapay whale-tracker-mcp — Fase 9
+- URL: https://github.com/kukapay/whale-tracker-mcp
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), h (blue chips)
+- Uso propuesto: transacciones de ballenas (fuente subyacente con key [I])
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Kukapay crypto-sentiment-mcp (Santiment) — Fase 9
+- URL: https://github.com/kukapay/crypto-sentiment-mcp
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: sentimiento social de Santiment
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Kukapay funding-rates-mcp — Fase 9
+- URL: https://github.com/kukapay/funding-rates-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: d (sintéticos), h (blue chips)
+- Uso propuesto: funding de varios exchanges (comparar con Hyperliquid)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Kukapay defi-yields-mcp — Fase 9
+- URL: https://github.com/kukapay/defi-yields-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: c (gobernanza), g (RWA)
+- Uso propuesto: yields de DefiLlama vía MCP
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Kukapay crypto-projects-mcp (Mobula) — Fase 9
+- URL: https://github.com/kukapay/crypto-projects-mcp
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: c (gobernanza), e (DePIN), f (L1/L2), g (RWA)
+- Uso propuesto: datos de proyectos de Mobula
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### IQAI mcp-defillama — Fase 9
+- URL: https://github.com/IQAIcom/mcp-defillama
+- Licencia: [P]
+- API key: no
+- Cobertura: c (gobernanza), e (DePIN), f (L1/L2), g (RWA)
+- Uso propuesto: TVL, DEX, stablecoins, yields de DefiLlama
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### dcSpark mcp-server-defillama — Fase 9
+- URL: https://github.com/dcSpark/mcp-server-defillama
+- Licencia: [P]
+- API key: no
+- Cobertura: c (gobernanza), e (DePIN), f (L1/L2), g (RWA)
+- Uso propuesto: DefiLlama vía MCP
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### defillama-mcp (proxy de la API pública) — Fase 9
+- URL: https://github.com/nic0xflamel/defillama-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: c (gobernanza), e (DePIN), f (L1/L2), g (RWA)
+- Uso propuesto: DefiLlama vía MCP
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### bitcoin-mcp (Bitcoin y Lightning) — Fase 9
+- URL: https://github.com/AbdelStark/bitcoin-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: h (blue chips)
+- Uso propuesto: consultas on-chain de Bitcoin
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Tatum blockchain-mcp (130+ redes) — Fase 9
+- URL: https://github.com/tatumio/blockchain-mcp
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins), c (gobernanza), f (L1/L2), h (blue chips)
+- Uso propuesto: RPC y datos multi-red
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Armor crypto MCP — Fase 9
+- URL: https://github.com/armorwallet/armor-crypto-mcp
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: a (memecoins)
+- Uso propuesto: orientado a wallets y swaps: solo referencia
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Impa hyperliquid-mcp — Fase 9
+- URL: https://github.com/Impa-Ventures/hyperliquid-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: d (sintéticos)
+- Uso propuesto: datos de Hyperliquid vía MCP
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### edkdev hyperliquid-mcp — Fase 9
+- URL: https://github.com/edkdev/hyperliquid-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: d (sintéticos)
+- Uso propuesto: SDK oficial de Hyperliquid vía MCP (incluye trading)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### HypeDexer MCP — Fase 9
+- URL: https://github.com/Hypedexer/hypedexer-mcp
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: d (sintéticos)
+- Uso propuesto: datos históricos de Hyperliquid (API HypeDexer)
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### defi-yield-scanner-mcp — Fase 9
+- URL: https://github.com/34t34f3/defi-yield-scanner-mcp
+- Licencia: [P]
+- API key: no
+- Cobertura: a (memecoins), c (gobernanza), g (RWA)
+- Uso propuesto: yields + riesgo de token (DexScreener + DefiLlama)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Octav API MCP — Fase 9
+- URL: https://github.com/Octav-Labs/octav-api-mcp
+- Licencia: [P]
+- API key: sí (gratuita con registro)
+- Cobertura: c (gobernanza), g (RWA)
+- Uso propuesto: portafolios y DeFi en 20+ chains
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Smithery: DefiLlama API Proxy (Kryptoskatt) — Fase 9
+- URL: https://smithery.ai/servers/Kryptoskatt/mcp-server
+- Licencia: [P]
+- API key: no
+- Cobertura: c (gobernanza), e (DePIN), f (L1/L2), g (RWA)
+- Uso propuesto: DefiLlama con tools generados desde su OpenAPI
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Smithery: cat-dexscreener — Fase 9
+- URL: https://smithery.ai/servers/catwhisperingninja/cat-dexscreener
+- Licencia: [P]
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: pares de DexScreener por chain/dirección
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### TensorBlock awesome-mcp-servers (finance & crypto) — Fase 9
+- URL: https://github.com/TensorBlock/awesome-mcp-servers
+- Licencia: [P]
+- API key: no
+- Cobertura: herramienta / transversal
+- Uso propuesto: directorio para relevar MCP cripto
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### DeMCP awesome-web3-mcp-servers — Fase 9
+- URL: https://github.com/demcp/awesome-web3-mcp-servers
+- Licencia: [P]
+- API key: no
+- Cobertura: herramienta / transversal
+- Uso propuesto: directorio para relevar MCP cripto
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Hive awesome-crypto-mcp-servers — Fase 9
+- URL: https://github.com/hive-intel/awesome-crypto-mcp-servers
+- Licencia: [P]
+- API key: no
+- Cobertura: herramienta / transversal
+- Uso propuesto: directorio para relevar MCP cripto
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### PulseMCP (directorio) — Fase 9
+- URL: https://www.pulsemcp.com
+- Licencia: ToS del sitio
+- API key: no
+- Cobertura: herramienta / transversal
+- Uso propuesto: directorio / registro de MCP
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Glama MCP (directorio) — Fase 9
+- URL: https://glama.ai/mcp/servers
+- Licencia: ToS del sitio
+- API key: no
+- Cobertura: herramienta / transversal
+- Uso propuesto: directorio / registro de MCP
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Smithery (registro de MCP) — Fase 9
+- URL: https://smithery.ai
+- Licencia: ToS del sitio
+- API key: no
+- Cobertura: herramienta / transversal
+- Uso propuesto: directorio / registro de MCP
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+### 2.13 Repos con lógica especial (NLP, régimen, modelos)
 
 #### bashtage/arch (GARCH, HAR)
 - URL: https://github.com/bashtage/arch
@@ -913,7 +1468,153 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Prioridad: P3
 - Verificado: [P]
 
-### 2.14 Datasets públicos
+#### AI4Finance FinGPT — Fase 9
+- URL: https://github.com/AI4Finance-Foundation/FinGPT
+- Licencia: MIT [web]
+- API key: no
+- Cobertura: b (preventa), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: LLM financiero abierto (sentimiento de titulares)
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### ElKulako/cryptobert (Hugging Face) — Fase 9
+- URL: https://huggingface.co/ElKulako/cryptobert
+- Licencia: [P]
+- API key: no
+- Cobertura: a (memecoins), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: sentimiento bullish/bearish/neutral de posts cripto (3,2 M posts)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### vaderSentiment — Fase 9
+- URL: https://github.com/cjhutto/vaderSentiment
+- Licencia: MIT [I]
+- API key: no
+- Cobertura: a (memecoins), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: sentimiento por reglas, liviano (sin torch)
+- Prioridad: P2
+- Verificado: [P]
+
+#### cardiffnlp/twitter-roberta-base-sentiment — Fase 9
+- URL: https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest
+- Licencia: [P]
+- API key: no
+- Cobertura: a (memecoins), c (gobernanza), e (DePIN), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: sentimiento de texto social (requiere torch)
+- Prioridad: P3
+- Verificado: [P]
+
+#### bayesian_changepoint_detection (bayescd) — Fase 9
+- URL: https://github.com/hildensia/bayesian_changepoint_detection
+- Licencia: [P]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: detección de régimen en h y f (cambios de nivel/varianza)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### ChangePointLab (BOCPD, PELT, E-Divisive, HSMM) — Fase 9
+- URL: https://github.com/DiogoRibeiro7/ChangePointLab
+- Licencia: [P]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: detección de régimen en h y f (cambios de nivel/varianza)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### bocd (Adams & MacKay 2007, PyPI) — Fase 9
+- URL: https://pypi.org/project/bocd/
+- Licencia: [P]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: detección de régimen en h y f (cambios de nivel/varianza)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### JackKelly/bayesianchangepoint — Fase 9
+- URL: https://github.com/JackKelly/bayesianchangepoint
+- Licencia: [P]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: detección de régimen en h y f (cambios de nivel/varianza)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Rbeast (BEAST: cambios y descomposición) — Fase 9
+- URL: https://pypi.org/project/rbeast/
+- Licencia: [P]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: detección de régimen en h y f (cambios de nivel/varianza)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### hmmlearn (HMM: regímenes ocultos) — Fase 9
+- URL: https://github.com/hmmlearn/hmmlearn
+- Licencia: BSD-3-Clause [I]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: detección de régimen en h y f (cambios de nivel/varianza)
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+### 2.14 Papers con código o datos
+
+#### gridcp: Fast Online Changepoint Detection in Python (arXiv 2608.18695) — Fase 9
+- URL: https://arxiv.org/abs/2608.18695
+- Licencia: paper (código en el paper) [P]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: changepoint online rápido para regímenes intradía
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### focus / focus-cpt: Fast Online Changepoint Detection (arXiv 2607.19961) — Fase 9
+- URL: https://arxiv.org/abs/2607.19961
+- Licencia: paper [P]
+- API key: no
+- Cobertura: f (L1/L2), h (blue chips)
+- Uso propuesto: changepoint online (R y Python)
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Catching the Rug (arXiv 2608.20271): XGBoost con 5 min de trading, 6,4 M tokens — Fase 9
+- URL: https://arxiv.org/abs/2608.20271
+- Licencia: paper
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: features de los primeros 5 min para el riesgo del grupo a
+- Prioridad: P1
+- Verificado: [V] búsqueda web / alphaXiv 01/10
+
+#### Predicting the success of new crypto-tokens: the Pump.fun case (arXiv 2602.14860) — Fase 9
+- URL: https://arxiv.org/abs/2602.14860
+- Licencia: paper
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: predictores de graduación en pump.fun
+- Prioridad: P1
+- Verificado: [V] búsqueda web / alphaXiv 01/10
+
+#### A Midsummer Meme's Dream: manipulaciones en memecoins (arXiv 2507.01963) — Fase 9
+- URL: https://arxiv.org/abs/2507.01963
+- Licencia: paper
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: secuencia crecimiento artificial -> exit scam (usa MemeChain)
+- Prioridad: P2
+- Verificado: [V] búsqueda web / alphaXiv 01/10
+
+#### CoinCLIP: viabilidad multimodal de memecoins (arXiv 2412.07591) — Fase 9
+- URL: https://arxiv.org/abs/2412.07591
+- Licencia: paper
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: logo + texto como señal de viabilidad
+- Prioridad: P3
+- Verificado: [V] búsqueda web / alphaXiv 01/10
+
+### 2.15 Datasets públicos
 
 #### MemeChain (Zenodo 18246856)
 - URL: https://zenodo.org/records/18246856
@@ -971,18 +1672,71 @@ Formato por entrada: URL · licencia · API key · cobertura (grupos) · uso pro
 - Prioridad: P3
 - Verificado: [P]
 
-## 3. Prioridades de integración (lo que más cobertura agrega por esfuerzo)
+#### jocry/Pumpfun_Memecoin_Corpus (798.430 lanzamientos, 33,58 M trades, graduación etiquetada, jun–jul 2026) — Fase 9
+- URL: https://huggingface.co/datasets/jocry/Pumpfun_Memecoin_Corpus
+- Licencia: [P] (ver la tarjeta del dataset)
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: calibración del grupo a: graduación vs abandono, concentración, historial del creador
+- Prioridad: P0
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
 
-1. **Deribit DVOL** (P1, sin key): completa la energía M del grupo h (hoy M = 1).
-2. **Blockscout** (P1, sin key) en Base / Optimism / Arbitrum: holders y transferencias EVM para los grupos a e i sin depender de Etherscan con key.
-3. **DefiLlama yields** (P1): yield por pool para g y c, mejor que fees/TVL.
-4. **DexPaprika** (P1): respaldo de GeckoTerminal cuando da 429.
-5. **Binance public data** (P1, dataset): velas históricas para validar el scorer h fuera de muestra (walk-forward) sin gastar llamadas de API.
-6. **MemeChain** (P1, dataset CC-BY-4.0): etiquetas de rug para calibrar a e i (doc 18 H2).
-7. **ApeWisdom y Google News RSS** (P1): menciones por ticker para el colector (doc 26), en especial para grupos c, e, f, g, h donde los RSS cripto ya están.
+#### linxy/CryptoCoin (Binance, 2018–2025, actualizado a diario) — Fase 9
+- URL: https://huggingface.co/datasets/linxy/CryptoCoin
+- Licencia: [P] (ver la tarjeta del dataset)
+- API key: no
+- Cobertura: d (sintéticos), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: velas históricas multi-activo para c, e, f, g, h
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### Wrigggy/crypto-ohlcv-1m (90 días a 1 min) — Fase 9
+- URL: https://huggingface.co/datasets/Wrigggy/crypto-ohlcv-1m
+- Licencia: [P] (ver la tarjeta del dataset)
+- API key: no
+- Cobertura: d (sintéticos), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: vol realizada intradía (HAR-RV) para h
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### arthurneuron/crypto-futures-ohlcv-1m — Fase 9
+- URL: https://huggingface.co/datasets/arthurneuron/crypto-futures-ohlcv-1m
+- Licencia: [P] (ver la tarjeta del dataset)
+- API key: no
+- Cobertura: d (sintéticos), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: perps a 1 min para d y h
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### tradecatlabs/binance-futures-ohlcv-2018-2026 — Fase 9
+- URL: https://huggingface.co/datasets/tradecatlabs/binance-futures-ohlcv-2018-2026
+- Licencia: [P] (ver la tarjeta del dataset)
+- API key: no
+- Cobertura: d (sintéticos), f (L1/L2), g (RWA), h (blue chips)
+- Uso propuesto: histórico de futuros para d y h
+- Prioridad: P2
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+#### masonmarker/memecoins-chart-data-low-mc — Fase 9
+- URL: https://huggingface.co/datasets/masonmarker/memecoins-chart-data-low-mc
+- Licencia: [P] (ver la tarjeta del dataset)
+- API key: no
+- Cobertura: a (memecoins)
+- Uso propuesto: 40.000 puntos de memecoins de baja mcap (Photon)
+- Prioridad: P3
+- Verificado: [P] hallado por búsqueda web 01/10 (existencia [V]; licencia/actividad sin auditar)
+
+## 3. Prioridades de integración
+
+1. **jocry/Pumpfun_Memecoin_Corpus** (P0, Hugging Face): calibrar el grupo a con graduación vs abandono sobre 798 mil lanzamientos de 2026.
+2. **Deribit DVOL** (P1, sin key): completa la energía M del grupo h.
+3. **Gains Network backend** y **Drift** (P1/P2): más perps para d.
+4. **Blockscout** (P1, sin key): holders EVM para a e i.
+5. **Pyth Hermes** (P1, sin key): precio de oráculo para el basis de d.
+6. **Paper Catching the Rug** (P1): features de los primeros 5 minutos para el riesgo del grupo a.
 
 ## 4. Pendientes
 
-- [P] Correr `probe_inventario.yml` (manual) desde Actions: estado, latencia y si pide auth de cada endpoint. Requiere que el workflow esté en main (YIN).
-- [P] Relevar los directorios MCP (awesome-mcp-servers, mcp.so, npm `mcp-server`) con el checklist del doc 25; ningún MCP entra al pipeline sin esa auditoría.
-- [P] Revisar los ToS de uso comercial de cada API (este inventario verifica acceso técnico, no términos).
+- [P] Correr `probe_inventario.yml` desde Actions (requiere el workflow en main).
+- [P] Auditar licencia, actividad y `postinstall` de los MCP de la Fase 9 con el checklist del doc 25 antes de cualquier uso.
+- [P] Revisar ToS de uso comercial de cada API.
