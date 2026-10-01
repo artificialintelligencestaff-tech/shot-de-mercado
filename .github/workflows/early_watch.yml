@@ -1,0 +1,64 @@
+name: early_watch
+
+# Fase 10 (T3): vigilancia temprana. Un job largo (40 min) que hace poll cada 2 min (script_116): PumpPortal en
+# continuo + re-scoring v7.2.1 con DexScreener fresco + bono anticipatorio (lib_early_signals) + order book de
+# Hyperliquid/dYdX para multi-chain. El cron lo relanza cada 30 min en minutos fuera del pico (:07 y :37) y la
+# concurrencia encola la corrida siguiente: cobertura continua aunque el scheduler se atrase.
+# Mientras corre, script_97 (pipeline_t0) le cede la ruta Solana y adopta sus alertas en _all_alerts.json.
+# Repo público: minutos de Actions sin límite en runners estándar.
+# Escribe solo 02_Analisis/early/, sus alert_<mint>_<ts>.json y su bitácora; pushea con pull --rebase.
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+    inputs:
+      loop_minutes:
+        description: 'Minutos de bucle'
+        required: false
+        default: '40'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: early-watch
+  cancel-in-progress: false
+
+jobs:
+  early_watch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-dotenv websockets
+
+      - name: Git identity
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+
+      - name: Early watch loop
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_PUBLIC_CHAT_ID: ${{ secrets.TELEGRAM_PUBLIC_CHAT_ID }}
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+          PAUSE_EMISSIONS: "false"
+          SHADOW_MODE: "false"
+          EARLY_POLL_SECONDS: "120"
+          EARLY_LOOP_MINUTES: ${{ github.event.inputs.loop_minutes || '40' }}
+        run: python 04_Config/scripts/script_116_early_watch.py

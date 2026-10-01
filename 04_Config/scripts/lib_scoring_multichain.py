@@ -677,8 +677,19 @@ def build_assets(scan, cards=None, categories=None, protocols=None, now=None, go
     return assets
 
 
-def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None, memechain=None):
-    """Clasifica y puntúa un activo. Devuelve el detalle completo (lo que se registra y se muestra en el dossier)."""
+def apply_early(score, reasons, early):
+    """Fase 10: bono anticipatorio de script_116 (order book, funding/OI, Fear & Greed; lib_early_signals).
+    Solo suma, con el tope que ya trae el bono. score None -> sin cambios."""
+    bonus = int((early or {}).get("bonus") or 0)
+    if score is None or bonus <= 0:
+        return score, reasons
+    note = f"Anticipación ({early.get('version', 'early')}): +{bonus} — " + "; ".join(early.get("reasons") or [])
+    return int(min(100, score + bonus)), list(reasons) + [note]
+
+
+def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None, memechain=None, early=None):
+    """Clasifica y puntúa un activo. Devuelve el detalle completo (lo que se registra y se muestra en el dossier).
+    early: bono anticipatorio de este activo (02_Analisis/early/_signals.json), opcional."""
     now = now or datetime.now(timezone.utc)
     group, rule = classify(asset)
     notes_extra, extra = [], {}
@@ -703,6 +714,9 @@ def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None
         r = combine(*parts[:4])
         extra = parts[4]
         score, reasons, conf, comps = r["score"], r["reasons"], r["confidence"], r["components"]
+    if early and group not in REGISTER_ONLY:
+        score, reasons = apply_early(score, reasons, early)
+        extra = dict(extra or {}, early_bonus=int(early.get("bonus") or 0))
     if group in REGISTER_ONLY:
         emit, why = False, REGISTER_ONLY[group]
     elif score is None:
@@ -725,8 +739,9 @@ def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None
 
 
 def evaluate_all(scan, cards=None, categories=None, protocols=None, memecoin_scorer=None, now=None, governance=None,
-                 perps=None, premarket=None, prelaunch=None, memechain=None):
-    """Todos los activos del último scan, puntuados. Ordenados por (emitible, score)."""
+                 perps=None, premarket=None, prelaunch=None, memechain=None, early=None):
+    """Todos los activos del último scan, puntuados. Ordenados por (emitible, score).
+    early: {key: bono} de script_116 (Fase 10), opcional."""
     now = now or datetime.now(timezone.utc)
     assets = build_assets(scan, cards, categories, protocols, now, governance, perps, premarket, prelaunch)
     peers = [c for c in (cards or {}).values()]
@@ -736,7 +751,7 @@ def evaluate_all(scan, cards=None, categories=None, protocols=None, memecoin_sco
     out = []
     for a in assets:
         try:
-            out.append(evaluate(a, peers, eth, memecoin_scorer, now, memechain))
+            out.append(evaluate(a, peers, eth, memecoin_scorer, now, memechain, (early or {}).get(a.get("key"))))
         except Exception as e:      # un activo con datos raros no frena al resto
             out.append({"key": a.get("key"), "group": None, "score": None, "emittable": False,
                         "status_reason": f"error: {type(e).__name__}: {e}", "symbol": a.get("symbol")})

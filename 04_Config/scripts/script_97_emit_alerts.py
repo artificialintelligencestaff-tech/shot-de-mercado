@@ -745,9 +745,32 @@ def load_multichain_inputs(now=None, max_age_min=MULTICHAIN_MAX_AGE_MIN):
     return scan, cards, _read_json_file(MULTICHAIN_DIR / "_categories.json"), _read_json_file(MULTICHAIN_DIR / "_protocols.json")
 
 
+EARLY_DIR = PROJECT_ROOT / "02_Analisis" / "early"
+EARLY_ALERTS_FILE = EARLY_DIR / "_early_alerts.json"
+EARLY_SIGNALS_MAX_AGE_MIN = 20       # script_116 los reescribe cada 2 min mientras corre
+EARLY_WORKFLOW = "early_watch.yml"
+
+
+def load_early_signals(now=None, max_age_min=EARLY_SIGNALS_MAX_AGE_MIN):
+    """Fase 10: {key: bono anticipatorio} de script_116 (order book / funding / F&G), o None si no está fresco."""
+    now = now or datetime.now(timezone.utc)
+    data = _read_json_file(EARLY_DIR / "_signals.json")
+    if not isinstance(data, dict):
+        return None
+    try:
+        at = datetime.fromisoformat(str(data.get("generated_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if (now - at).total_seconds() / 60 > max_age_min:
+        return None
+    return data.get("signals") or None
+
+
 def load_multichain_extras():
-    """Fase 8: Snapshot (c), perps de Hyperliquid (d), pre-mercado de Aevo y TGEs de script_99 (b)."""
-    return {"memechain": _read_json_file(PROJECT_ROOT / "02_Analisis" / "datasets" / "memechain_index.json"),
+    """Fase 8: Snapshot (c), perps de Hyperliquid (d), pre-mercado de Aevo y TGEs de script_99 (b).
+    Fase 10: bono anticipatorio de script_116 (early)."""
+    return {"early": load_early_signals(),
+            "memechain": _read_json_file(PROJECT_ROOT / "02_Analisis" / "datasets" / "memechain_index.json"),
             "governance": _read_json_file(MULTICHAIN_DIR / "_governance.json"),
             "perps": _read_json_file(MULTICHAIN_DIR / "_perps.json"),
             "premarket": _read_json_file(MULTICHAIN_DIR / "_premarket.json"),
@@ -987,6 +1010,85 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
     return emitted
 
 
+# ---------------------------------------------------------------------------
+# Fase 10: vigilancia temprana (script_116). Mientras early_watch corre, la ruta Solana es suya (poll de 2 min);
+# acá solo se adoptan sus alertas en _all_alerts.json (para script_98 y el dataset) y se les adjunta el dossier.
+# ---------------------------------------------------------------------------
+
+def early_watch_active(get=None, repo=None, token=None):
+    """True si hay una corrida de early_watch.yml en curso (API de Actions con GITHUB_TOKEN). Sin token, sin repo o
+    con error: False (pipeline_t0 sigue emitiendo como siempre). EARLY_HANDOFF=false lo desactiva."""
+    if (os.getenv("EARLY_HANDOFF") or "true").strip().lower() not in TRUTHY:
+        return False
+    repo = repo or os.getenv("GITHUB_REPOSITORY")
+    token = token or os.getenv("GITHUB_TOKEN")
+    if not repo or not token:
+        return False
+    get = get or requests.get
+    url = f"https://api.github.com/repos/{repo}/actions/workflows/{EARLY_WORKFLOW}/runs?status=in_progress&per_page=1"
+    try:
+        r = get(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                timeout=15)
+        return r.status_code == 200 and (r.json() or {}).get("total_count", 0) > 0
+    except Exception:
+        return False
+
+
+def load_early_alerts(fresh=False, run=None):
+    """Registros de script_116. fresh=True: primero la versión de origin/main (git fetch), para no re-emitir algo
+    que early_watch pusheó después del checkout de esta corrida; si git falla, el archivo local."""
+    if fresh:
+        import subprocess
+        run = run or subprocess.run
+        rel = EARLY_ALERTS_FILE.relative_to(PROJECT_ROOT).as_posix()
+        try:
+            if run(["git", "fetch", "-q", "origin", "main"], cwd=str(PROJECT_ROOT), capture_output=True,
+                   timeout=60).returncode == 0:
+                r = run(["git", "show", f"FETCH_HEAD:{rel}"], cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+                        timeout=30)
+                if r.returncode == 0:
+                    data = json.loads(r.stdout)
+                    if isinstance(data, list):
+                        return data
+        except Exception:
+            pass
+    data = _read_json_file(EARLY_ALERTS_FILE, [])
+    return data if isinstance(data, list) else []
+
+
+def adopt_early_alerts(all_alerts, early_alerts, shadow=False, builder_loader=None):
+    """Agrega a all_alerts (en memoria y en disco) las alertas de script_116 que todavía no figuran, con su
+    status original (script_98 las sigue), y les adjunta el dossier (doc 24) si se enviaron. Devuelve las adoptadas."""
+    have = {normalize_mint(a.get("mint")) for a in all_alerts if isinstance(a, dict)}
+    adopted = []
+    for rec in early_alerts:
+        if not isinstance(rec, dict) or normalize_mint(rec.get("mint")) in have or not rec.get("mint"):
+            continue
+        record = dict(rec, early=True, adopted_at=datetime.utcnow().strftime("%Y-%m-%d_%H%M%S"))
+        all_alerts.append(record)
+        have.add(normalize_mint(rec["mint"]))
+        adopted.append(record)
+    if not adopted:
+        return []
+    write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+    builder = (builder_loader or load_dossier_builder)()
+    for record in adopted:
+        path, name = generate_dossier(builder, record["mint"])
+        if path:
+            record["dossier"] = _Path(os.path.relpath(path, PROJECT_ROOT)).as_posix()
+            if record.get("telegram_sent") and not shadow:
+                caption = (f"📎 Dossier de la alerta temprana *{md(str(record.get('symbol')))}* "
+                           f"({record.get('timestamp')} UTC): {ACQUISITION_MARK} y estudio completo en el adjunto.")
+                record["dossier_sent"] = send_alert(caption, path, name)[1]
+        try:
+            _persist().record_alert(dict(record, chain="solana", group="a"), source="script_116:early")
+        except Exception as e:
+            print(f"[WARN] dataset: {e}")
+    write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+    print(f"[INFO] Alertas tempranas adoptadas: {[r.get('symbol') for r in adopted]}")
+    return adopted
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if "--test-send" in argv:
@@ -1030,8 +1132,16 @@ def main(argv=None):
         log_cycle_event({"key": "existing_duplicates:" + ",".join(sorted(existing_dups)),
                          "type": "existing_duplicates", "timestamp": timestamp, "mints": existing_dups})
 
+    # Fase 10: alertas de early_watch -> historial (dedup y seguimiento) antes de elegir candidatos
+    delegated = early_watch_active()
+    adopt_early_alerts(all_alerts, load_early_alerts(fresh=not delegated), shadow)
+
     # Filter score >= EMIT_MIN_SCORE and not already alerted (dedup por mint normalizado, activas y cerradas)
     candidates, stats = select_candidates(accumulated, all_alerts)
+    if delegated:
+        print(f"[INFO] early_watch en curso: la ruta Solana la emite script_116 (poll de 2 min). "
+              f"Candidatos que habría tomado este ciclo: {len(candidates)}.")
+        candidates = []
     if stats["intra_cycle_duplicates"]:
         dups = sorted(stats["intra_cycle_duplicates"])
         print(f"[WARN] Candidatos repetidos en el mismo ciclo (variantes del mismo mint): {dups}")

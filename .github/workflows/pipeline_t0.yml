@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: read     # Fase 10: script_97 consulta si early_watch está corriendo (hand-off de la ruta Solana)
 
 concurrency:
   group: repo-write-main
@@ -60,6 +61,7 @@ jobs:
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
           SHOT_ROOT: ${{ github.workspace }}
+          GITHUB_TOKEN: ${{ github.token }}   # solo lectura de Actions (early_watch_active)
           PAUSE_EMISSIONS: "false"   # la pausa la resuelve script_97 (defensa en profundidad); "true" = no procesa nada
           SHADOW_MODE: "false"       # emisiones reales al grupo privado (validado v7.2.1)
         run: |

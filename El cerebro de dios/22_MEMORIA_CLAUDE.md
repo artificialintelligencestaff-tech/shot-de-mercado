@@ -2,7 +2,7 @@
 owner: Claude Code (implementador) — pendiente auditoría YANG
 status: VIVO (se actualiza al cierre de cada sesión)
 last_updated: 2026-10-01
-version: 1.2
+version: 1.3
 ---
 
 # 22 — Memoria persistente de Claude Code
@@ -19,6 +19,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 
 | Componente | Estado | Rótulo |
 |---|---|---|
+| **Fase 10 — detección temprana** (rama, sin merge) | **Latencia medida:** gap inicio del pump → emisión de **39,6–43,3 min**, acotado por el snapshot (4 alertas con pump desde el lanzamiento). Detección → emisión: mediana 38,4 min. Scheduler de Actions: +11,9 min de media sobre `*/20`. Escucha de PumpPortal: 5 de cada 20 min. **Nuevo:** `script_116_early_watch` + `early_watch.yml`, con poll **cada 2 min** dentro de un job de 40 min, PumpPortal en continuo, re-scoring v7.2.1 + bono anticipatorio (`lib_early_signals`, 9 señales, tope +8, solo suma) y order book de Hyperliquid/dYdX para multi-chain. `script_97` le cede la ruta Solana mientras corre y adopta sus alertas. Doc 31. | [V] código/tests · [P] producción |
 | Emisión | **Emisiones reales activas desde `6ff13c5`** (01/10 03:48 UTC): `SHADOW_MODE: "false"` en `pipeline_t0.yml`, destino **grupo privado** "La mano de Dios". Decisión de Dirección. Desde entonces `script_97` registró **2 alertas `active_tracking`**: DEGEN (`4vEX32…pump`, 04:12 UTC, score 100) y arc (`61V8vB…pump`, 08:40 UTC, score 72, con dossier). | [V] |
 | Entrega a Telegram | **Resuelta** (Dirección, 01/10 15:32 UTC): el grupo había migrado a supergrupo y los envíos daban 400. Secrets actualizados y `telegram_test_send` OK [reportado]. Detalle en §1.2. DEGEN y arc quedaron sin entregar. | [V] log · [reportado] fix |
 | Scorer | **v7.2.1** en main desde 2026-09-30 (`SCORING_VERSION = "7.2.1"`, `ACCEL_GATE_MIN_AGE = 60`). Cada token lleva `detected_at` y `scoring_version`. 1.ª corrida de producción (`detection_2026-09-30_055022`): 35/35 tokens con 7.2.1, **≥ 56: 2/35** (vs 19/29 y 23/33 en las dos corridas v7.2 previas). | [V] |
@@ -162,6 +163,8 @@ Universos: **A** = BTC/ETH/SOL · **B** = UNI/ICP/APT/PSG · **C** = memecoins/B
 | Grupo migrado a supergrupo | Telegram rechaza los envíos al ID viejo con 400 "group chat was upgraded to a supergroup chat" y devuelve `migrate_to_chat_id`. Ninguna de las 2 alertas reales del 01/10 llegó. | [V] | 22 §1 |
 | arc puntuado como memecoin | Activo de 621,7 días ($10,3 M de liquidez, categorías AI/Infra) sacó 72 con v7.2.1: +25 de buy pressure con 5 compras / 0 ventas y +15 de aceleración con $64 de volumen m5 (rotación m5/L 6,2·10⁻⁶). El origen pump.fun no alcanza para clasificar. | [V] | 27 §2, §6.1 |
 | Candidatos ≥ 40 por versión | En 48 h hay 59 tokens ≥ 40, pero 45 tienen score de v7.2 (inflado); con el scorer vigente (7.2.1) quedan 14. El colector filtra por versión. | [V] | 26 §10 |
+| Latencia estructural | Las alertas Solana salen con el par en ~44 min de edad (mediana) aunque script_82 las ve a los ~4,5 min. El piso es gate 30 + media cadencia 10. En 5 de 12 alertas, el snapshot con el que se emitió ya mostraba ≥ +100 %. El scheduler de Actions atrasa `*/20` 11,9 min de media (máx 19,6). | [V] | 31 §1 |
+| `score_token` relee 11 MB | `script_82.score_token` abre y parsea `_accumulated.json` (10,9 MB, 6.956 registros) **en cada llamada** para un `buy_pressure` que nunca existe (0/6.956). Inocuo en pipeline_t0 (pocas llamadas); en el early watch se evita llamándolo desde un cwd vacío (mismo resultado, test de paridad). | [V] | 31 §3 |
 | Herramientas de scraping | `whaleyxbt/patchright` → 404; el repo real es `patchright-enhanced`, sin licencia y orientado a evadir WAF: descartado. Agent-Reach: X y Reddit exigen cookies de cuentas: no. Scrapling: candidata condicional (solo el núcleo). | [V] | 25 |
 
 ---
@@ -237,6 +240,12 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 ## 8. Próximos pasos
 
+0. **Fase 10:**
+   - YIN integra la rama.
+   - `workflow_dispatch` de `early_watch.yml`: mirar `02_Analisis/early/_watch.json` (watch_size, listener_seen, top).
+   - A las 24–48 h, `latency_analysis.yml` para el gap con velas de 1 min y el % de alertas dentro de los 5 min.
+   - Decisión de Dirección/YANG: `EARLY_MIN_AGE_MIN` (gate 30 de v7.2.1). Es el piso que queda; con gate G la
+     latencia mínima es G + 1 min.
 1. ~~**P0 (Dirección):** secrets del supergrupo~~ **Hecho** (§1.2). Fase 6: guías de compra de Arbitrum, Optimism y Blast en `script_97` (Monad sin DEX: no emite) y grupo i en el doc 27.
 2. **YIN integra `claude/zealous-tesla-3ua19i`** (T1, T2, T3, docs 22/24/26) tras la auditoría de YANG. Después, `workflow_dispatch` de `narrative_collector.yml` y `multichain_scanner.yml` para la verificación en vivo desde Actions (primer uso real de las rutas de DefiLlama `overview/dexs` y `overview/fees` por chain, y de CoinGecko `coins/categories`).
 3. **Dossier ← colector:** `script_113` lee `02_Analisis/narrative/<mint>.json` y lo muestra en 🔬 Método / ⏱️ Vigencia como dato (sin tocar el score).
@@ -254,6 +263,7 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 
 | Fecha | Sesión | Resultado |
 |---|---|---|
+| 2026-10-01 (noche, Fase 10) | Detección temprana | T1 `latency_analysis.py` + `.json`: gap 39,6–43,3 min [V snapshot], scheduler +11,9 min, escucha 5/20 min · T2 `lib_early_signals` (9 señales, bono ≤ 8, solo suma; 17 tests) · T3 `script_116` + `early_watch.yml` (poll 2 min, PumpPortal continuo, paridad con script_97; 12 tests) · T4 Hyperliquid l2Book + dYdX (GMX sin libro, Jupiter lite prohibida) · T5 RugCheck holders/top-10 · T6 script_115 → `social_velocity` (X sin fuente gratuita) · script_97 hand-off + adopción + bono multi-chain (6 tests) · 370/370 · doc 31 |
 | 2026-09-30 | Directiva ampliada (máximo aprovechamiento) | T1 v7.2.1 en main (sombra) · T2 fase2-p1 en main · T3 gate de edad 30 min · T4 advertencia crítica · bots gemelos desplegados y verificados (4/4 success) · 1.ª corrida v7.2.1 verificada (35/35 tokens 7.2.1, ≥56: 2/35) · doc 22 creado · doc 23 (8 grupos, 42 fuentes, 12 propuestas de innovación) · ops chat "La mano de Dios" operativo (confirmado) · 4 anomalías del primer resumen registradas en §7 (A-c P0) |
 | 2026-09-30 (noche) | Post-incidente + mejoras operativas | Framing neutral en main (`c727ece`, aplicado por Dirección/YIN) · T1 resumen legible · T2 resumen idempotente · T3 alertas a personal + grupo, `--test-send`, pausa 0,5 s · T4 template con ACTIVO / DETECCIÓN / FUENTES · T5 scanner multi-chain v0 · push ff `77b2a1c..3694aa8` · 151/151 tests · test-send: personal OK, grupo sin secret · A-c: las `active_tracking` son todas previas a SHADOW |
 | 2026-10-01 | Redirección exclusiva al grupo + hardening | `script_97`, `script_98` y `script_99` envían solo a `TELEGRAM_PUBLIC_CHAT_ID`; ningún workflow pasa `TELEGRAM_CHAT_ID`; bot solo emisor (sin `getUpdates`/webhooks/polling, verificado y con test de regresión); rama `claude/destino-grupo` sin push |
