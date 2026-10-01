@@ -2,7 +2,7 @@
 owner: Claude Code (implementador) — pendiente auditoría YANG
 status: DISEÑO (sin implementación) — Fase 5, T3
 last_updated: 2026-10-01
-version: 0.1
+version: 0.2
 ---
 
 # 27 — Scoring por tipo de activo (multi-chain, grupos a–h)
@@ -47,6 +47,7 @@ El proyecto informa y el usuario decide. Toda alerta de cualquier grupo lleva pr
 | f | L1/L2 emergentes | Base, Arbitrum, Optimism, Blast, Monad (y su token nativo) | B/C |
 | g | RWA | plataformas de activos tokenizados (gobernanza), no los activos estables | — |
 | h | Blue chips | BTC, ETH, SOL | A |
+| i | Establecidos sin grupo | par > 180 días fuera de a–h (arc) | — (solo registro) |
 
 ### 2.2 Reglas de clasificación (en orden; gana la primera que aplica)
 
@@ -60,10 +61,11 @@ El proyecto informa y el usuario decide. Toda alerta de cualquier grupo lleva pr
 | 6 | Categoría CoinGecko `layer-1` / `layer-2`, o token nativo de una chain de `script_114` | f | ídem + `CHAINS` de T2 |
 | 7 | Categoría CoinGecko `governance`, o protocolo DefiLlama con `gecko_id` (DEX, lending, yield) | c | ídem |
 | 8 | **Memecoin nueva:** lanzada en un launchpad (pump.fun) **y** par < 7 días, **o** categoría CoinGecko `meme-token` con mcap < $50 M | a | detector + DexScreener `pairCreatedAt` |
-| 9 | Ninguna de las anteriores, par ≥ 30 días y mcap ≥ $10 M | **x (establecido sin grupo)** | — |
+| 9 | Ninguna de las anteriores y **par creado hace > 180 días** | **i (establecido sin grupo)** | DexScreener `pairCreatedAt` |
 | 10 | Resto | a | por defecto, como hoy |
 
-- **El grupo x es nuevo** [H]. Cubre activos maduros que no encajan en a–h (arc: "AI Agents", "Infrastructure"). Se puntúa con el modelo genérico de momentum relativo: el de f sin las componentes de TVL (§4.6).
+- **El grupo i es nuevo** (Dirección, Fase 6). Cubre activos maduros que no encajan en a–h (arc: "AI Agents", "Infrastructure"). Scoring propio en §4.10; **se registra y no se emite** hasta definir el scoring completo.
+- Un activo de 7 a 180 días que no encaja en a–h cae en la regla 10 (grupo a, como hoy).
 - **El origen pump.fun no alcanza para clasificar como memecoin** [V con arc]: arc nació en pump.fun y migró a meteora, pero hoy es un activo de 21 meses con $10 M de liquidez.
 - El grupo y la regla que lo asignó se guardan en el registro (`group`, `group_rule`) y en el dossier (🧬 Naturaleza).
 
@@ -187,7 +189,7 @@ M = clip(1 + (DVOL − RV₃₀)/40, 0,5, 1,5)        DVOL y RV₃₀ en puntos 
 - Fuera de los 9 protocolos de DefiLlama, la cobertura máxima es 50 (sin las dos primeras componentes) y no llega a 0,6: no se emite hasta tener una fuente de ingresos.
 - Umbral inicial: 65.
 
-### 4.6 g — RWA (y x, establecido sin grupo)
+### 4.6 g — RWA
 
 **Filtro previo:** vol realizada diaria < 2% (T-bills, oro tokenizado) → "RWA estable", sin score.
 
@@ -199,10 +201,6 @@ M = clip(1 + (DVOL − RV₃₀)/40, 0,5, 1,5)        DVOL y RV₃₀ en puntos 
 | Momentum de categoría | como e, con `real-world-assets-rwa` | 15 | `_categories.json` |
 | Momentum vs categoría | como c | 15 | ídem |
 
-- **Grupo x** (§2.2, regla 9): solo las componentes de momentum de f y c.
-  - Momentum relativo vs ETH/SOL (w 50).
-  - Momentum vs su categoría principal de CoinGecko (w 50).
-  - Tendencia del precio sobre media de 20 días (w 0 hasta tener velas propias).
 - Umbral inicial: 65.
 
 ### 4.7 d — Sintéticos y derivados
@@ -250,6 +248,40 @@ M = clip(1 + (DVOL − RV₃₀)/40, 0,5, 1,5)        DVOL y RV₃₀ en puntos 
 
 ---
 
+### 4.10 i — Establecidos sin grupo (Dirección, Fase 6)
+
+**Definición:** par creado hace **> 180 días** que no clasifica en a–h (§2.2, regla 9).
+**Estado: se registra, no se emite** hasta definir el scoring completo. Va a `multichain/_accumulated.json` con `status: "registro"`; `script_97` lo ignora.
+
+**Qué no se usa:** ningún bono de memecoin de v7.2.1: edge temprano, buy pressure m5, momentum m5/h1, volumen m5 ni aceleración m5/h1. En un pool maduro y profundo, esas ventanas de 5 minutos miden ruido (caso arc, §6.1).
+
+**Componentes** (estructura de §4.1):
+
+| Componente | Señal sᵢ | wᵢ | Fuente |
+|---|---|---|---|
+| TVL del protocolo | `clip(g₇ / 0,10, −1, 1)` | 25 | DefiLlama `/protocols` por `gecko_id` (n/d si no es un protocolo) |
+| Holders | crecimiento 7d: `clip(ln(Hₜ/Hₜ₋₇) / 0,10, −1, 1)` | 25 | RugCheck `totalHolders` / GoPlus `holder_count`, guardados a diario [P: hoy solo hay foto puntual] |
+| Fees | ρ = (fees₇d·30/7)/fees₃₀d → `clip(ln ρ / 0,5, −1, 1)` | 20 | DefiLlama fees por protocolo |
+| Volumen sostenido: rotación | `clip(log₁₀((vol₂₄ₕ/L) / 0,05), −1, 1)` (5% diario = neutro) | 20 | DexScreener `volume24h`, `liquidityUsd` |
+| Volumen sostenido: persistencia | `clip(ln(vol₂₄ₕ / (vol₇d/7)) / ln 3, −1, 1)` | 10 | DexScreener / GeckoTerminal OHLCV diario |
+
+```
+score_i = clip(50 + 50·D, 0, 100) − 10·[edad del par > 365 días]      (cobertura mínima 0,6, como en §4.1)
+```
+
+- **Descuento por edad** (Dirección): −10 si el par tiene más de 1 año.
+
+**arc con estas reglas** (datos de la alerta del 01/10 [V]; fórmula [H]):
+- **Rotación:** vol₂₄ₕ/L = 6.955/10.333.552 = 6,7·10⁻⁴ → log₁₀(6,7·10⁻⁴/0,05) = −1,87 → s = **−1** (w 20).
+- **Resto de componentes:** TVL, holders con historia, fees y persistencia → n/d.
+- **Resultado:** cobertura 0,20 < 0,6, así que el score queda parcial: 50 + 50·(−1) = 0, y el descuento por edad (621,7 días) no lo baja de 0. Contra los 72 de v7.2.1, la lectura cambia de "aceleración" a "pool profundo con muy poca rotación".
+
+**Pendiente para emitir [P]:**
+1. Holders guardados a diario por token.
+2. Mapeo `gecko_id` → protocolo de DefiLlama.
+3. Medición en sombra con el evento de f (+20% antes de −15% en 48 h).
+4. Decisión de Dirección.
+
 ## 5. Cómo integrar al pipeline multi-chain (diseño)
 
 ### 5.1 Flujo
@@ -287,10 +319,11 @@ multichain_scanner.yml (1 h)           narrative_collector.yml (20 min)        [
 | d | categorías de perps y sintéticos | Hyperliquid `metaAndAssetCtxs`, dYdX v4, DefiLlama stablecoins |
 | b | `script_99` (TGEs), `script_115` (narrativa), `new_pools` | perps pre-lanzamiento de Hyperliquid; fuente de precio de preventa (no existe gratuita) |
 | a | todo (producción) | — |
+| i | DexScreener (rotación) | holders diarios, mapeo a DefiLlama; solo registro |
 
 ### 5.3 Guía de compra por chain (regla núcleo, doc 24 §6.2)
 
-- Hoy hay guía verificada para Solana, Ethereum y Base [V doc 24 §1.1]. **Arbitrum, Optimism, Monad y Blast no tienen fila: sus activos no se emiten** hasta agregarla en `script_97` (wallet, DEX + alternativas, activo de fondeo).
+- Guías completas en `script_97` (`guide_for`): Solana, Ethereum, Base y, desde la Fase 6, **Arbitrum, Optimism y Blast** [V tests]. **Monad** tiene wallet pero todavía no DEX: su guía está incompleta y sus activos **no se emiten** hasta agregarlo.
 - Para h, y para c, e, f y g cuando el activo cotiza en un exchange centralizado: ruta CEX confirmada por contrato (`script_113.cex_route`, doc 24 §8), sin códigos de referido.
 
 ### 5.4 Convivencia
@@ -332,11 +365,11 @@ Entradas (alerta del 01/10 08:40 UTC, `alert_61V8vB…_2026-10-01_084036.json`, 
 | **Total** | | **72** (= registrado) |
 
 **Lectura con este documento:**
-- **Clasificación (§2.2):** par de 621,7 días con categorías "AI Agents" e "Infrastructure" → la regla 8 no aplica (no es nueva) → regla 9 → **grupo x**.
+- **Clasificación (§2.2):** par de 621,7 días (> 180) con categorías "AI Agents" e "Infrastructure" → la regla 8 no aplica (no es nueva) → regla 9 → **grupo i**.
 - **Rotación:** m5/L = 64,45 / 10.333.552 = **6,2·10⁻⁶**; h1/L = **2,0·10⁻⁵**; 24h/L = **6,7·10⁻⁴** [V cálculo].
 - **Propuesta 4.9.1:** con un mínimo de rotación h1 de 10⁻³, los bonos de aceleración (+15, +25, +20) no aplican y el score v7.2.1 sería 72 − 60 = 12.
 - **Propuesta 4.9.2:** con n = 5 trades (< 10), la buy pressure no se evalúa.
-- **En el grupo x** se puntúa con momentum relativo; las entradas (Δ7d de arc, ETH y SOL, y la mediana de su categoría) salen de T2 [P en vivo].
+- **En el grupo i** (§4.10) se registra sin emitir. Con los datos de la alerta da cobertura 0,20 y score 0 (detalle en §4.10).
 
 ### 6.2 h — Blue chip (BTC, entradas reales del 17/09 [V]; parámetros GARCH ilustrativos)
 
@@ -433,4 +466,4 @@ Token con TGE en 6 días (ventana de anticipación) → s = 1 (w 25). Intensidad
    - `overview/fees` por chain: verificada para `Base` [V doc 23];
    - `coins/categories`: [I].
 5. [P] v7.3 en sombra con las propuestas de §4.9 (rotación mínima, Wilson en buy pressure), comparado contra v7.2.1 con la métrica dual.
-6. [P] Grupo x: confirmar con Dirección si se suma como noveno grupo o si esos activos quedan fuera.
+6. ~~Grupo x~~ → **grupo i** (Dirección, Fase 6): registrar sin emitir. [P] Fuentes de holders con historia (RugCheck / GoPlus diarios por token) y el `scoring_version` `mc-i-0.1` en `script_116`.
