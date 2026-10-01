@@ -358,6 +358,108 @@ class Salida(unittest.TestCase):
             self.assertIsNone(m.generate_pdf(m.dry_run_dossier()))
 
 
+CG_BONK = {"id": "bonk", "symbol": "bonk", "categories": ["Meme", "Solana Meme", "Dog-Themed"],
+           "tickers": [{"market": {"identifier": "binance"}, "base": "BONK", "target": "USDT",
+                        "trade_url": "https://www.binance.com/en/trade/BONK_USDT?ref=37754157"},
+                       {"market": {"identifier": "binance"}, "base": "BONK", "target": "TRY"},
+                       {"market": {"identifier": "gdax"}, "base": "BONK", "target": "USD"},
+                       {"market": {"identifier": "kraken"}, "base": "BONK", "target": "USD"},
+                       {"market": {"identifier": "mexc"}, "base": "BONK", "target": "USDT"}]}
+
+
+class ExchangeYCategoria(unittest.TestCase):
+    """Fase 4 T2: ruta por exchange centralizado confirmada por contrato, y categoría / narrativa."""
+
+    def live(self, cg=None, binance=None, coinbase=None, cex=True):
+        return {"queried_at": "2026-10-01T04:30:00+00:00", "coingecko": cg,
+                "cex": {"symbol": "BONK", "binance": binance, "coinbase": coinbase,
+                        "at": "2026-10-01T04:30:00+00:00"} if cex else None}
+
+    def test_ficha_de_coingecko(self):
+        cg = m.parse_coingecko_contract(CG_BONK)
+        self.assertEqual((cg["id"], cg["symbol"], cg["listed"]), ("bonk", "BONK", True))
+        self.assertEqual(cg["cex"], {"Binance": [["BONK", "USDT"]], "Coinbase": [["BONK", "USD"]],
+                                     "Kraken": [["BONK", "USD"]]})            # sin TRY ni exchanges fuera de la lista
+        self.assertIsNone(m.parse_coingecko_contract({"error": "coin not found"}))
+
+    def test_confirmado_por_contrato_con_enlaces_limpios(self):
+        text, links = m.cex_route("BONK", self.live(m.parse_coingecko_contract(CG_BONK), True, True))
+        self.assertEqual(links, [("Binance", "https://www.binance.com/en/trade/BONK_USDT"),
+                                 ("Coinbase", "https://www.coinbase.com/advanced-trade/spot/BONK-USD"),
+                                 ("Kraken", "https://pro.kraken.com/app/trade/BONK-USD")])
+        self.assertNotIn("ref=", text)                                     # nunca el código de referido de CoinGecko
+        self.assertIn("confirmado por contrato", text)
+
+    def test_homonimo_no_se_enlaza(self):
+        cg = {"listed": True, "id": "otro", "symbol": "BONK", "categories": [], "cex": {}}
+        text, links = m.cex_route("BONK", self.live(cg, binance=True, coinbase=False))
+        self.assertEqual(links, [])
+        self.assertIn("Binance tiene un par BONKUSDT, pero CoinGecko no lo vincula a este contrato", text)
+        self.assertNotIn("binance.com", text)
+
+    def test_no_cotiza(self):
+        text, links = m.cex_route("VSOF", self.live({"listed": False}, False, False))
+        self.assertEqual(links, [])
+        self.assertIn("no cotiza en Binance ni en Coinbase", text)
+        self.assertIn("CoinGecko sin ficha para este contrato", text)
+
+    def test_consulta_fallida_o_ausente_es_nd(self):
+        self.assertIn("n/d (consulta fallida)", m.cex_route("X", self.live(None, None, None))[0])
+        self.assertIn("n/d (sin consulta", m.cex_route("X", {"queried_at": None})[0])
+
+    def test_blue_chip(self):
+        text, links = m.cex_route("SOL", None)
+        self.assertEqual([n for n, _ in links], ["Binance", "Coinbase", "Kraken"])
+        self.assertIn("https://www.binance.com/en/trade/SOL_USDT", text)
+
+    def test_binance_y_coinbase(self):
+        self.assertTrue(m.parse_binance_symbol({"symbols": [{"symbol": "BONKUSDT", "status": "TRADING"}]}, "BONKUSDT"))
+        self.assertFalse(m.parse_binance_symbol({"symbols": [{"symbol": "BONKUSDT", "status": "BREAK"}]}, "BONKUSDT"))
+        self.assertTrue(m.parse_coinbase_product({"status": "online", "trading_disabled": False}))
+        self.assertFalse(m.parse_coinbase_product({"status": "delisted"}))
+
+    def test_categorias_scanner_y_narrativa(self):
+        scan = {"generated_at": "2026-10-01T04:00:00+00:00",
+                "groups": {"f": {"items": [{"id": "bonk", "source": "layer-1"}]}},
+                "onchain": {"solana": {"items": [{"token_address": "MintA"}]}}}
+        index = m.scanner_index(scan)
+        self.assertEqual(m.scanner_match(index, "minta")["group"], "a")      # por contrato, sin distinguir mayúsculas
+        self.assertEqual(m.scanner_match(index, "otro", "bonk")["category"], "layer-1")
+        self.assertIsNone(m.scanner_match(index, "otro", "nada"))
+        registry = {"narratives": {"gta6": {"title": "GTA VI", "tokens": [{"address": "MINTA", "link_type": "thematic"}]}}}
+        narratives = m.registry_matches(registry, "minta")
+        text = m.categories_text({"coingecko": m.parse_coingecko_contract(CG_BONK)}, m.scanner_match(index, "MintA"), narratives)
+        self.assertEqual(text, "CoinGecko: Meme, Solana Meme, Dog-Themed · scanner multi-chain: grupo a "
+                               "(memecoins micro-cap, trending_pools de solana) · narrativa: GTA VI (vínculo thematic, registro curado)")
+        self.assertIn("n/d (CoinGecko sin ficha", m.categories_text({"coingecko": {"listed": False}}, None, []))
+
+    def test_fetch_live_distingue_no_listado_de_falla(self):
+        class R:
+            def __init__(self, status, data=None):
+                self.status_code, self.ok, self._data = status, status == 200, data
+
+            def json(self):
+                return self._data
+
+        class S:
+            def get(self, url, timeout=None, headers=None):
+                if "coingecko" in url:
+                    return R(404)
+                if "binance" in url:
+                    return R(400)
+                if "coinbase" in url:
+                    return R(503)
+                return R(500)
+        live = m.fetch_live("MintX", "solana", {"token": {"symbol": "TEST"}}, session=S(), pause_s=0)
+        self.assertEqual(live["coingecko"], {"listed": False})
+        self.assertEqual((live["cex"]["binance"], live["cex"]["coinbase"]), (False, None))   # 400 = no existe; 503 = n/d
+
+    def test_dry_run_vsof_no_cotiza(self):
+        d = m.dry_run_dossier()
+        self.assertIn("no cotiza en Binance ni en Coinbase (consulta 01/10/2026 04:30 UTC", d["acquisition"]["cex_route"])
+        self.assertTrue(d["nature"]["categories"].startswith("n/d (CoinGecko sin ficha"))
+
+
 class BlobGit(unittest.TestCase):
     def test_blob_coincide_con_git_ls_tree(self):
         rel = "02_Analisis/alerts/alert_6BfTBNYJcZW9AnxRQ7aAx4Luf2K4BpmWpR7FWTPZpump_2026-09-29_171330.json"

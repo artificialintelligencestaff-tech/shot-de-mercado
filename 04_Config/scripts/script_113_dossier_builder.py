@@ -105,6 +105,21 @@ GOPLUS_EVM = "https://api.gopluslabs.io/api/v1/token_security/{chain_id}?contrac
 GOPLUS_CHAIN_IDS = {"ethereum": "1", "base": "8453"}
 GECKO_NETWORKS = {"solana": "solana", "ethereum": "eth", "base": "base"}
 GECKO_OHLCV_HOUR = "https://api.geckoterminal.com/api/v2/networks/{net}/pools/{pool}/ohlcv/hour?limit=1000"
+# Categoría y ruta por exchange centralizado (Fase 4 T2). CoinGecko identifica el activo POR CONTRATO; Binance y
+# Coinbase solo confirman que el par existe por SÍMBOLO, que puede ser de otro token homónimo: se enlaza un
+# exchange solo si CoinGecko confirma ese contrato en ese exchange (o si es un blue chip nativo).
+COINGECKO_CONTRACT = "https://api.coingecko.com/api/v3/coins/{platform}/contract/{addr}"
+COINGECKO_PLATFORMS = {"solana": "solana", "ethereum": "ethereum", "base": "base"}
+BINANCE_EXCHANGE_INFO = "https://data-api.binance.vision/api/v3/exchangeInfo?symbol={symbol}"
+COINBASE_PRODUCT = "https://api.exchange.coinbase.com/products/{product}"
+CG_EXCHANGES = {"binance": "Binance", "gdax": "Coinbase", "kraken": "Kraken"}   # identificador de CoinGecko -> exchange
+CEX_QUOTES = ("USDT", "USD", "USDC")
+# Enlaces armados acá y sin parámetros: los trade_url de CoinGecko para Binance traen un código de referido.
+CEX_LINKS = {"Binance": "https://www.binance.com/en/trade/{base}_{quote}",
+             "Coinbase": "https://www.coinbase.com/advanced-trade/spot/{base}-{quote}",
+             "Kraken": "https://pro.kraken.com/app/trade/{base}-{quote}"}
+SCANNER_FILE = ROOT / "02_Analisis" / "multichain" / "scan_latest.json"
+NARRATIVE_REGISTRY = ROOT / "04_Config" / "narrative_registry.json"
 HTTP_TIMEOUT_S = 15
 HTTP_PAUSE_S = 1.0
 HTTP_HEADERS = {"User-Agent": "shot-de-mercado-dossier/1.0", "Accept": "application/json"}
@@ -436,6 +451,62 @@ def parse_ohlcv(data, interval="1 h"):
             "last_ts": rows[-1][0]}
 
 
+def parse_coingecko_contract(data):
+    """Ficha de CoinGecko por contrato: id, símbolo, categorías y pares en Binance / Coinbase / Kraken."""
+    if not isinstance(data, dict) or not data.get("id"):
+        return None
+    cex = {}
+    for t in data.get("tickers") or []:
+        exchange = CG_EXCHANGES.get(((t.get("market") or {}).get("identifier") or "").lower())
+        base, quote = str(t.get("base") or "").upper(), str(t.get("target") or "").upper()
+        if (exchange and quote in CEX_QUOTES and re.fullmatch(r"[A-Z0-9]{1,15}", base)
+                and [base, quote] not in cex.get(exchange, [])):
+            cex.setdefault(exchange, []).append([base, quote])
+    return {"listed": True, "id": data["id"], "symbol": str(data.get("symbol") or "").upper(),
+            "categories": [c for c in data.get("categories") or [] if c], "cex": cex}
+
+
+def parse_binance_symbol(data, symbol):
+    symbols = (data or {}).get("symbols") or []
+    return any(s.get("symbol") == symbol and s.get("status") == "TRADING" for s in symbols)
+
+
+def parse_coinbase_product(data):
+    return bool(data) and data.get("status") == "online" and not data.get("trading_disabled")
+
+
+def cex_route(symbol, live):
+    """Ruta por exchange centralizado: listados confirmados por contrato, con enlace limpio. Devuelve (texto, enlaces)."""
+    cg, cex = (live or {}).get("coingecko"), (live or {}).get("cex")
+    sym = (symbol or "").upper()
+    if sym in BLUE_CHIPS:
+        links = [(name, CEX_LINKS[name].format(base=sym, quote="USDT" if name == "Binance" else "USD"))
+                 for name in ("Binance", "Coinbase", "Kraken")]
+        return "Cotiza en exchanges centralizados (blue chip): " + " · ".join(f"{n} ({u})" for n, u in links), links
+    if cg is None and cex is None:
+        return "Ruta por exchange centralizado: n/d (sin consulta a CoinGecko, Binance ni Coinbase).", []
+    when_txt = when(parse_ts((cex or {}).get("at") or (live or {}).get("queried_at")))
+    confirmed = (cg or {}).get("cex") or {}
+    links = [(name, CEX_LINKS[name].format(base=pair[0], quote=pair[1]))
+             for name in ("Binance", "Coinbase", "Kraken") for pair in confirmed.get(name, [])[:1]]
+    notes = []
+    for name, key, pair in (("Binance", "binance", f"{(cex or {}).get('symbol', sym)}USDT"),
+                            ("Coinbase", "coinbase", f"{(cex or {}).get('symbol', sym)}-USD")):
+        if (cex or {}).get(key) and name not in confirmed:
+            notes.append(f"{name} tiene un par {pair}, pero CoinGecko no lo vincula a este contrato (puede ser otro "
+                         "token con el mismo símbolo): no se enlaza")
+    if links:
+        text = ("Cotiza en exchanges centralizados (par confirmado por contrato en CoinGecko, consulta "
+                f"{when_txt}): " + " · ".join(f"{n} ({u})" for n, u in links))
+    elif (cg or {}).get("listed") is False or (cex and cex.get("binance") is not None):
+        source = ("CoinGecko sin ficha para este contrato" if (cg or {}).get("listed") is False else
+                  "CoinGecko sin pares de este contrato en esos exchanges" if cg else "CoinGecko n/d")
+        text = f"Ruta por exchange centralizado: no cotiza en Binance ni en Coinbase (consulta {when_txt}; {source})."
+    else:
+        text = "Ruta por exchange centralizado: n/d (consulta fallida)."
+    return text + "".join(f" {n}." for n in notes), links
+
+
 def asset_dual_metric(pool, t0, p0, now=None):
     """Métrica dual del activo con velas de 15 min (mismas definiciones y orden intra-vela que la calibración)."""
     status, candles = cal.CandleSource().get(pool, t0)
@@ -479,6 +550,19 @@ def fetch_live(mint, chain, record=None, t0=None, p0=None, session=None, pause_s
     if pool and chain in GECKO_NETWORKS:
         url = GECKO_OHLCV_HOUR.format(net=GECKO_NETWORKS[chain], pool=pool)
         live["history"] = parse_ohlcv(get("GeckoTerminal (velas 1 h)", url))
+    platform = COINGECKO_PLATFORMS.get(chain)
+    if platform:
+        data = get("CoinGecko (ficha por contrato)", COINGECKO_CONTRACT.format(platform=platform, addr=mint))
+        live["coingecko"] = (parse_coingecko_contract(data) if data else
+                             {"listed": False} if calls[-1]["status"] == 404 else None)
+    symbol = ((live.get("coingecko") or {}).get("symbol") or ((record or {}).get("token") or {}).get("symbol")
+              or (record or {}).get("symbol") or "").upper()
+    if re.fullmatch(r"[A-Z0-9]{1,15}", symbol):
+        b = get("Binance (data-api)", BINANCE_EXCHANGE_INFO.format(symbol=f"{symbol}USDT"))
+        binance = parse_binance_symbol(b, f"{symbol}USDT") if b else (False if calls[-1]["status"] == 400 else None)
+        c = get("Coinbase (API pública)", COINBASE_PRODUCT.format(product=f"{symbol}-USD"))
+        coinbase = parse_coinbase_product(c) if c else (False if calls[-1]["status"] == 404 else None)
+        live["cex"] = {"symbol": symbol, "binance": binance, "coinbase": coinbase, "at": iso(datetime.now(timezone.utc))}
     pool_at_detection = _dx(record or {}).get("pairAddress")
     if chain == "solana" and pool_at_detection and t0 and p0:
         at = datetime.now(timezone.utc)
@@ -585,7 +669,64 @@ def load_alert_data(mint, chain=None):
     return {"record": record, "record_trace": git_trace(record_path), "alert": alert, "signals": signals,
             "detection_trace": git_trace(detection) if detection else None,
             "population": population_histogram(accumulated, version), "calibration": s97.load_emission_calibration(),
-            "shadow": shadow}
+            "shadow": shadow, "scanner": scanner_index(_read_json(SCANNER_FILE)),
+            "narratives": registry_matches(_read_json(NARRATIVE_REGISTRY), mint)}
+
+
+def scanner_index(scan):
+    """Índice del último escaneo de script_114: id de CoinGecko -> (grupo, categoría) y contrato -> grupo a."""
+    if not isinstance(scan, dict):
+        return None
+    by_id, by_address = {}, {}
+    for group, data in (scan.get("groups") or {}).items():
+        for item in (data or {}).get("items") or []:
+            if item.get("id"):
+                by_id.setdefault(item["id"], {"group": group, "category": item.get("source")})
+    for net, data in (scan.get("onchain") or {}).items():
+        for item in (data or {}).get("items") or []:
+            if item.get("token_address"):
+                by_address.setdefault(str(item["token_address"]).lower(),
+                                      {"group": "a", "category": f"trending_pools de {net}"})
+    return {"scanned_at": scan.get("generated_at"), "by_id": by_id, "by_address": by_address}
+
+
+def scanner_match(index, address, coingecko_id=None):
+    """Grupo del scanner en el que aparece el activo (por contrato o por id de CoinGecko). None si no aparece."""
+    if not index:
+        return None
+    hit = index["by_address"].get(str(address or "").lower()) or (index["by_id"].get(coingecko_id) if coingecko_id else None)
+    if not hit:
+        return None
+    return {**hit, "label": GROUPS.get(hit["group"], (hit["group"],))[0], "scanned_at": index.get("scanned_at")}
+
+
+def registry_matches(registry, address):
+    """Narrativas del registro curado (04_Config/narrative_registry.json) que vinculan este contrato."""
+    out = []
+    for key, n in ((registry or {}).get("narratives") or {}).items():
+        for t in n.get("tokens") or []:
+            if str(t.get("address") or "").lower() == str(address).lower():
+                out.append({"narrative": key, "title": n.get("title"), "link_type": t.get("link_type")})
+    return out
+
+
+def categories_text(live, scanner, narratives):
+    """Categoría y narrativa: CoinGecko (por contrato) + grupo del scanner + registro curado. Sin dato: n/d."""
+    parts = []
+    cg = (live or {}).get("coingecko")
+    if cg and cg.get("categories"):
+        cats = cg["categories"][:8]
+        parts.append("CoinGecko: " + ", ".join(cats) + (f" (+{len(cg['categories']) - 8})" if len(cg["categories"]) > 8 else ""))
+    if scanner:
+        parts.append(f"scanner multi-chain: grupo {scanner['group']} ({scanner['label']}"
+                     + (f", {scanner['category']}" if scanner.get("category") else "") + ")")
+    for n in narratives or []:
+        parts.append(f"narrativa: {n['title']} (vínculo {n['link_type']}, registro curado)")
+    if parts:
+        return " · ".join(parts)
+    if (cg or {}).get("listed") is False:
+        return "n/d (CoinGecko sin ficha para este contrato; sin narrativa en el registro curado)"
+    return "n/d (sin categoría de CoinGecko consultada; sin narrativa en el registro curado)"
 
 
 # ---------------------------------------------------------------------------
@@ -701,9 +842,7 @@ def build_dossier(mint, chain, alert_data, live=None, now=None, mode="live"):
         (w1, wu1), *wrest = guide["wallets"]
         (d1, du1), *dalts = guide["dexes"]
         main_dex = (lds or {}).get("dex") or facts["dex"]
-        cex = (f"Cotiza en exchanges centralizados: {s97.FUNDING_EXCHANGES}, par contra USDT/USD."
-               if (symbol or "").upper() in BLUE_CHIPS else
-               "Ruta por exchange centralizado: no verificada (cotización en CEX sin consultar; CoinGecko tickers [P]).")
+        cex, cex_links = cex_route(symbol, live)
         address_word = guide["address_word"]
         steps = [
             f"Instalar la wallet: {w1} ({wu1})" + "".join(f" o {n} ({u})" for n, u in wrest),
@@ -721,6 +860,7 @@ def build_dossier(mint, chain, alert_data, live=None, now=None, mode="live"):
         acquisition.update({
             "wallets": guide["wallets"], "dexes": guide["dexes"], "fund": guide["fund"], "native": guide["native"],
             "address_word": address_word, "funding_exchanges": s97.FUNDING_EXCHANGES, "cex_route": cex,
+            "cex_links": cex_links,
             "main_dex": main_dex, "liquidity_study": study, "slippage": ref["slippage"], "steps": steps,
             "verification": {"explorer": [explorer[0], explorer_url] if explorer and explorer_url else None,
                              "dexscreener": dexscreener_url, "launchpad": launchpad_url, "facts": verify_facts},
@@ -791,7 +931,10 @@ def build_dossier(mint, chain, alert_data, live=None, now=None, mode="live"):
         history.append(f"En la {q_label}: precio {fmt_price(lds.get('price'))}, liquidez {fmt_usd(lds.get('liquidity'))}, "
                        f"FDV {fmt_usd(lds.get('fdv'))}.")
     nature = {"type": asset_type, "group": group, "group_label": GROUPS[group][0] if group in GROUPS else None,
-              "origin": origin, "categories": "n/d (sin categoría de CoinGecko consultada para este activo) [P]",
+              "origin": origin,
+              "categories": categories_text(live, scanner_match(alert_data.get("scanner"), mint,
+                                                                (live.get("coingecko") or {}).get("id")),
+                                            alert_data.get("narratives")),
               "description": description or None,
               "description_source": f"RugCheck `fileMeta.description` (metadata del token), {q_label}" if lrc else None,
               "history": history}
@@ -1428,6 +1571,16 @@ VSOF_LIVE = {'queried_at': '2026-10-01T02:46:33+00:00',
                  'websites': [],
                  'socials': [],
                  'n_pairs': 1}}
+# CoinGecko, Binance y Coinbase de VSOF: consulta real del 01/10/2026 04:30 UTC (Fase 4 T2) [V].
+VSOF_LIVE["coingecko"] = {"listed": False}
+VSOF_LIVE["cex"] = {"symbol": "VSOF", "binance": False, "coinbase": False, "at": "2026-10-01T04:30:14+00:00"}
+VSOF_LIVE["calls"] = VSOF_LIVE["calls"] + [
+    {"source": "CoinGecko (ficha por contrato)", "url": COINGECKO_CONTRACT.format(platform="solana", addr=VSOF_MINT),
+     "status": 404, "at": "2026-10-01T04:30:00+00:00"},
+    {"source": "Binance (data-api)", "url": BINANCE_EXCHANGE_INFO.format(symbol="VSOFUSDT"), "status": 400,
+     "at": "2026-10-01T04:30:14+00:00"},
+    {"source": "Coinbase (API pública)", "url": COINBASE_PRODUCT.format(product="VSOF-USD"), "status": 404,
+     "at": "2026-10-01T04:30:15+00:00"}]
 VSOF_NOW = datetime(2026, 10, 1, 2, 46, 33, tzinfo=timezone.utc)
 
 
