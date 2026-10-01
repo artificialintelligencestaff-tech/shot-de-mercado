@@ -1,0 +1,63 @@
+name: early_review
+
+# Fase 10b: revisión de la vigilancia temprana cada 6 h (early_review.py).
+# 1. Primaria de las alertas tempranas emitidas con edad mínima 10 min: tras 24 h y >= 5 resueltas, si da < 40 %
+#    escribe 02_Analisis/early/_gate.json con 15 min (script_116 lo lee en cada poll; la suba no se revierte sola).
+# 2. Cobertura efectiva de PumpPortal (unión de las conexiones de las instancias a y b en 24 h).
+# Escribe 02_Analisis/diagnostics/early_review.json, _gate.json (si cambia) y su bitácora.
+
+on:
+  schedule:
+    - cron: '41 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ops-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Early review
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: python 04_Config/scripts/early_review.py --cache 01_Datos_Crudos/cache/early_review_candles.json
+
+      - name: Commit
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          for p in 02_Analisis/diagnostics/early_review.json 02_Analisis/early/_gate.json \
+                   02_Analisis/operations/early_review.jsonl 01_Datos_Crudos/cache/early_review_candles.json; do
+            if [ -e "$p" ]; then git add -- "$p"; fi
+          done
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "early_review: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear tras 4 intentos"
+          exit 1

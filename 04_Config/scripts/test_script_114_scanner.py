@@ -143,7 +143,8 @@ class FichasTest(unittest.TestCase):
                     return resp.pop(0) if isinstance(resp, list) else resp
             return FakeResp(404)
         clock = iter(range(0, 1_000_000, 100))
-        return s114.Http(get=get, sleep=lambda s: None, clock=lambda: next(clock))
+        return s114.Http(get=get, post=lambda url, payload: get(url), sleep=lambda s: None,
+                         clock=lambda: next(clock))                       # sin red también para los POST
 
     def base_report(self):
         return {"generated_at": "2026-10-01T15:00:00+00:00", "errors": [], "accelerating": [{"id": "x"}], "calls": 9,

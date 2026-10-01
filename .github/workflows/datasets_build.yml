@@ -1,0 +1,71 @@
+name: datasets_build
+
+# Datasets públicos (Fase 9): MemeChain (Zenodo 18246856, CC-BY-4.0; solo los CSV) y velas diarias completas de
+# BTC/ETH/SOL (Binance data-api pública). Manual y una vez por mes. Sin secretos.
+# Commitea solo sus archivos: 01_Datos_Crudos/datasets/, los índices memechain_index.json / binance_index.json y su
+# bitácora (02_Analisis/operations/dataset_*.jsonl). historical_alerts.jsonl es de pipeline_t0 y no se toca.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 1 * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ops-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: MemeChain
+        continue-on-error: true
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: python 04_Config/scripts/dataset_builder.py memechain
+
+      - name: Binance (velas diarias completas)
+        continue-on-error: true
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: python 04_Config/scripts/dataset_builder.py binance
+
+      - name: Commit datasets
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          for p in 01_Datos_Crudos/datasets 02_Analisis/datasets/memechain_index.json 02_Analisis/datasets/binance_index.json \
+                   02_Analisis/operations/dataset_memechain.jsonl 02_Analisis/operations/dataset_binance.jsonl; do
+            if [ -e "$p" ]; then git add -- "$p"; fi
+          done
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "datasets_build: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear los datasets tras 4 intentos"
+          exit 1

@@ -496,6 +496,10 @@ def run(session=None, now=None, families=None, min_score=MIN_SCORE, track_hours=
                                                  "first_run_at": first_run_at, "updated_at": iso(now),
                                                  "items": sorted(store_items, key=lambda it: (it["ts"], it["k"]))})
         write_json_atomic(out_dir / INDEX_NAME, index)
+        import lib_persist   # Fase 9: bitácora de la operación
+        lib_persist.log_operation("narrative_collect", "script_115",
+                                  [out_dir / INDEX_NAME, out_dir / ITEMS_NAME] + [out_dir / f"{k}.json" for k in docs],
+                                  tracked=len(tracked), items=len(store_items), added=ingest_stats["added"])
     return index
 
 

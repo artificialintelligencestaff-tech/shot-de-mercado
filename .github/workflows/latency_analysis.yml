@@ -1,0 +1,65 @@
+name: latency_analysis
+
+# Fase 10 (T1): latencia inicio del pump -> emisión de las últimas 20 alertas, con velas de 1 min
+# (GeckoTerminal on-chain, Binance CEX) y el retraso real del cron de pipeline_t0 (API de Actions).
+# Manual. Escribe 02_Analisis/diagnostics/latency_analysis.json y su bitácora.
+
+on:
+  workflow_dispatch:
+    inputs:
+      n:
+        description: 'Cantidad de alertas'
+        required: false
+        default: '20'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: ops-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  latency:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Latency analysis
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHONIOENCODING: utf-8
+        run: python 04_Config/scripts/latency_analysis.py --n "${{ github.event.inputs.n || '20' }}"
+
+      - name: Commit
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          for p in 02_Analisis/diagnostics/latency_analysis.json 02_Analisis/operations/latency_analysis.jsonl; do
+            if [ -e "$p" ]; then git add -- "$p"; fi
+          done
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "latency_analysis: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear tras 4 intentos"
+          exit 1
