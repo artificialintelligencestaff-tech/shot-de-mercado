@@ -13,7 +13,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 
 ---
 
-## 1. Estado (cierre de sesión 2026-09-30 ~23:30 UTC)
+## 1. Estado (cierre de sesión 2026-10-01 ~00:45 UTC)
 
 | Componente | Estado | Rótulo |
 |---|---|---|
@@ -24,7 +24,7 @@ Si algo de acá contradice al repo, **manda el repo**: corregir este documento e
 | Trust loop (script_98) | Solo procesa `status == "active_tracking"` (ignora sombra). | [V] |
 | Bots gemelos | `monitor_shadow_bot` (6 h), `health_check_bot` (2 h), `autorepair_bot` (4 h), `daily_summary_bot` (06:00 UTC). Los 4 verificados con workflow_dispatch el 2026-09-30 05:50 UTC (success + commit de su log). | [V] |
 | Telegram de operaciones | Los bots escriben SOLO a `TELEGRAM_OPS_CHAT_ID` (grupo "La mano de Dios"). Secret cargado por Dirección el 2026-09-30 06:05 UTC; primer envío (resumen diario por dispatch, run 36677130640) a las 06:13 UTC con `notified: sent`. | [V] API · **recepción confirmada por Dirección** |
-| Destinos de alertas de mercado | `TELEGRAM_CHAT_ID` (personal) + `TELEGRAM_PUBLIC_CHAT_ID` (grupo de usuarios, opcional), pausa 0,5 s entre envíos (T3 `ba44f21` + `68953b8`). `script_97 --test-send` + workflow manual `telegram_test_send.yml`. Run 36790810810 (23:23 UTC): **personal OK · grupo "Sin configurar"**: el secret `TELEGRAM_PUBLIC_CHAT_ID` **no existe** en el repo (ni en Actions, variables, Dependabot, Codespaces ni environments). | [V] |
+| Destinos de Telegram | **Mercado** (alertas `script_97`, trust updates `script_98`, pre-launch `script_99`) → `TELEGRAM_PUBLIC_CHAT_ID`. **Sistema** (4 bots, `lib_ops`) → `TELEGRAM_OPS_CHAT_ID`. Los dos apuntan al grupo privado "La mano de Dios" (solo owner + bot), con prefijos distintos [reportado por Dirección]. **Chat personal (`TELEGRAM_CHAT_ID`) deprecado:** ningún script de producción lo lee y ningún workflow lo pasa. `--test-send` / `telegram_test_send.yml` apuntan solo al grupo. Rama `claude/destino-grupo` (`77c441a`, `e69ea5e`, `bbf9d1a`, `5816a1b`), **sin push**. Antes de este cambio, el test-send llegó a ambos destinos (confirmado por Dirección). | [V] código y tests · push [P] |
 | Resumen diario (ops) | Formato legible por secciones, calidad separada por versión (T1 `7b14a58`); un envío por día UTC con `last_sent_date`, `--force` para reenviar (T2 `dd48a77`). | [V] |
 | Scanner multi-chain v0 | `script_114_multichain_scanner.py` (T5 `3694aa8`): grupos h, f, c, g, d, e (CoinGecko sin key) + a (GeckoTerminal: solana, base, eth, blast, monad). Solo recolección + marca de aceleración [H]; sin score, sin emisión, **no enganchado a ningún workflow**. Humo real: 13 llamadas, 0 errores. | [V] |
 | Tests | **151/151** (11 archivos `04_Config/scripts/test_*.py`, unittest, sin red). | [V] |
@@ -95,7 +95,8 @@ Universos: **A** = BTC/ETH/SOL · **B** = UNI/ICP/APT/PSG · **C** = memecoins/B
 **Código**
 - Python 3.11 en Actions, stdlib + `requests`. Scripts ejecutables con `SHOT_ROOT` (pathlib; nunca rutas Windows).
 - Tests `unittest` sin red, un archivo `test_<módulo>.py` por módulo; con mutation testing cuando el test debe discriminar.
-- Telegram: alertas públicas = `TELEGRAM_CHAT_ID` (solo script_97, hoy en sombra); **operaciones = `TELEGRAM_OPS_CHAT_ID`** (solo `lib_ops.send_ops_telegram`).
+- Telegram: **mercado** (alertas, trust updates, pre-launch) = `TELEGRAM_PUBLIC_CHAT_ID`; **sistema** (bots, `lib_ops.send_ops_telegram`) = `TELEGRAM_OPS_CHAT_ID`. `TELEGRAM_CHAT_ID` (chat personal) está **deprecado**: no se lee ni se pasa en ningún workflow.
+- **El bot es solo emisor:** solo `sendMessage`; nada de `getUpdates`, webhooks, handlers ni polling. Si algún día hace falta leer comandos, va con whitelist por `chat_id` (solo PUBLIC y OPS). Lo vigila `test_telegram_hardening.py`.
 
 **Prohibido**
 - GARCH/EGARCH/ATR/Bollinger/VIX en memecoins (sí aplican al Universo A).
@@ -166,14 +167,16 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 | ~~**A-a) Resumen diario duplicado**~~ **Resuelta con T2 (`dd48a77`)**. (Llegó 03:13 y 03:14 hora AR.) Hipótesis de Dirección: reintento sin idempotencia. Dato [V] sin investigar: en main hay dos commits del bot, `22fb807` (06:13:29, dispatch manual) y `9e39038` (06:14:44, [H] el cron de las 06:00 corrido con atraso). Falta decidir si el bot debe saltear el envío cuando ya existe la entrada del día. | resumen diario | P1 |
 | **A-b) 83% de las alertas en tokens < 60 min** (`0.8333`). Hay que desagregar por versión del scorer (v7.2 vs v7.2.1). Dato [V]: en el monitor ese 0.8333 corresponde a la fila v7.2 (5/6). Todavía no hay alertas v7.2.1 para medir. **El resumen ya separa la calidad por versión (T1)**; falta la medición con n suficiente. | resumen diario | P1 |
 | **A-d) 1343 tokens sin `scoring_version`** en las detecciones de 24 h. Esperado: son anteriores a R1 y se completa en 24 h. (A las 22:47 UTC ya eran 450.) | resumen diario | P3 |
-| **Falta el secret `TELEGRAM_PUBLIC_CHAT_ID`** en el repo: las alertas no pueden llegar al grupo de usuarios. Lo carga Dirección (Settings → Secrets and variables → Actions → *Repository secrets*, nombre exacto). Después: re-disparar `telegram_test_send`. | T3 sesión 2 | **P0 (Dirección)** |
+| ~~**Falta el secret `TELEGRAM_PUBLIC_CHAT_ID`**~~ Cargado por Dirección; el test-send llegó a ambos destinos (confirmado por Dirección). | T3 sesión 2 | — |
+| Scripts viejos que no corre ningún workflow (`script_20*`, `script_37*`, `script_38b`, `script_40`) siguen leyendo `TELEGRAM_CHAT_ID`: si alguien los corre a mano, escriben al chat personal. | hardening | P3 |
+| El paso de detección (`script_82`) recibe `TELEGRAM_BOT_TOKEN` sin usar Telegram (mínimo privilegio: se podría quitar). | hardening | P3 |
 | El scanner multi-chain v0 no corre solo: engancharlo a un workflow requiere consulta. El grupo b (preventa) no tiene fuente gratuita en CoinGecko. | T5 | P2 |
 
 ---
 
 ## 8. Próximos pasos
 
-1. **Dirección:** cargar `TELEGRAM_PUBLIC_CHAT_ID` y re-disparar `telegram_test_send` (esperado: personal OK · grupo OK).
+1. **Push de `claude/destino-grupo`** (todo mensaje de mercado solo al grupo + hardening), pendiente de autorización. Después: re-disparar `telegram_test_send` (esperado: grupo OK; el chat personal no recibe nada).
 2. **Próxima fase: knowledge sheet / dossier por activo** (Dirección, sesión 2). Diseñar primero el template y después `script_113_dossier_builder.py` (nombre tentativo). Un dossier por alerta con: (1) identificación completa (nombre, symbol, mint, chain, deployer, auditoría); (2) método de detección: datos usados, cálculos, probabilidad; (3) vigencia de la señal; (4) adquisición paso a paso; (5) fuentes verificables; (6) documentación de cálculos para que el usuario audite el método. Información educativa, sin secciones de advertencia.
 3. **Medir la exposición a tokens < 60 min solo sobre alertas v7.2.1 (A-b)** (criterio < 20%). Al cierre, la muestra v7.2.1 era mínima (primaria 0/1) y no hubo alertas nuevas después de las 12:48 UTC.
 4. Confirmar que el trust loop procesa bien las 7 `active_tracking` previas a SHADOW (A-c).
@@ -190,3 +193,4 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90, 
 |---|---|---|
 | 2026-09-30 | Directiva ampliada (máximo aprovechamiento) | T1 v7.2.1 en main (sombra) · T2 fase2-p1 en main · T3 gate de edad 30 min · T4 advertencia crítica · bots gemelos desplegados y verificados (4/4 success) · 1.ª corrida v7.2.1 verificada (35/35 tokens 7.2.1, ≥56: 2/35) · doc 22 creado · doc 23 (8 grupos, 42 fuentes, 12 propuestas de innovación) · ops chat "La mano de Dios" operativo (confirmado) · 4 anomalías del primer resumen registradas en §7 (A-c P0) |
 | 2026-09-30 (noche) | Post-incidente + mejoras operativas | Framing neutral en main (`c727ece`, aplicado por Dirección/YIN) · T1 resumen legible · T2 resumen idempotente · T3 alertas a personal + grupo, `--test-send`, pausa 0,5 s · T4 template con ACTIVO / DETECCIÓN / FUENTES · T5 scanner multi-chain v0 · push ff `77b2a1c..3694aa8` · 151/151 tests · test-send: personal OK, grupo sin secret · A-c: las `active_tracking` son todas previas a SHADOW |
+| 2026-10-01 | Redirección exclusiva al grupo + hardening | `script_97`, `script_98` y `script_99` envían solo a `TELEGRAM_PUBLIC_CHAT_ID`; ningún workflow pasa `TELEGRAM_CHAT_ID`; bot solo emisor (sin `getUpdates`/webhooks/polling, verificado y con test de regresión); rama `claude/destino-grupo` sin push |
