@@ -24,7 +24,14 @@ EMIT_THRESHOLD = {g: 56 for g in "acdefgh"}     # inicial 56 (directiva Fase 7),
 MIN_COVERAGE = 0.6
 REGISTER_ONLY = {"b": "preventa: sin ruta de compra antes del listing",
                  "i": "establecidos sin grupo: se registran, no se emiten (Dirección, Fase 6)"}
-VERSION = "0.2"
+VERSION = "0.3"
+# MemeChain (Fase 9): tasas base por chain y narrativa para las memecoins multi-chain (grupo a). Chains del dataset:
+# ethereum, bsc, solana, base; el resto usa la tasa total.
+MEMECHAIN_CHAIN_ALIASES = {"ethereum": "ethereum", "eth": "ethereum", "base": "base", "solana": "solana", "bsc": "bsc"}
+MEMECHAIN_NARRATIVES = {
+    "canino": r"\b(dog|doge|inu|shib|shiba|puppy|pup|wif|bonk)\b", "felino": r"\b(cat|kitty|meow|neko|popcat|mew)\b",
+    "ia": r"\b(ai|gpt|agent|bot|neural|agi)\b", "rana_pepe": r"\b(pepe|frog|toad)\b",
+    "politica": r"\b(trump|maga|biden|kamala|elon|musk|vance)\b"}
 GOV_KEYWORDS = ("fee switch", "fee", "emission", "buyback", "burn", "tokenomics", "revenue", "reward", "inflation",
                 "staking")
 BLUE_CHIP_IDS = {"bitcoin": "BTC", "ethereum": "ETH", "solana": "SOL"}
@@ -424,6 +431,39 @@ def components_established(asset):
             comp("Persistencia del volumen", None, 10, None, "OHLCV diario (sin colectar)")], 1.0, adjust, notes, {}
 
 
+def memechain_narrative(name, symbol):
+    import re
+    text = f"{name or ''} {symbol or ''}".lower()
+    return next((k for k, pat in MEMECHAIN_NARRATIVES.items() if re.search(pat, text)), "otra")
+
+
+def memechain_prior(index, chain, name=None, symbol=None):
+    """Tasa base de MemeChain para una memecoin: inactividad de su chain, de su narrativa y del cruce (si n >= 30)."""
+    if not isinstance(index, dict) or not index.get("all"):
+        return None
+    ch = MEMECHAIN_CHAIN_ALIASES.get(str(chain or "").lower())
+    nar = memechain_narrative(name, symbol)
+    total = (index.get("all") or {}).get("inactive_rate")
+    chain_row = (index.get("by_chain") or {}).get(ch) if ch else None
+    cross = ((index.get("chain_x_narrative") or {}).get(ch) or {}).get(nar) if ch else None
+    return {"chain": ch, "narrative": nar, "inactive_rate_total": total,
+            "inactive_rate_chain": (chain_row or {}).get("inactive_rate"),
+            "inactive_rate_narrative": ((index.get("by_narrative") or {}).get(nar) or {}).get("inactive_rate"),
+            "inactive_rate_cross": cross["inactive_rate"] if cross and cross.get("n", 0) >= 30 else None,
+            "one_day_rate_chain": (((chain_row or {}).get("one_day") or {}).get("rate")),
+            "n_chain": (chain_row or {}).get("n"), "source": "MemeChain (CC-BY-4.0, snapshot oct-2024)"}
+
+
+def memechain_threshold(prior, base=None):
+    """Umbral de emisión del grupo a ajustado por la tasa de inactividad de la chain contra la total [H]:
+    56 + 10·(r_chain / r_total − 1), acotado a [51, 66]. Sin dato: el umbral base."""
+    base = EMIT_THRESHOLD["a"] if base is None else base
+    if not prior or not prior.get("inactive_rate_chain") or not prior.get("inactive_rate_total"):
+        return base
+    return int(round(clip(base + 10 * (prior["inactive_rate_chain"] / prior["inactive_rate_total"] - 1),
+                          base - 5, base + 10)))
+
+
 def memecoin_inputs(asset):
     """Pool de GeckoTerminal -> (token_data, dexscreener_data) con el formato que espera script_82.score_token."""
     created = asset.get("pool_created_at")
@@ -637,14 +677,21 @@ def build_assets(scan, cards=None, categories=None, protocols=None, now=None, go
     return assets
 
 
-def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None):
+def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None, memechain=None):
     """Clasifica y puntúa un activo. Devuelve el detalle completo (lo que se registra y se muestra en el dossier)."""
     now = now or datetime.now(timezone.utc)
     group, rule = classify(asset)
     notes_extra, extra = [], {}
+    threshold = EMIT_THRESHOLD.get(group)
     if group == "a":
         score, reasons, conf = score_memecoin(asset, memecoin_scorer)
         comps = []
+        prior = memechain_prior(memechain, asset.get("chain"), asset.get("name"), asset.get("symbol"))
+        if prior:
+            extra["memechain"] = prior
+            threshold = memechain_threshold(prior)
+            notes_extra.append(f"MemeChain: inactividad {prior['chain'] or 'total'} "
+                               f"{prior['inactive_rate_chain'] or prior['inactive_rate_total']} -> umbral {threshold}")
     elif group == "g" and is_stable_rwa(asset):
         score, reasons, conf, comps = None, ["RWA estable: sin evento que medir"], 0.0, []
     else:
@@ -656,7 +703,6 @@ def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None
         r = combine(*parts[:4])
         extra = parts[4]
         score, reasons, conf, comps = r["score"], r["reasons"], r["confidence"], r["components"]
-    threshold = EMIT_THRESHOLD.get(group)
     if group in REGISTER_ONLY:
         emit, why = False, REGISTER_ONLY[group]
     elif score is None:
@@ -679,7 +725,7 @@ def evaluate(asset, peers=(), eth_change_7d=None, memecoin_scorer=None, now=None
 
 
 def evaluate_all(scan, cards=None, categories=None, protocols=None, memecoin_scorer=None, now=None, governance=None,
-                 perps=None, premarket=None, prelaunch=None):
+                 perps=None, premarket=None, prelaunch=None, memechain=None):
     """Todos los activos del último scan, puntuados. Ordenados por (emitible, score)."""
     now = now or datetime.now(timezone.utc)
     assets = build_assets(scan, cards, categories, protocols, now, governance, perps, premarket, prelaunch)
@@ -690,7 +736,7 @@ def evaluate_all(scan, cards=None, categories=None, protocols=None, memecoin_sco
     out = []
     for a in assets:
         try:
-            out.append(evaluate(a, peers, eth, memecoin_scorer, now))
+            out.append(evaluate(a, peers, eth, memecoin_scorer, now, memechain))
         except Exception as e:      # un activo con datos raros no frena al resto
             out.append({"key": a.get("key"), "group": None, "score": None, "emittable": False,
                         "status_reason": f"error: {type(e).__name__}: {e}", "symbol": a.get("symbol")})

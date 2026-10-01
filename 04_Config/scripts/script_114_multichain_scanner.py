@@ -687,8 +687,13 @@ def main(argv=None, http=None):
                   f"amplitud {v['sample']['breadth_24h']}")
     print(f"[114] llamadas totales: {http.calls}")
     if not args.dry_run:
-        for path in write_outputs(args.out, report, args.out_dir, cards, categories, http.calls, protocols, extras, perps):
+        written = write_outputs(args.out, report, args.out_dir, cards, categories, http.calls, protocols, extras, perps)
+        for path in written:
             print(f"[OK] {path}")
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import lib_persist   # Fase 9: bitácora de la operación
+        lib_persist.log_operation("multichain_scan", "script_114", written, calls=http.calls,
+                                  errors=len(report.get("errors") or []), accelerating=len(report.get("accelerating") or []))
     return 0
 
 

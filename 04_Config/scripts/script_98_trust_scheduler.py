@@ -5,7 +5,9 @@ import requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+import sys as _sys
 from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))
 PROJECT_ROOT = _Path(os.getenv("SHOT_ROOT", str(_Path(__file__).resolve().parents[2])))
 load_dotenv(PROJECT_ROOT / "04_Config" / ".env")
 
@@ -91,6 +93,7 @@ def main():
         all_alerts = json.load(f)
 
     updated_any = False
+    outcomes_logged = 0
     now = datetime.utcnow()
 
     for alert in all_alerts:
@@ -119,6 +122,16 @@ def main():
 
         trust_updates = alert.setdefault("trust_updates", [])
         completed_stages = {u["stage"] for u in trust_updates}
+
+        # Fase 9 (dataset propio): resultado a ~48 h, una sola vez por alerta, sin Telegram.
+        # Solo dentro de la ventana 48–50 h: más tarde, el precio de ahora ya no es el de las 48 h (esas alertas se
+        # miden con velas en monitor_shadow).
+        if not alert.get("outcome_48h_logged") and 48 * 3600 <= (now - emit_time).total_seconds() <= 50 * 3600:
+            import lib_persist
+            if lib_persist.record_outcome(alert, current_price, 48):
+                alert["outcome_48h_logged"] = True
+                outcomes_logged += 1
+                updated_any = True
 
         # Determine which stage is due
         age_hours = (now - emit_time).total_seconds() / 3600.0
@@ -204,6 +217,9 @@ def main():
         print("[INFO] _all_alerts.json actualizado con nuevos trust updates.")
     else:
         print("[INFO] Ningún trust update pendiente en este momento.")
+    import lib_persist   # Fase 9: bitácora de la operación
+    lib_persist.log_operation("trust_cycle", "script_98", [ALL_ALERTS_FILE] if updated_any else [],
+                              outcomes_48h=outcomes_logged, updated=bool(updated_any))
 
 if __name__ == "__main__":
     main()

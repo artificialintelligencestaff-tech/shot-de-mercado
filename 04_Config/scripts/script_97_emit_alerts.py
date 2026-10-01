@@ -698,6 +698,15 @@ GROUP_LABELS = {"a": "memecoin multi-chain", "b": "preventa", "c": "gobernanza D
                 "e": "DePIN", "f": "L1/L2", "g": "RWA", "h": "blue chip", "i": "establecido sin grupo"}
 
 
+def _persist():
+    """lib_persist (Fase 9): dataset propio y bitácora de operaciones."""
+    here = str(_Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import lib_persist   # noqa: E402
+    return lib_persist
+
+
 def _load_lib_scoring():
     """lib_scoring_multichain, cargada recién al emitir multi-chain (vive al lado de este script)."""
     here = str(_Path(__file__).resolve().parent)
@@ -738,7 +747,8 @@ def load_multichain_inputs(now=None, max_age_min=MULTICHAIN_MAX_AGE_MIN):
 
 def load_multichain_extras():
     """Fase 8: Snapshot (c), perps de Hyperliquid (d), pre-mercado de Aevo y TGEs de script_99 (b)."""
-    return {"governance": _read_json_file(MULTICHAIN_DIR / "_governance.json"),
+    return {"memechain": _read_json_file(PROJECT_ROOT / "02_Analisis" / "datasets" / "memechain_index.json"),
+            "governance": _read_json_file(MULTICHAIN_DIR / "_governance.json"),
             "perps": _read_json_file(MULTICHAIN_DIR / "_perps.json"),
             "premarket": _read_json_file(MULTICHAIN_DIR / "_premarket.json"),
             "prelaunch": _read_json_file(PROJECT_ROOT / "02_Analisis" / "pre_launch" / "_prelaunch_accumulated.json")}
@@ -970,6 +980,7 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
         else:
             record["telegram_sent"], record["dossier_sent"] = send_alert(msg, str(dossier_path), name)
         write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+        _persist().record_alert(record, r.get("components"), r.get("reasons"), source="script_97:multichain")
         print(f"[INFO] Multi-chain emitida: {r['symbol']} grupo {r['group']} score {r['score']} ({r['key']})")
         emitted += 1
         time.sleep(1)
@@ -1101,6 +1112,9 @@ def main(argv=None):
         else:
             alert_record["telegram_sent"], alert_record["dossier_sent"] = send_alert(msg, dossier_path, dossier_name)
         write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+        _persist().record_alert(dict(alert_record, scoring_version=token.get("scoring_version"), chain="solana",
+                                     group=token.get("group") or "a"), reasons=token.get("reasons"),
+                                source="script_97:solana")
         emitted_count += 1
         time.sleep(1) # rate limit telegram
 
@@ -1128,6 +1142,9 @@ def main(argv=None):
         except Exception as e:
             print(f"[WARN] No se pudo actualizar _precision_log.json: {e}")
 
+    _persist().log_operation("emission_cycle", "script_97",
+                             [ALL_ALERTS_FILE] + ([MULTICHAIN_SCORES_FILE] if MULTICHAIN_SCORES_FILE.exists() else []),
+                             emitted=emitted_count, total_alerts=len(all_alerts), shadow=bool(shadow))
     print(f"\n[YIN] Emisión de alertas finalizada. Emitidas: {emitted_count}")
     print(f"Total histórico de alertas: {len(all_alerts)}")
     return 0
