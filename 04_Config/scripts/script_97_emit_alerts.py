@@ -13,9 +13,10 @@ PROJECT_ROOT = _Path(os.getenv("SHOT_ROOT", str(_Path(__file__).resolve().parent
 load_dotenv(PROJECT_ROOT / "04_Config" / ".env")
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-# Grupo de usuarios finales (opcional). Si está definido, cada alerta de mercado va también ahí.
-# No confundir con TELEGRAM_OPS_CHAT_ID ("La mano de Dios"), que solo recibe avisos de los bots.
+# Destino ÚNICO de las alertas de mercado: el grupo (TELEGRAM_PUBLIC_CHAT_ID). El chat personal
+# (TELEGRAM_CHAT_ID) está deprecado (Dirección, 30/09): este script ya no lo lee, así que no recibe nada
+# aunque el secret exista. Los avisos de sistema van por TELEGRAM_OPS_CHAT_ID (bots, lib_ops).
+# El bot es solo emisor: no lee updates ni comandos de nadie.
 TELEGRAM_PUBLIC_CHAT_ID = os.getenv("TELEGRAM_PUBLIC_CHAT_ID")
 ACCUMULATED_FILE = str(PROJECT_ROOT / "02_Analisis" / "shadow_v4" / "_accumulated.json")
 ALERTS_DIR = str(PROJECT_ROOT / "02_Analisis" / "alerts")
@@ -190,17 +191,13 @@ def log_cycle_event(event):
         print(f"[WARN] No se pudo registrar en _cycle_log.json: {e}")
 
 def telegram_destinations():
-    """Destinos de las alertas de mercado: el chat personal (TELEGRAM_CHAT_ID) y, si está definido, el grupo
-    de usuarios (TELEGRAM_PUBLIC_CHAT_ID). Sin grupo = comportamiento anterior. Un mismo chat_id no se repite."""
-    dests = []
-    for label, chat_id in (("personal", TELEGRAM_CHAT_ID), ("grupo", TELEGRAM_PUBLIC_CHAT_ID)):
-        chat_id = (chat_id or "").strip()
-        if chat_id and all(chat_id != c for _, c in dests):
-            dests.append((label, chat_id))
-    return dests
+    """Destino de las alertas de mercado: solo el grupo (TELEGRAM_PUBLIC_CHAT_ID). Sin grupo = ningún destino
+    (send_telegram imprime el mensaje en consola y no envía)."""
+    chat_id = (TELEGRAM_PUBLIC_CHAT_ID or "").strip()
+    return [("grupo", chat_id)] if chat_id else []
 
 
-TELEGRAM_PAUSE_S = 0.5   # pausa entre destinos (rate limit de Telegram)
+TELEGRAM_PAUSE_S = 0.5   # pausa entre destinos si alguna vez hay más de uno (rate limit de Telegram)
 
 
 def send_telegram_to(label, chat_id, text):
@@ -241,15 +238,15 @@ def send_telegram(text):
     como enviado y no se reintenta en cada ciclo (la falla de un destino queda en el log del workflow)."""
     results = send_to_destinations(text)
     if not results:
-        print("[WARN] Telegram credentials missing, printing to console instead.")
+        print("[WARN] Sin TELEGRAM_PUBLIC_CHAT_ID o sin token: no se envía; mensaje por consola.")
         print(text)
         return False
     return any(ok for _, ok in results)
 
 
 def test_send():
-    """--test-send: UN mensaje marcado como prueba a cada destino configurado. No es una alerta: no lee
-    candidatos ni toca archivos. 0 si todos los destinos lo recibieron, 1 si no."""
+    """--test-send: UN mensaje marcado como prueba al grupo (único destino). No es una alerta: no lee
+    candidatos ni toca archivos. 0 si el grupo lo recibió, 1 si no (o si no hay grupo/token)."""
     labels = [label for label, _ in telegram_destinations()]
     text = ("🧪 *PRUEBA DE ENVÍO — Shot de Mercado*\n"
             "Mensaje de prueba de destinos. No es una alerta de mercado.\n"
@@ -257,13 +254,10 @@ def test_send():
             f"• {datetime.now(timezone.utc):%d/%m/%Y %H:%M UTC}")
     results = send_to_destinations(text)
     if not results:
-        print("[TEST-SEND] Sin token o sin destinos configurados: no se envió nada.")
+        print("[TEST-SEND] Sin token o sin TELEGRAM_PUBLIC_CHAT_ID: no se envió nada.")
         return 1
     for label, ok in results:
         print(f"[TEST-SEND] {label}: {'OK' if ok else 'FALLO'}")
-    missing = [label for label in ("personal", "grupo") if label not in labels]
-    if missing:
-        print(f"[TEST-SEND] Sin configurar: {', '.join(missing)}")
     return 0 if all(ok for _, ok in results) else 1
 
 def load_emission_calibration(path=None):
