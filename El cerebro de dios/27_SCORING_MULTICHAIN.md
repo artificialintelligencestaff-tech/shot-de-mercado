@@ -506,3 +506,16 @@ Token con TGE en 6 días (ventana de anticipación) → s = 1 (w 25). Intensidad
 | a memecoins multi-chain | 32 | 32 | 0 |
 | i establecidos | 88 | 0 | registro |
 | d sintéticos | 38 | 0 | registro |
+
+### 8.1 Fase 8 — grupos c, d, g, b con datos propios (lib 0.2, scanner v0.4)
+
+| Grupo | Fuente nueva (mismo workflow horario) | Componente que se completa | Estado |
+|---|---|---|---|
+| c | Snapshot GraphQL (`_governance.json`) + DefiLlama `overview/fees` cruzado con `/protocols` | evento de gobernanza (+1 si una propuesta de fees/emisiones/buyback cierra en ≤ 48 h) y crecimiento de fees ρ (el TVL queda como respaldo) | emite (cobertura hasta 1,0) |
+| d | Hyperliquid, todos los perps (`_perps.json` con historial de OI de ~30 h) | funding (contrarian en extremos), OI 24 h × signo del precio, basis (mark − oráculo) | **emite** (sale de "solo registro") |
+| g | DefiLlama fees + TVL | yield anualizado (5% = neutro) | emite |
+| e | DefiLlama fees (9 protocolos DePIN) | crecimiento de ingresos de red (el proxy vol/mcap queda solo si no hay fees) | emite |
+| b | Aevo pre-IPO / pre-lanzamiento (`_premarket.json`) + `script_99` | activos de pre-mercado | registro (sin ruta de compra antes del listing; `script_99` hoy vacío [V]) |
+| h | trust loop CEX en `script_98` (`active_tracking_cex`) | seguimiento t+1h/6h/24h con precio de Binance → Coinbase → Kraken | emite (desde Fase 7) |
+| i | `script_82.apply_group_i` en el flujo Solana | par > 180 días → grupo i (score §4.10), registro | registro (arc → 0) |
+
