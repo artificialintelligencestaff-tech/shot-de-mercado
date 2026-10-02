@@ -1,6 +1,6 @@
 {
  "version": "116-0.2",
- "generated_at": "2026-10-02T09:14:33+00:00",
+ "generated_at": "2026-10-02T09:24:59+00:00",
  "lib": "early-0.2",
  "signals": {
   "cg:soon-2": {
@@ -48,8 +48,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.43 (bid $18,528 · ask $46,546)",
-     "imbalance": -0.4306
+     "detail": "bid/ask ±2%: -0.13 (bid $44,561 · ask $57,524)",
+     "imbalance": -0.127
     },
     {
      "name": "fear_greed_extreme",
@@ -64,22 +64,24 @@
   "cg:sui": {
    "version": "early-0.2",
    "bonus": 0,
-   "raw": 0.0,
+   "raw": 0.15,
    "cap": 8,
-   "active": [],
+   "active": [
+    "orderbook_imbalance"
+   ],
    "signals": [
     {
      "name": "orderbook_imbalance",
-     "s": 0.0,
-     "points": 0.0,
-     "detail": "bid/ask ±2%: -0.16 (bid $233,504 · ask $322,197)",
-     "imbalance": -0.1596
+     "s": 0.0512,
+     "points": 0.15,
+     "detail": "bid/ask ±2%: +0.17 (bid $424,521 · ask $302,441)",
+     "imbalance": 0.1679
     },
     {
      "name": "funding_squeeze",
      "s": 0.0,
      "points": 0.0,
-     "detail": "funding z -0.2 · OI +0.4%"
+     "detail": "funding z -0.2 · OI +0.7%"
     },
     {
      "name": "fear_greed_extreme",
@@ -88,7 +90,9 @@
      "detail": "Fear & Greed 72"
     }
    ],
-   "reasons": [],
+   "reasons": [
+    "orderbook_imbalance: bid/ask ±2%: +0.17 (bid $424,521 · ask $302,441) → +0.15"
+   ],
    "book_source": "hyperliquid"
   },
   "cg:prometeus": {
@@ -119,8 +123,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.25 (bid $16,891 · ask $27,969)",
-     "imbalance": -0.2469
+     "detail": "bid/ask ±2%: -0.31 (bid $16,618 · ask $31,222)",
+     "imbalance": -0.3053
     },
     {
      "name": "fear_greed_extreme",
@@ -143,8 +147,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: +0.05 (bid $307,140 · ask $277,724)",
-     "imbalance": 0.0503
+     "detail": "bid/ask ±2%: -0.51 (bid $99,139 · ask $304,555)",
+     "imbalance": -0.5088
     },
     {
      "name": "fear_greed_extreme",
@@ -158,19 +162,23 @@
   },
   "cg:immutable-x": {
    "version": "early-0.2",
-   "bonus": 3,
-   "raw": 3.0,
+   "bonus": 0,
+   "raw": 0.0,
    "cap": 8,
-   "active": [
-    "orderbook_imbalance"
-   ],
+   "active": [],
    "signals": [
     {
      "name": "orderbook_imbalance",
-     "s": 1.0,
-     "points": 3.0,
-     "detail": "bid/ask ±2%: +0.65 (bid $44,167 · ask $9,500)",
-     "imbalance": 0.646
+     "s": 0.0,
+     "points": 0.0,
+     "detail": "bid/ask ±2%: -0.02 (bid $58,846 · ask $61,703)",
+     "imbalance": -0.0237
+    },
+    {
+     "name": "funding_squeeze",
+     "s": 0.0,
+     "points": 0.0,
+     "detail": "funding z -0.3 con OI -0.8%"
     },
     {
      "name": "fear_greed_extreme",
@@ -179,9 +187,7 @@
      "detail": "Fear & Greed 72"
     }
    ],
-   "reasons": [
-    "orderbook_imbalance: bid/ask ±2%: +0.65 (bid $44,167 · ask $9,500) → +3"
-   ],
+   "reasons": [],
    "book_source": "hyperliquid"
   },
   "cg:jasmycoin": {
@@ -221,16 +227,18 @@
   "cg:algorand": {
    "version": "early-0.2",
    "bonus": 0,
-   "raw": 0.0,
+   "raw": 0.39,
    "cap": 8,
-   "active": [],
+   "active": [
+    "orderbook_imbalance"
+   ],
    "signals": [
     {
      "name": "orderbook_imbalance",
-     "s": 0.0,
-     "points": 0.0,
-     "detail": "bid/ask ±2%: -0.04 (bid $21,299 · ask $23,269)",
-     "imbalance": -0.0442
+     "s": 0.13,
+     "points": 0.39,
+     "detail": "bid/ask ±2%: +0.20 (bid $27,867 · ask $18,753)",
+     "imbalance": 0.1955
     },
     {
      "name": "fear_greed_extreme",
@@ -239,7 +247,9 @@
      "detail": "Fear & Greed 72"
     }
    ],
-   "reasons": [],
+   "reasons": [
+    "orderbook_imbalance: bid/ask ±2%: +0.20 (bid $27,867 · ask $18,753) → +0.39"
+   ],
    "book_source": "hyperliquid"
   },
   "cg:pha": {
@@ -261,23 +271,25 @@
   },
   "cg:starknet": {
    "version": "early-0.2",
-   "bonus": 0,
-   "raw": 0.0,
+   "bonus": 1,
+   "raw": 1.38,
    "cap": 8,
-   "active": [],
+   "active": [
+    "orderbook_imbalance"
+   ],
    "signals": [
     {
      "name": "orderbook_imbalance",
-     "s": 0.0,
-     "points": 0.0,
-     "detail": "bid/ask ±2%: +0.10 (bid $70,955 · ask $58,641)",
-     "imbalance": 0.095
+     "s": 0.4593,
+     "points": 1.38,
+     "detail": "bid/ask ±2%: +0.31 (bid $101,086 · ask $53,157)",
+     "imbalance": 0.3107
     },
     {
      "name": "funding_squeeze",
      "s": 0.0,
      "points": 0.0,
-     "detail": "funding z -0.2 con OI -2.7%"
+     "detail": "funding z -0.2 con OI -3.1%"
     },
     {
      "name": "fear_greed_extreme",
@@ -286,7 +298,9 @@
      "detail": "Fear & Greed 72"
     }
    ],
-   "reasons": [],
+   "reasons": [
+    "orderbook_imbalance: bid/ask ±2%: +0.31 (bid $101,086 · ask $53,157) → +1.38"
+   ],
    "book_source": "hyperliquid"
   },
   "cg:bitcoin": {
@@ -300,8 +314,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.25 (bid $4,448,315 · ask $7,372,584)",
-     "imbalance": -0.2474
+     "detail": "bid/ask ±2%: -0.43 (bid $3,351,448 · ask $8,458,272)",
+     "imbalance": -0.4324
     },
     {
      "name": "fear_greed_extreme",
@@ -324,8 +338,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: +0.04 (bid $54,984 · ask $50,377)",
-     "imbalance": 0.0437
+     "detail": "bid/ask ±2%: +0.00 (bid $55,081 · ask $54,817)",
+     "imbalance": 0.0024
     },
     {
      "name": "fear_greed_extreme",
@@ -348,14 +362,14 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.26 (bid $32,476 · ask $55,456)",
-     "imbalance": -0.2613
+     "detail": "bid/ask ±2%: +0.04 (bid $46,151 · ask $42,401)",
+     "imbalance": 0.0423
     },
     {
      "name": "funding_squeeze",
      "s": 0.0,
      "points": 0.0,
-     "detail": "funding z +0.3 con OI -0.4%"
+     "detail": "funding z +0.2 con OI -0.6%"
     },
     {
      "name": "fear_greed_extreme",
@@ -378,14 +392,14 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.20 (bid $11,294 · ask $17,015)",
-     "imbalance": -0.2021
+     "detail": "bid/ask ±2%: -0.25 (bid $7,797 · ask $13,032)",
+     "imbalance": -0.2513
     },
     {
      "name": "funding_squeeze",
      "s": 0.0,
      "points": 0.0,
-     "detail": "funding z -0.4 con OI -0.3%"
+     "detail": "funding z -1.3 con OI -0.3%"
     },
     {
      "name": "fear_greed_extreme",
@@ -408,14 +422,14 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.02 (bid $13,497 · ask $13,996)",
-     "imbalance": -0.0181
+     "detail": "bid/ask ±2%: -0.39 (bid $13,420 · ask $30,243)",
+     "imbalance": -0.3853
     },
     {
      "name": "funding_squeeze",
      "s": 0.0,
      "points": 0.0,
-     "detail": "funding z +0.3 · OI +0.1%"
+     "detail": "funding z +0.0 · OI +0.8%"
     },
     {
      "name": "fear_greed_extreme",
@@ -438,8 +452,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.06 (bid $4,475,569 · ask $5,068,454)",
-     "imbalance": -0.0621
+     "detail": "bid/ask ±2%: -0.11 (bid $4,106,314 · ask $5,110,235)",
+     "imbalance": -0.1089
     },
     {
      "name": "fear_greed_extreme",
@@ -462,8 +476,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: +0.02 (bid $35,907 · ask $34,826)",
-     "imbalance": 0.0153
+     "detail": "bid/ask ±2%: +0.11 (bid $57,739 · ask $46,632)",
+     "imbalance": 0.1064
     },
     {
      "name": "fear_greed_extreme",
@@ -503,14 +517,14 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.10 (bid $157,263 · ask $192,178)",
-     "imbalance": -0.0999
+     "detail": "bid/ask ±2%: -0.07 (bid $189,735 · ask $217,458)",
+     "imbalance": -0.0681
     },
     {
      "name": "funding_squeeze",
      "s": 0.0,
      "points": 0.0,
-     "detail": "funding z -0.2 con OI -1.0%"
+     "detail": "funding z -0.4 con OI -0.9%"
     },
     {
      "name": "fear_greed_extreme",
@@ -550,8 +564,8 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.11 (bid $10,391,570 · ask $13,081,701)",
-     "imbalance": -0.1146
+     "detail": "bid/ask ±2%: +0.01 (bid $11,416,249 · ask $11,244,959)",
+     "imbalance": 0.0076
     },
     {
      "name": "fear_greed_extreme",
@@ -566,7 +580,7 @@
   "cg:grass": {
    "version": "early-0.2",
    "bonus": 0,
-   "raw": 0.46,
+   "raw": 0.18,
    "cap": 8,
    "active": [
     "funding_squeeze"
@@ -576,14 +590,14 @@
      "name": "orderbook_imbalance",
      "s": 0.0,
      "points": 0.0,
-     "detail": "bid/ask ±2%: -0.02 (bid $8,153 · ask $8,422)",
-     "imbalance": -0.0162
+     "detail": "bid/ask ±2%: -0.07 (bid $7,964 · ask $9,230)",
+     "imbalance": -0.0737
     },
     {
      "name": "funding_squeeze",
-     "s": 0.2275,
-     "points": 0.46,
-     "detail": "funding z -1.8 · OI +0.1%"
+     "s": 0.0905,
+     "points": 0.18,
+     "detail": "funding z -1.6 · OI +0.4%"
     },
     {
      "name": "fear_greed_extreme",
@@ -593,7 +607,7 @@
     }
    ],
    "reasons": [
-    "funding_squeeze: funding z -1.8 · OI +0.1% → +0.46"
+    "funding_squeeze: funding z -1.6 · OI +0.4% → +0.18"
    ],
    "book_source": "hyperliquid"
   }
