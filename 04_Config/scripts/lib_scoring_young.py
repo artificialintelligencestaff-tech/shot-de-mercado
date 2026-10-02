@@ -1,35 +1,45 @@
 #!/usr/bin/env python3
 """
-lib_scoring_young.py — Scorer de tokens jóvenes (< 60 min), D-014-R-3. Diseño: doc 32 v0.2.
+lib_scoring_young.py — Scorer de tokens jóvenes (< 60 min). v0.4 (D-023-R3). Diseño: doc 32 v0.4.
 
-Alcance: memecoins de Solana con par de < 60 min. Desde 60 min puntúa v7.2.1 (sin cambios). No toca multi-chain.
+Alcance en producción: memecoins de Solana con par de < 60 min (script_116). Desde 60 min sigue v7.2.1 (+ bono);
+v7.2.2 (bono informacional) está propuesto, no implementado (doc 32 §7).
 
-Ponderación (decisión de Dirección: para < 60 min la narrativa informacional es la fuente primaria):
-  60 % informacionales  (lib_info_signals: narrativa, menciones, trending, metadata, perfil DexScreener, repo)
-  25 % estructurales    (curva de bonding, holders, dev wallet; los kill switches cortan a 0)
-  15 % precio/volumen   (lib_early_signals: las 5 señales que existen para un token joven, ahora complementarias)
+Marco (Dirección, D-023-R3): los grupos de señales nunca se sustituyen, siempre se combinan; la edad ajusta los
+pesos, nunca elimina un grupo (ningún grupo baja de 15); lo informacional también anticipa en activos maduros; la
+liquidez inicial no filtra: es un flag informativo.
 
-score = Σ peso · s (0..100). Señal sin dato = 0 (conservador) y baja la cobertura, que se informa.
-Emite si score >= YOUNG_THRESHOLD (40, D-014-R-5) Y el subtotal informacional >= INFO_MIN (10): sin evidencia
-informacional no hay alerta, aunque la estructura y el flujo sumen. Liquidez 0 (curva de bonding) se acepta.
-Variantes (A/B/C sobre precio/volumen, I sobre informacionales) se registran en el JSONL para comparar.
-Parámetros heurísticos [H]; P-13: lo que no sirva al resultado se saca.
+Pesos de grupo continuos por edad (weights_for_age, interpolación lineal entre cortes):
+    edad      0 min   10 min  30 min  60 min  6 h   24 h (y más)
+    info       70      60      50      40     30     20
+    estruct    15      20      25      25     25     20
+    precio     15      20      25      35     45     60
+Dentro de cada grupo, pesos relativos fijos: INFO_WEIGHTS, STRUCT_WEIGHTS, PRICE_SIGNALS.
+score = Σ_grupo W_grupo(edad) · Σ_i w_i·s_i / Σ_i w_i   (0..100). Señal sin dato = 0 y baja la cobertura.
+Emite si score >= 40 Y subtotal informacional >= 5 (D-023-R3: un mínimo bajo para no bloquear regímenes en que la
+información falta legítimamente). Kill switches cortan a 0. Parámetros heurísticos [H]; P-13 los revisa.
 """
 import json
 import os
 from pathlib import Path
 
-VERSION = "young-0.3"
+VERSION = "young-0.4"
 SCOPE_MAX_AGE_MIN = 60
+# Pesos de grupo por edad (minutos): (edad, info, estructural, precio/volumen). Cada fila suma 100, mínimo 15.
+AGE_ANCHORS = ((0, 70, 15, 15), (10, 60, 20, 20), (30, 50, 25, 25), (60, 40, 25, 35), (360, 30, 25, 45),
+               (1440, 20, 20, 60))
+# Pesos relativos dentro de cada grupo
 INFO_WEIGHTS = {"mentions": 15, "narrative_wave": 15, "trending_match": 10, "metadata_socials": 10,
-                "dex_profile": 5, "github_repo": 5}                                   # 60
-STRUCT_WEIGHTS = {"bonding_progress": 10, "holders_struct": 8, "dev_wallet": 7}       # 25
-PRICE_WEIGHT = 15
+                "dex_profile": 5, "github_repo": 5}
+STRUCT_WEIGHTS = {"bonding_progress": 12, "holders_struct": 6, "dev_wallet": 3,            # D-023-R3 T2
+                  "bonding_curve_velocity": 1, "unique_buyer_acceleration": 1, "avg_buy_size_trend": 1,
+                  "holder_to_txn_ratio": 1}
 PRICE_SIGNALS = {"volume_acceleration": 3, "buy_pressure_shift": 2, "quiet_accumulation": 3,
                  "liquidity_inflow": 2, "holder_accumulation": 2}                     # puntos máx. (lib_early_signals)
 ELIGIBLE = tuple(PRICE_SIGNALS)
-YOUNG_THRESHOLD = int(os.environ.get("YOUNG_THRESHOLD") or 40)   # D-014-R-5: 50 -> 40
-INFO_MIN = 10                        # D-014-R-5: 20 -> 10
+INFO_FLAGS = ("initial_liquidity_usd",)                  # flag informativo del grupo estructural: peso 0
+YOUNG_THRESHOLD = int(os.environ.get("YOUNG_THRESHOLD") or 40)
+INFO_MIN = 5                         # D-023-R3: 10 -> 5
 H0_INFO_SPLIT = 20                   # H-0 pre-registrada: info_score >= 20 vs < 20 (doc 32 §6)
 MIN_HOLDERS = 50                     # [H] kill switch solo si RugCheck dio el dato
 MAX_TOP10_PCT = 50.0                 # [H]
@@ -38,6 +48,21 @@ PUMP_SUPPLY = 1_000_000_000
 STRONG_S = 0.5
 VARIANT_C_POINTS = 4.0
 LOG_DELTA = 5                        # se registra una línea nueva cuando el score cambia >= 5 (o al emitir)
+
+
+def weights_for_age(age_min):
+    """{"info", "struct", "pv"} para una edad en minutos: interpolación lineal entre los cortes de AGE_ANCHORS.
+    Antes del primer corte y después del último, constante. Suma 100; ningún grupo baja de 15."""
+    a = max(0.0, float(age_min or 0.0))
+    if a >= AGE_ANCHORS[-1][0]:
+        _, i, st, pv = AGE_ANCHORS[-1]
+        return {"info": float(i), "struct": float(st), "pv": float(pv)}
+    for (a0, i0, s0, p0), (a1, i1, s1, p1) in zip(AGE_ANCHORS, AGE_ANCHORS[1:]):
+        if a0 <= a < a1:
+            f = (a - a0) / (a1 - a0)
+            return {"info": i0 + f * (i1 - i0), "struct": s0 + f * (s1 - s0), "pv": p0 + f * (p1 - p0)}
+    _, i, st, pv = AGE_ANCHORS[0]
+    return {"info": float(i), "struct": float(st), "pv": float(pv)}
 
 
 def _num(x):
@@ -102,10 +127,10 @@ def variants(signals, signals_info=None):
             "I_ge2_info": len(info_act) >= 2}
 
 
-def score_young_detail(token_data, signals, signals_info=None, now_s=None, rug=None, structural=None):
-    """Detalle completo: score, partes, cobertura, filtros, variantes, razones. score None = fuera de alcance.
-    structural: señales estructurales ya calculadas (lib_info_signals: bonding_progress, holders_struct,
-    dev_wallet); si faltan, el caller no las tenía."""
+def score_young_detail(token_data, signals, signals_info=None, now_s=None, rug=None, structural=None, flags=None):
+    """Detalle completo: score, partes, pesos por edad, cobertura, filtros, variantes, razones. score None = fuera
+    de alcance. structural: señales estructurales (lib_info_signals). flags: datos informativos que no suman
+    (tradability: tradable, liquidity_usd, buy_route, initial_liquidity_usd)."""
     import time
     now_s = time.time() if now_s is None else now_s
     dx = (token_data or {}).get("dexscreener") or {}
@@ -113,25 +138,32 @@ def score_young_detail(token_data, signals, signals_info=None, now_s=None, rug=N
     if age is None or age >= SCOPE_MAX_AGE_MIN:
         why = "edad desconocida" if age is None else f"edad {age:.1f} min >= {SCOPE_MAX_AGE_MIN} (lo puntúa v7.2.1)"
         return {"score": None, "reasons": [f"fuera de alcance: {why}"], "age_min": age}
+    W = weights_for_age(age)
     info = _by_name(signals_info, INFO_WEIGHTS)
     struct = _by_name(structural, STRUCT_WEIGHTS)
     price = active_signals(signals)
-    parts = {"info": sum(w * (info[n]["s"] if n in info else 0) for n, w in INFO_WEIGHTS.items()),
-             "struct": sum(w * (struct[n]["s"] if n in struct else 0) for n, w in STRUCT_WEIGHTS.items()),
-             "price": PRICE_WEIGHT * sum(min(s.get("points") or 0, PRICE_SIGNALS[n]) for n, s in price.items())
-             / sum(PRICE_SIGNALS.values())}
-    covered = (sum(w for n, w in INFO_WEIGHTS.items() if n in info)
-               + sum(w for n, w in STRUCT_WEIGHTS.items() if n in struct)
-               + PRICE_WEIGHT * (1 if _by_name(signals, PRICE_SIGNALS) else 0))
+    si, ss, sp = sum(INFO_WEIGHTS.values()), sum(STRUCT_WEIGHTS.values()), sum(PRICE_SIGNALS.values())
+    parts = {"info": W["info"] * sum(w * (info[n]["s"] if n in info else 0) for n, w in INFO_WEIGHTS.items()) / si,
+             "struct": W["struct"] * sum(w * (struct[n]["s"] if n in struct else 0)
+                                         for n, w in STRUCT_WEIGHTS.items()) / ss,
+             "price": W["pv"] * sum(min(s.get("points") or 0, PRICE_SIGNALS[n]) for n, s in price.items()) / sp}
+    covered = (W["info"] * sum(w for n, w in INFO_WEIGHTS.items() if n in info) / si
+               + W["struct"] * sum(w for n, w in STRUCT_WEIGHTS.items() if n in struct) / ss
+               + W["pv"] * (1 if _by_name(signals, PRICE_SIGNALS) else 0))
     raw = int(round(sum(parts.values())))
-    reasons = [f"{VERSION} · edad {age:.1f} min · info {parts['info']:.1f}/60 · estructura {parts['struct']:.1f}/25 · "
-               f"precio/volumen {parts['price']:.1f}/15 · cobertura {covered}/100"]
-    for group, sigs, weights in (("info", info, INFO_WEIGHTS), ("estructura", struct, STRUCT_WEIGHTS)):
+    reasons = [f"{VERSION} · edad {age:.1f} min · pesos info {W['info']:.0f} / estructura {W['struct']:.0f} / "
+               f"precio {W['pv']:.0f} · info {parts['info']:.1f} · estructura {parts['struct']:.1f} · "
+               f"precio/volumen {parts['price']:.1f} · cobertura {covered:.0f}/100"]
+    for group, sigs, weights, wg, tot in (("info", info, INFO_WEIGHTS, W["info"], si),
+                                          ("estructura", struct, STRUCT_WEIGHTS, W["struct"], ss)):
         for n, s in sigs.items():
             if s["s"] > 0:
-                reasons.append(f"[{group}] {n}: {s.get('detail', '')} → +{weights[n] * s['s']:.1f}")
+                reasons.append(f"[{group}] {n}: {s.get('detail', '')} → +{wg * weights[n] * s['s'] / tot:.1f}")
     for n, s in price.items():
         reasons.append(f"[precio/volumen] {n}: {s.get('detail', '')} (s {s['s']:.2f})")
+    flags = dict(flags or {})
+    if flags:
+        reasons.append("[flag, no suma] " + ", ".join(f"{k}={v}" for k, v in flags.items()))
     blocks = kill_switches(token_data, rug, age)
     score = 0 if blocks else raw
     reasons += [f"FILTRO: {b}" for b in blocks] + ([f"(sin filtros sería {raw})"] if blocks else [])
@@ -139,16 +171,17 @@ def score_young_detail(token_data, signals, signals_info=None, now_s=None, rug=N
     reasons.append(f"score {score} (umbral {YOUNG_THRESHOLD}, info mínima {INFO_MIN}) → "
                    + ("EMITE" if fire else "no emite"))
     return {"score": score, "raw": raw, "parts": {k: round(v, 2) for k, v in parts.items()},
+            "weights": {k: round(v, 2) for k, v in W.items()},
             "info_score": round(parts["info"], 2), "struct_score": round(parts["struct"], 2),
             "pv_score": round(parts["price"], 2), "h0_group": "info_ge20" if parts["info"] >= H0_INFO_SPLIT else "info_lt20",
-            "coverage": covered,
+            "coverage": round(covered, 1), "flags": flags,
             "blocks": blocks, "fires": fire, "variants": variants(signals, signals_info), "reasons": reasons,
             "age_min": round(age, 1), "variant": VERSION}
 
 
-def score_young(token_data, signals, signals_info=None, now_s=None, rug=None, structural=None):
+def score_young(token_data, signals, signals_info=None, now_s=None, rug=None, structural=None, flags=None):
     """(score 0..100 | None, reasons). None = fuera de alcance (edad >= 60 min o desconocida)."""
-    d = score_young_detail(token_data, signals, signals_info, now_s, rug, structural)
+    d = score_young_detail(token_data, signals, signals_info, now_s, rug, structural, flags)
     return d["score"], d["reasons"]
 
 
@@ -178,6 +211,7 @@ def young_record(mint, symbol, detail, signals, signals_info, structural, now_is
             "age_min": detail.get("age_min"), "score": detail.get("score"), "raw": detail.get("raw"),
             "info_score": detail.get("info_score"), "struct_score": detail.get("struct_score"),
             "pv_score": detail.get("pv_score"), "h0_group": detail.get("h0_group"),
+            "weights": detail.get("weights"), "flags": detail.get("flags"),
             "parts": detail.get("parts"), "coverage": detail.get("coverage"), "fires": detail.get("fires"),
             "emitted": emitted, "blocks": detail.get("blocks"), "variants": detail.get("variants"),
             "variant": detail.get("variant"), "signals_info": slim(signals_info), "structural": slim(structural),

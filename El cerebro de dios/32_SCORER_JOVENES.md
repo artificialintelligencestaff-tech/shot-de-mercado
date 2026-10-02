@@ -1,61 +1,114 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: v0.3 (D-014-R-5) — integrado en la rama, sin merge
+status: v0.4 (D-023-R3) — integrado en la rama, sin merge
 last_updated: 2026-10-02
-version: 0.3
+version: 0.4
 ---
 
-# 32 — Scorer de tokens jóvenes (< 60 min), v0.2: informacional primero
+# 32 — Scorer de tokens jóvenes (< 60 min), v0.4: pesos continuos por edad
 
-Rótulos: [V] verificado · [I] inferido · [H] hipótesis · [P] pendiente. La v0.1 está en
-`32_SCORER_JOVENES.md.bak1`.
+Rótulos: [V] verificado · [I] inferido · [H] hipótesis · [P] pendiente. Versiones anteriores: v0.1 en
+`32_SCORER_JOVENES.md.bak1`, v0.2 en `.bak2`, v0.3 en `.bak3`.
 
 Decisiones de Dirección que rigen esta versión:
 - Para tokens de < 60 min, la fuente primaria es la narrativa informacional.
 - P-13: un filtro que no sirve al resultado se saca y se busca otro.
 - **Nada en sombra**: emisión real desde el día 1.
 
-## 1. Diseño: señales y pesos
+## 0. Correcciones de marco (Dirección, D-023-R3)
 
-`score = Σ peso × s`, con s ∈ [0, 1], en una escala de 0 a 100. Una señal sin dato vale 0 y baja la cobertura, que
-se registra.
+1. **Los grupos de señales nunca se sustituyen: siempre se combinan.**
+2. **La edad ajusta pesos, nunca elimina grupos.** Ningún grupo baja de 15.
+3. **En activos maduros, lo informacional también anticipa** (el rumor previo al pump). Para ≥ 60 min el peso
+   informacional baja a 40–20, pero no desaparece (ver v7.2.2, §7).
+4. **La liquidez inicial no filtra: es un flag informativo** (`initial_liquidity_usd`, peso 0).
+5. nkd077 cerró 11 hipótesis sobre **rentabilidad al hold**; nosotros medimos **anticipación de volatilidad**
+   (+20 % antes de −30 %). Es otro objetivo: sus negativos no se trasladan.
 
-| Grupo (peso) | Señal | Peso | Fuente (gratis) | En el contenedor |
-|---|---|---|---|---|
-| **Informacional (60)** | `mentions`: menciones por dirección (peso 1) o cashtag (0,25) en la última hora | 15 | `narrative/_items.json` de script_115 (Reddit RSS, Telegram `t.me/s`, 4chan, HN, RSS) | Sin red: es un archivo del repo. |
-| | `narrative_wave`: cuántos otros lanzamientos de la última hora comparten palabra clave (8 = máx.) | 15 | Stream de PumpPortal (el watch) | Sin red. |
-| | `trending_match`: mismo símbolo que un trending (1,0) o palabra compartida (0,6) | 10 | `narrative/_index.json` (CoinGecko trending, script_115) | Sin red. |
-| | `metadata_socials`: twitter, telegram y website (0,8) + descripción ≥ 40 caracteres (0,2) | 10 | IPFS `uri` del evento de PumpPortal | Red: Actions. |
-| | `dex_profile`: perfil pago en DexScreener (0,6) + boost (0,4 con 500) | 5 | `token-profiles/latest/v1` [V 200 desde Actions] y `token-boosts/latest/v1` | Red: Actions. |
-| | `github_repo`: repo enlazado en la metadata, log10(1 + estrellas) / 2 | 5 | `api.github.com/repos` sin token, 1 por poll | Red: Actions. |
-| **Estructural (25)** | `bonding_progress`: mcap / $69K [H]; graduado = 1 | 10 | DexScreener (`dexId`, `marketCap`) | Ya disponible. |
-| | `holders_struct`: holders / 300, a la mitad si el top-10 > 30 % | 8 | RugCheck (para jóvenes con score ≥ umbral − 15) | Red: Actions. |
-| | `dev_wallet`: compra inicial del creador ≤ 2 % = 1, ≥ 10 % = 0 | 7 | PumpPortal `initialBuy` | Ya disponible. |
-| | **Kill switches** (cortan el score a 0, no ponderan) | — | script_82 (< 5 min con +10.000 %), RugCheck (mint o freeze authority, top-10 > 50 %, holders < 50), creador > 10 % | |
-| **Precio/volumen (15)** | `volume_acceleration` (3), `buy_pressure_shift` (2), `quiet_accumulation` (3), `liquidity_inflow` (2), `holder_accumulation` (2): 15 × puntos / 12 | 15 | lib_early_signals | Ya disponible. |
+## 1. Diseño v0.4
 
-**Liquidez 0 aceptada.** Se saca el filtro de $20K por P-13: dejaba afuera al 95,6 % de los lanzamientos (§4 de
-la v0.1).
+### 1.1 Pesos de grupo continuos por edad — `weights_for_age(age_min)`
 
-**Regla de emisión (v0.3, D-014-R-5).** Se emite si:
-- `score ≥ YOUNG_THRESHOLD` (**40**; antes 50; configurable por env);
-- **subtotal informacional ≥ 10** (antes 20);
-- edad ≥ edad mínima del early watch (10 min, `_gate.json`);
-- hay precio y guía de compra.
+Hay interpolación lineal entre cortes, ubicados en el **inicio** de cada tramo de la tabla de Dirección. Fuera del
+rango, el valor es constante.
 
-Umbrales 40 / 10 decididos por Dirección (D-014-R-5). Con info 10 (por ejemplo, metadata completa) hacen falta
-30 de estructura + precio, de un máximo de 40. **No están calibrados**: P-13 los revisa con los resultados (§3),
-y H-0 (§6) mide si la parte informacional aporta.
+| Edad (corte) | Info | Estructural | Precio/volumen |
+|---|---|---|---|
+| 0 min | 70 | 15 | 15 |
+| 10 min | 60 | 20 | 20 |
+| 30 min | 50 | 25 | 25 |
+| 60 min | 40 | 25 | 35 |
+| 6 h | 30 | 25 | 45 |
+| ≥ 24 h | 20 | 20 | 60 |
 
-**Cada alerta registra** `info_score`, `struct_score`, `pv_score` y `h0_group` (`info_ge20` / `info_lt20`):
-- en el reclamo `early/alerts/<mint>.json`;
-- en `_all_alerts.json` y `historical_alerts.jsonl` (los adopta script_97);
-- en cada línea del JSONL.
+- Ejemplos: 5 min → 65 / 17,5 / 17,5; 20 min → 55 / 22,5 / 22,5; 45 min → 45 / 25 / 30.
+- Siempre suma 100 y ningún grupo baja de 15 (test sobre 0–2000 min). El salto máximo es de 1 punto por minuto.
+- Ubicar los cortes al inicio de cada tramo es una elección mía: "< 10 min = 70" vale exactamente en 0 y baja
+  hasta 60 a los 10 min. La alternativa sería ubicarlos en el punto medio de cada tramo.
+- En producción solo se usan las filas de < 60 min (scope de script_116). Las de ≥ 60 min quedan definidas para
+  el scorer unificado / v7.2.2.
 
-**Variantes registradas** (flag): A, B y C sobre precio/volumen (como en la v0.1) e `I_ge2_info` (≥ 2 señales
-informacionales activas). Cada línea del JSONL lleva `variant = young-0.2`.
+`score = Σ_grupo W_grupo(edad) × Σ_i w_i·s_i / Σ_i w_i`. Los pesos relativos dentro de cada grupo son fijos.
+
+### 1.2 Grupo informacional (pesos relativos)
+
+`mentions` 15 · `narrative_wave` 15 · `trending_match` 10 · `metadata_socials` 10 · `dex_profile` 5 ·
+`github_repo` 5. Definiciones en la v0.2 (§1 de `.bak2`) y en `lib_info_signals`.
+
+### 1.3 Grupo estructural (redistribuido, D-023-R3 T2)
+
+| Componente | Peso relativo (/25) | Fuente | Definición de s |
+|---|---|---|---|
+| Avance de la curva de bonding | **12** | DexScreener `marketCap` / $69K [H]; graduado = 1 | proporción |
+| Holders + concentración top-10 | 6 | RugCheck | holders/300, a la mitad si el top-10 > 30 % |
+| Compra inicial del creador | 3 | PumpPortal `initialBuy` | ≤ 2 % = 1 … ≥ 10 % = 0 |
+| **S-1** `bonding_curve_velocity` | 1 | Serie propia de la curva (un punto por poll, DexScreener) | Δ% de curva / min en 10 min; 2 %/min = 1 [H]; retroceso = 0 |
+| **S-2** `unique_buyer_acceleration` | 1 | PumpPortal `subscribeTokenTrade` | compradores nuevos en los últimos 2 min − compradores de los 2 min previos, por minuto; +5/min = 1 [H] |
+| **S-3** `avg_buy_size_trend` | 1 | PumpPortal (trades) | pendiente por mínimos cuadrados del tamaño de compra (SOL) en las últimas 30, como cambio relativo; +100 % = 1 [H]; ≥ 5 compras |
+| **S-4** `holder_to_txn_ratio` | 1 | RugCheck holders (o compradores únicos del stream) / txns h1 de DexScreener | 0,5 = 1 [H] |
+| Flag `initial_liquidity_usd` | **0** | Primera liquidez vista (serie propia) | informativo, no suma |
+
+La fuente de **S-1 es DexScreener**. pump.fun no tiene una API pública verificada desde acá: su frontend API no se
+probó [P].
+
+**S-2 y S-3:** el listener de PumpPortal se suscribe (`subscribeTokenTrade`) a los trades de hasta **100**
+mints jóvenes con score ≥ umbral − 25 [H]. Guarda hasta 300 trades por mint y vuelve a suscribir en cada
+reconexión. Los campos del evento de trade (`txType`, `traderPublicKey`, `solAmount`) se tomaron como iguales a
+los del evento de creación [I]: hay que verificar en el primer log de Actions [P].
+
+### 1.4 Grupo precio/volumen
+
+Las 5 señales de lib_early_signals que existen para un token joven (`volume_acceleration`, `buy_pressure_shift`,
+`quiet_accumulation`, `liquidity_inflow`, `holder_accumulation`); s = puntos / 12.
+
+### 1.5 Emisión (D-023-R3 T5)
+
+- Score ≥ **40** **y** subtotal informacional ≥ **5** (antes 10).
+- El mínimo es bajo a propósito, para no bloquear regímenes cuantitativos donde la información falta legítimamente.
+- Además: edad ≥ edad mínima del early watch (10 min, `_gate.json`) y hay precio y guía de compra.
+- Los kill switches cortan el score a 0.
+
+### 1.6 Flag tradability (D-023-R3 T4) — informativo, no bloquea
+
+Cada alerta lleva `tradable` (bool), `liquidity_usd`, `buy_route` e `initial_liquidity_usd`:
+- **Early watch** (scorer joven y v7.2.1): `lib_info_signals.tradability`. Una alerta es `tradable` si hay precio
+  y (la curva de pump.fun está abierta o el pool tiene ≥ $1K de liquidez). La ruta es "pump.fun (curva de
+  bonding)" o "<dex> (AMM) vía Jupiter o el DEX".
+- **script_97:**
+  - ruta Solana y multi-chain on-chain: lo mismo, sobre el par;
+  - ruta CEX: `buy_route = "CEX: Binance, Coinbase…"` (exchanges confirmados) y `tradable` = hay al menos uno.
+- El flag también queda en el JSONL (`flags`) y en `_all_alerts.json` por adopción.
 
 ## 2. Integración (D-014-R-3, T3 y T4)
+
+**Cambios en v0.4 (D-023-R3).**
+- `lib_scoring_young` 0.4: `weights_for_age`, pesos relativos por grupo, `flags=`.
+- `lib_info_signals` 0.2: S-1..S-4 y `tradability`.
+- `script_116` 116-0.4:
+  - el listener suscribe trades (`set_trade_keys`, `trades_snapshot`) y guarda la serie de la curva;
+  - `tradability` va en todas las alertas del early watch.
+- `script_97`: `tradability_flags` en las rutas Solana y multi-chain.
+- El resto de esta sección describe la v0.2/0.3 y sigue vigente.
 
 - **`lib_scoring_young.py` v0.2:**
   - `score_young(token_data, signals, signals_info=None, now_s=None, rug=None, structural=None) -> (score,
@@ -154,3 +207,15 @@ Registrada **antes** de ver cualquier resultado del scorer joven.
   (campo `h0`). Mientras n < 40, el veredicto es `pendiente`.
 - **Riesgo conocido:** el umbral de emisión (40) y el mínimo informacional (10) seleccionan qué tokens llegan a
   ser alertas. La comparación es entre alertas, no entre toda la población.
+
+## 7. v7.2.2 propuesto (no implementado): bono informacional para ≥ 60 min
+
+Por la corrección de marco 3, lo informacional también anticipa en activos maduros. Propuesta:
+- **v7.2.2 = v7.2.1 + bono informacional de hasta +10** para tokens de ≥ 60 min.
+- Usa las mismas señales informacionales (`lib_info_signals`), ponderadas como en §1.2, escaladas a 10 puntos.
+- Se suma al bono anticipatorio (lib_early_signals, tope +8): el total queda en ≤ +18 sobre el score v7.2.1.
+- Medirlo con la misma H-0 (§6) separada por edad: `info_score` alto vs. bajo en ≥ 60 min.
+- **Alternativa equivalente:** extender `weights_for_age` (filas de 60 min a 24 h) como scorer único para todas las
+  edades, en lugar de un bono sobre v7.2.1. Eso reemplazaría v7.2.1 para maduros, y la decisión es de YANG /
+  Dirección.
+- Estado: diseño. Nada cambia hoy para ≥ 60 min.

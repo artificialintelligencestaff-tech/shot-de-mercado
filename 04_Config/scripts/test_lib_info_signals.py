@@ -71,5 +71,47 @@ class Info(unittest.TestCase):
         self.assertIsNone(inf.dev_wallet({}))
 
 
+class NuevasD023(unittest.TestCase):
+    """S-1..S-4 y tradability (D-023-R3)."""
+
+    def test_s1_velocidad_de_curva(self):
+        s = inf.bonding_curve_velocity([(NOW - 600, 0.10), (NOW - 300, 0.15), (NOW, 0.30)])   # +20 % en 10 min
+        self.assertEqual(s["s"], 1.0)
+        self.assertIn("+2.00 %/min", s["detail"])
+        self.assertEqual(inf.bonding_curve_velocity([(NOW - 120, 0.5), (NOW, 0.45)])["s"], 0.0)   # retrocede: 0
+        self.assertIsNone(inf.bonding_curve_velocity([(NOW, 0.1)]))
+
+    def test_s2_aceleracion_de_compradores_unicos(self):
+        prev = [(NOW - 200, f"w{i}", "buy", 0.1) for i in range(2)]
+        last = [(NOW - 60, f"n{i}", "buy", 0.1) for i in range(12)] + [(NOW - 50, "w0", "buy", 0.1)]   # w0 repite
+        s = inf.unique_buyer_acceleration(prev + last + [(NOW - 10, "x", "sell", 1.0)], NOW)
+        self.assertEqual(s["s"], 1.0)                      # (12 − 2) / 2 min = 5/min
+        self.assertIn("compradores nuevos 12 vs 2", s["detail"])
+        self.assertEqual(inf.unique_buyer_acceleration(prev, NOW)["s"], 0.0)
+        self.assertIsNone(inf.unique_buyer_acceleration([], NOW))
+
+    def test_s3_tendencia_del_tamano_de_compra(self):
+        growing = [(NOW - 100 + i, f"w{i}", "buy", 0.1 * (1 + i)) for i in range(10)]
+        self.assertEqual(inf.avg_buy_size_trend(growing)["s"], 1.0)
+        shrinking = [(NOW - 100 + i, f"w{i}", "buy", 1.0 - 0.09 * i) for i in range(10)]
+        self.assertEqual(inf.avg_buy_size_trend(shrinking)["s"], 0.0)
+        self.assertIsNone(inf.avg_buy_size_trend(growing[:4]))
+
+    def test_s4_holders_por_txn(self):
+        self.assertEqual(inf.holder_to_txn_ratio(100, 200)["s"], 1.0)
+        self.assertAlmostEqual(inf.holder_to_txn_ratio(20, 200)["s"], 0.2)
+        self.assertIsNone(inf.holder_to_txn_ratio(None, 200))
+        self.assertIsNone(inf.holder_to_txn_ratio(10, 0))
+
+    def test_tradability_informativa(self):
+        curve = inf.tradability({"dexId": "pumpfun", "priceUsd": 0.001, "liquidityUsd": 0},
+                                [(NOW - 60, 0.0), (NOW, 0.0)])
+        self.assertEqual(curve, {"tradable": True, "liquidity_usd": 0.0, "buy_route": "pump.fun (curva de bonding)",
+                                 "initial_liquidity_usd": 0.0})
+        amm = inf.tradability({"dexId": "pumpswap", "priceUsd": 0.01, "liquidityUsd": 500}, [(NOW, 450.0)])
+        self.assertEqual((amm["tradable"], amm["initial_liquidity_usd"]), (False, 450.0))   # < $1K de liquidez
+        self.assertFalse(inf.tradability({}, None)["tradable"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

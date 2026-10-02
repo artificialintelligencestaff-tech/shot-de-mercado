@@ -425,6 +425,64 @@ class EarlyWatch(unittest.TestCase):
         detail = json.loads((self.tmp / "02_Analisis" / "alerts" / f"alert_{MINT_A}_{rec['timestamp']}.json").read_text())
         self.assertEqual(detail["scorer"], "v7.2.1+early")
 
+    # --- D-023-R3 ----------------------------------------------------------------------------------------------
+
+    def test_listener_trades_suscripcion_y_buffer(self):
+        lst = ew.LaunchListener(lambda toks: (toks, []), trade_keep=3)
+        lst.set_trade_keys([MINT_A, MINT_B])
+        self.assertEqual(lst.sync_messages(), [{"method": "subscribeTokenTrade", "keys": sorted([MINT_A, MINT_B])}])
+        self.assertEqual(lst.sync_messages(), [])                     # ya suscripto
+        for i in range(5):
+            lst.handle_message({"txType": "buy", "mint": MINT_A, "traderPublicKey": f"w{i}", "solAmount": 0.1 * i},
+                               now=NOW + i)
+        lst.handle_message({"txType": "buy", "mint": MINT_C, "traderPublicKey": "z", "solAmount": 1}, now=NOW)   # no seguido
+        lst.handle_message({"txType": "create", "mint": "NEW", "solAmount": 1, "marketCapSol": 30}, now=NOW)
+        snap = lst.trades_snapshot()
+        self.assertEqual(list(snap), [MINT_A])
+        self.assertEqual([t[1] for t in snap[MINT_A]], ["w2", "w3", "w4"])        # trade_keep = 3
+        self.assertEqual([t["mint"] for t in lst.drain()], ["NEW"])
+        lst.set_trade_keys([MINT_B])
+        self.assertEqual(lst.sync_messages(), [{"method": "unsubscribeTokenTrade", "keys": [MINT_A]}])
+        self.assertEqual(lst.trades_snapshot(), {})
+        lst.handle_message("basura")                                   # no rompe
+
+    def test_joven_usa_trades_y_lleva_tradability(self):
+        self.accumulate({})
+        self.write_narrative(trending=[{"rank": 1, "symbol": "FROG", "name": "Frog"}])
+        meta = {"twitter": "https://x.com/f", "telegram": "https://t.me/f", "website": "https://f.io",
+                "description": "x" * 60}
+        lst = ew.LaunchListener(lambda toks: (toks, []))
+        lst.set_trade_keys([MINT_A])
+        for i in range(12):
+            lst.handle_message({"txType": "buy", "mint": MINT_A, "traderPublicKey": f"w{i}", "solAmount": 0.05 * (i + 1)},
+                               now=NOW - 60 + i)
+        c = self.ctx(young_scorer=True, min_age_min=10, listener=lst, get=self.young_get([MINT_A], meta))
+        c["watch"] = {MINT_A: self.young_entry(MINT_A)}
+        self.pairs = [pair(MINT_A, 15, liq=0.0)]
+        self.pairs[0]["dexId"], self.pairs[0]["marketCap"] = "pumpfun", 34_500
+        snap = ew.poll_once(c, NOW)
+        self.assertEqual([e["mint"] for e in snap["emitted"]], [MINT_A])
+        rec = self.early_alerts()[0]
+        self.assertEqual((rec["tradable"], rec["buy_route"], rec["liquidity_usd"]),
+                         (True, "pump.fun (curva de bonding)", 0.0))
+        self.assertIn("initial_liquidity_usd", rec)
+        log = [json.loads(x) for x in next((self.tmp / "02_Analisis" / "early" / "young").glob("a_*.jsonl"))
+               .read_text().splitlines()]
+        st = log[-1]["structural"]
+        self.assertGreater(st["unique_buyer_acceleration"], 0)
+        self.assertEqual(st["avg_buy_size_trend"], 1.0)
+        self.assertIn("holder_to_txn_ratio", st)
+        self.assertEqual(log[-1]["flags"]["tradable"], True)
+
+    def test_alerta_v721_tambien_lleva_tradability(self):
+        self.accumulate({MINT_A: self.acc_entry(MINT_A)})
+        self.scores[MINT_A] = 70
+        self.pairs = [pair(MINT_A, 35, liq=60_000)]
+        ew.poll_once(self.ctx(), NOW)
+        rec = self.early_alerts()[0]
+        self.assertEqual((rec["tradable"], rec["liquidity_usd"]), (True, 60_000.0))
+        self.assertIn("vía Jupiter", rec["buy_route"])
+
     def test_lanzamientos_en_vivo_y_poda(self):
         w = ew.merge_launches({}, [{"mint": MINT_A, "timestamp": ew.now_iso(NOW - 200 * 60)},
                                    {"mint": MINT_B, "timestamp": ew.now_iso(NOW - 5 * 60)}], NOW)

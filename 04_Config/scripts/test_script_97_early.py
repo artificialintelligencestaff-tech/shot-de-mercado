@@ -182,6 +182,20 @@ class Early(base.MultichainEmision):
         self.assertIsNone(m.load_early_signals())
 
 
+    def test_tradability_en_alertas_solana_y_cex(self):
+        """D-023-R3 T4: cada alerta lleva tradable / liquidity_usd / buy_route / initial_liquidity_usd."""
+        self.acc.write_text(json.dumps({SOL_MINT: base.solana_candidate()}), encoding="utf-8")
+        self.write_gov_inputs()
+        self.write_early([])
+        m = self.load()
+        with mock.patch.object(m, "early_watch_active", lambda: False):
+            m.main([])
+        by = {a["mint"]: a for a in self.alerts()}
+        sol, gov = by[SOL_MINT], by["cg:govtoken"]
+        self.assertEqual((sol["tradable"], sol["liquidity_usd"]), (True, 141632.8))
+        self.assertIn("pumpswap", sol["buy_route"])
+        self.assertEqual((gov["tradable"], gov["buy_route"], gov["liquidity_usd"]), (True, "CEX: Binance, Coinbase", None))
+
 def load_tests(loader, tests, pattern):
     """Solo los tests propios (Early hereda fixtures, no los tests de test_script_97_multichain)."""
     return unittest.TestSuite(Early(n) for n in sorted(vars(Early)) if n.startswith("test_"))

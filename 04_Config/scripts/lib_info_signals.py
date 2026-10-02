@@ -21,7 +21,7 @@ Parámetros heurísticos [H], no calibrados.
 import math
 import re
 
-VERSION = "info-0.1"
+VERSION = "info-0.2"
 STOPWORDS = {"the", "and", "of", "to", "a", "in", "on", "for", "coin", "token", "sol", "solana", "pump", "fun",
              "official", "inu", "meme", "new", "first", "real", "ai", "is", "it", "my", "by", "with", "x"}
 GRADUATION_MCAP_USD = 69_000.0        # [H] mcap aproximado en que la curva de pump.fun gradúa
@@ -189,3 +189,85 @@ def dev_wallet(token, lo_pct=2.0, hi_pct=10.0):
         return None
     pct = 100 * buy / PUMP_SUPPLY
     return _sig("dev_wallet", 1 - (pct - lo_pct) / (hi_pct - lo_pct), f"creador compró {pct:.1f} % del supply")
+
+
+# ---------------------------------------------------------------------------
+# D-023-R3: señales estructurales nuevas (S-1..S-4) y flag de tradability
+# ---------------------------------------------------------------------------
+
+def bonding_curve_velocity(series, full_pct_per_min=2.0, window_s=600):
+    """S-1. series: [(ts, progreso 0..1)] de polls propios (DexScreener mcap / mcap de graduación). Δ% de curva por
+    minuto en la ventana (10 min); 2 %/min = s 1 [H]. Retroceso = 0 (no resta)."""
+    pts = sorted((t, _num(p)) for t, p in series or [] if _num(p) is not None)
+    if len(pts) < 2:
+        return None
+    t1, p1 = pts[-1]
+    base = [x for x in pts if x[0] >= t1 - window_s and x[0] < t1] or [pts[-2]]
+    t0, p0 = base[0]
+    if t1 - t0 <= 0:
+        return None
+    rate = 100 * (p1 - p0) / ((t1 - t0) / 60)
+    return _sig("bonding_curve_velocity", rate / full_pct_per_min, f"curva {rate:+.2f} %/min")
+
+
+def _buys(trades):
+    """trades: [(ts, wallet, side, sol)] del stream de PumpPortal (subscribeTokenTrade)."""
+    return sorted((t for t in trades or [] if t and len(t) >= 4 and str(t[2]).lower() == "buy"), key=lambda t: t[0])
+
+
+def unique_buyer_acceleration(trades, now_s, window_s=120, full_per_min=5.0):
+    """S-2. Compradores únicos NUEVOS en la última ventana vs. la anterior (Δ por minuto); +5/min = s 1 [H]."""
+    buys = _buys(trades)
+    if not buys:
+        return None
+    seen_before = {t[1] for t in buys if t[0] < now_s - window_s}
+    prev_win = {t[1] for t in buys if now_s - 2 * window_s <= t[0] < now_s - window_s}
+    last_win = {t[1] for t in buys if t[0] >= now_s - window_s} - seen_before
+    accel = (len(last_win) - len(prev_win)) / (window_s / 60)
+    return _sig("unique_buyer_acceleration", accel / full_per_min,
+                f"compradores nuevos {len(last_win)} vs {len(prev_win)} ({accel:+.1f}/min)")
+
+
+def avg_buy_size_trend(trades, n=30, full_change=1.0):
+    """S-3. Pendiente (mínimos cuadrados) del tamaño de compra en SOL sobre las últimas n compras, expresada como
+    cambio relativo a lo largo de la ventana; +100 % = s 1 [H]. Requiere >= 5 compras."""
+    buys = _buys(trades)[-n:]
+    ys = [_num(t[3]) for t in buys if _num(t[3]) is not None]
+    if len(ys) < 5:
+        return None
+    m = len(ys)
+    xm, ym = (m - 1) / 2, sum(ys) / m
+    den = sum((i - xm) ** 2 for i in range(m))
+    slope = sum((i - xm) * (y - ym) for i, y in enumerate(ys)) / den if den else 0.0
+    change = slope * (m - 1) / ym if ym > 0 else 0.0
+    return _sig("avg_buy_size_trend", change / full_change,
+                f"tamaño de compra {change:+.0%} en {m} compras (media {ym:.3f} SOL)")
+
+
+def holder_to_txn_ratio(holders, txns, full_ratio=0.5):
+    """S-4. holders únicos / txns totales: alto = participación distribuida; bajo = pocas billeteras operando mucho
+    (bots / wash). 0,5 = s 1 [H]. holders de RugCheck (o compradores únicos del stream); txns de DexScreener."""
+    h, x = _num(holders), _num(txns)
+    if h is None or x is None or x <= 0:
+        return None
+    ratio = h / x
+    return _sig("holder_to_txn_ratio", ratio / full_ratio, f"holders/txns {h:.0f}/{x:.0f} = {ratio:.2f}")
+
+
+def tradability(dx, liquidity_series=None, min_liq_usd=1_000.0):
+    """D-023-R3 T4: flag informativo (no bloquea ni suma). tradable: hay precio y una ruta de compra (curva de
+    pump.fun abierta, o pool con liquidez >= min_liq_usd). initial_liquidity_usd: primera liquidez vista."""
+    dx = dx or {}
+    dex = str(dx.get("dexId") or "").lower()
+    liq = _num(dx.get("liquidityUsd")) or 0.0
+    price = _num(dx.get("priceUsd")) or 0.0
+    first = next((_num(v) for _, v in sorted(liquidity_series or [], key=lambda p: p[0]) if _num(v) is not None), None)
+    if dex == "pumpfun":
+        route = "pump.fun (curva de bonding)"
+    elif dex:
+        route = f"{dex} (AMM) vía Jupiter o el DEX"
+    else:
+        route = "desconocida"
+    tradable = price > 0 and (dex == "pumpfun" or liq >= min_liq_usd)
+    return {"tradable": bool(tradable), "liquidity_usd": round(liq, 2), "buy_route": route,
+            "initial_liquidity_usd": round(first, 2) if first is not None else None}

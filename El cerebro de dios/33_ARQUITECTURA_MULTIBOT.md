@@ -2,7 +2,7 @@
 owner: Claude Code (implementador) — pendiente auditoría YANG
 status: DISEÑO (D-014-R-5, T3) — sin implementar
 last_updated: 2026-10-02
-version: 0.1
+version: 0.2
 ---
 
 # 33 — Arquitectura multi-bot de fuentes informacionales
@@ -145,3 +145,76 @@ Licencias leídas del `LICENSE` del repo vía raw.githubusercontent [V]. "Sin pa
 
 Para Telegram público, lo gratis y permitido es lo que ya hacemos: el HTML de `t.me/s/<canal>`. Ningún MCP mejora
 eso sin sesión de usuario.
+
+## 8. Reddit sin eliminarlo: fuentes alternativas (D-023-R3 T6)
+
+**Contexto [I, fuentes web].** El 28/05/2026, Reddit deprecó los endpoints `.json` sin autenticación. Además
+bloquea por reputación de IP y huella TLS a los rangos de datacenter, como los runners de Actions. Eso explica el
+403 que reporta YIN. Reddit anunció que el RSS es la próxima superficie en cerrarse.
+
+| Fuente | Qué da | Licencia / términos | ¿Sin key? | Evaluación |
+|---|---|---|---|---|
+| **API oficial de Reddit (OAuth, app tipo "script")** | Posts, comentarios y búsqueda en tiempo real; 100 req/min en el nivel gratuito no comercial [I] | Términos de Reddit | **No**: cuenta + client id/secret (gratis, sin tarjeta) | **La más estable y la recomendada.** Necesita que Dirección cree la cuenta y la app y cargue 2 secrets [P]. |
+| **PullPush** (`api.pullpush.io/reddit/search/submission|comment/?subreddit=&q=&after=`) | Búsqueda de posts y comentarios (heredero de Pushshift) | Servicio sin licencia de código; uso libre | **Sí** | ~30 req/min. Cobertura parcial desde 2023 y caídas de semanas por reindexado [I]. Sirve como respaldo, no como fuente principal. |
+| **Arctic Shift** (`ArthurHeitmann/arctic_shift`, API pública) | Dumps y búsqueda de Reddit | Licencia del repo no encontrada (n/d) | **Sí** [I] | Alternativa a PullPush con mejor mantenimiento según las comparativas de 2026 [I]. Frescura en minutos sin verificar [P]. |
+| **RSSHub** (`rsshub.app/reddit/subreddit/<sub>` o instancias públicas) | RSS de un subreddit (lo genera RSSHub) | AGPL-3.0 (el código; usar una instancia hosteada no lo instala) | **Sí** | La instancia pública limita a ~200 req/h por IP [I]. Depende de que el servidor de RSSHub no esté bloqueado por Reddit [P]. |
+| **Archive.org Wayback** (`archive.org/wayback/available?url=`, CDX) | Copias archivadas de páginas de Reddit | Términos del Internet Archive | **Sí** | **No sirve para minutos**: solo tiene lo que alguien archivó, con horas o días de demora. Útil solo para reconstruir historia (backfill). |
+| **Proxys CORS públicos** (allorigins MIT, cors-anywhere MIT, codetabs, corsproxy.io freemium 10K/mes) | Reenvían la petición desde su IP | Varía | Sí (con cupo) | Técnicamente posible, pero **no recomendado**: también son IP de datacenter (Reddit las bloquea igual), tienen cupos de 5 a 20 req/min y los mensajes pasan por un tercero. Además, rodear el bloqueo explícito de Reddit choca con sus términos. |
+
+**Propuesta.** `bot_reddit` en este orden:
+1. OAuth oficial, si Dirección carga los secrets;
+2. RSS directo (por si responde desde otra salida);
+3. PullPush / Arctic Shift como respaldo.
+
+Reddit no se elimina: queda con la fuente que responda.
+
+## 9. Feeds RSS ampliados (D-023-R3 T7)
+
+**Verificados por YIN** (sin URL exacta en la directiva; uso la canónica de cada sitio [I]): Bitcoin Magazine
+`https://bitcoinmagazine.com/.rss/full/`, CryptoSlate `https://cryptoslate.com/feed/`, BeInCrypto
+`https://beincrypto.com/feed/`.
+
+**Propuestos** (no verificables desde el contenedor: proxy bloqueado → [P], los prueba la sonda en Actions):
+
+| # | Feed | URL exacta | Cobertura |
+|---|---|---|---|
+| 1 | DL News | `https://www.dlnews.com/arc/outboundfeeds/rss/` | General, RWA, regulación |
+| 2 | Blockworks | `https://blockworks.co/feed` | Solana, DePIN, RWA |
+| 3 | Messari | `https://messari.io/rss` | Investigación, DePIN / RWA |
+| 4 | Google News "solana memecoin" | `https://news.google.com/rss/search?q=solana+memecoin&hl=en-US&gl=US&ceid=US:en` | Memecoins Solana |
+| 5 | Google News "pump.fun" | `https://news.google.com/rss/search?q=pump.fun&hl=en-US&gl=US&ceid=US:en` | Lanzamientos pump.fun |
+| 6 | Google News "DePIN crypto" | `https://news.google.com/rss/search?q=DePIN+crypto&hl=en-US&gl=US&ceid=US:en` | DePIN |
+| 7 | Google News "RWA tokenization" | `https://news.google.com/rss/search?q=RWA+tokenization&hl=en-US&gl=US&ceid=US:en` | RWA |
+| 8 | Cointelegraph tag memecoin | `https://cointelegraph.com/rss/tag/memecoin` | Memecoins |
+| 9 | Cointelegraph tag solana | `https://cointelegraph.com/rss/tag/solana` | Solana |
+
+Si un feed no responde en la sonda, se saca (P-13) y se busca otro.
+
+## 10. Nitter / X (D-023-R3 T8)
+
+**Instancias** [I, fuentes web del 02/10/2026; desde el contenedor no se puede probar]:
+- El 26/08/2026 bajaron `nitter.net` y `xcancel.com` tras reclamos legales de X.
+- Un reporte del 11/09 daba **1 instancia** sirviendo páginas completas (`nitter.tiekoetter.com`), 13 tapadas o
+  redirigidas y 28 caídas.
+- Listadas como funcionando al 02/10: `nitter.kareem.one`, `nitter.meowing.monster`, `nitter.netbub.com`,
+  `nitter.jaydenha.uk`, `shitter.thepixora.com`.
+- La wiki de zedeus/nitter (leída, [V]) todavía lista `nitter.poast.org`, `nitter.privacyredirect.com`,
+  `nitter.tiekoetter.com`, `nuku.trabun.org`, `nitter.catsarch.com` y `nitter.kareem.one`.
+- **Fuente de verdad en vivo: `status.d420.de`.** `bot_x_nitter` tiene que leer esa página para elegir instancia,
+  no usar una lista fija.
+
+**Repos de scraping de X sin login:**
+
+| Repo | Licencia | Modo | ¿Sin login? | Estado |
+|---|---|---|---|---|
+| [Alastrantia/nitter-mcp](https://github.com/Alastrantia/nitter-mcp) | MIT [V] | Pool de Nitter con chequeo de frescura | Sí | La mejor opción para `bot_x_nitter` (portar la lógica, no el MCP) |
+| [the-convocation/twitter-scraper](https://github.com/the-convocation/twitter-scraper) | MIT [V] | Guest token + GraphQL interno (TypeScript) | Sí, datos públicos limitados | Se rompe cada 2–4 semanas según las comparativas [I] |
+| [vladkens/twscrape](https://github.com/vladkens/twscrape) | MIT [V] | GraphQL con pool de cuentas | **No**: requiere cuentas de X | Descartado (cuentas) |
+| [Altimis/Scweet](https://github.com/Altimis/Scweet) | MIT [V] | GraphQL con cookies de navegador | **No**: requiere cookies | Descartado (cookies, como Agent-Reach en el doc 25) |
+| [XcrapCC/XCrapCC](https://github.com/XcrapCC/XCrapCC) | sin licencia [V] | Servicio hosteado xcrap.cc (REST/MCP) | Sí según el README | Servicio de terceros, límites desconocidos [P] |
+
+**Conclusión.** X sin login es la fuente más frágil.
+- `bot_x_nitter` va con instancias elegidas desde `status.d420.de`.
+- El guest token de the-convocation va como respaldo experimental: requiere Node.
+- Si en 24 h ninguna instancia devuelve contenido fresco, el bot no escribe nada y lo reporta. No falla el
+  pipeline.

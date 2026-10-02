@@ -52,7 +52,7 @@ import lib_info_signals as inf  # noqa: E402
 import lib_scoring_young as ly  # noqa: E402
 
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
-VERSION = "116-0.3"
+VERSION = "116-0.4"
 INSTANCE = (os.environ.get("EARLY_INSTANCE") or "a").strip().lower() or "a"   # Fase 10b: a (:07/:37), b (:22/:52)
 EARLY_DIR_REL = "02_Analisis/early"
 CLAIMS_REL = f"{EARLY_DIR_REL}/alerts"      # un archivo por mint = reclamo de la emisión entre instancias
@@ -68,6 +68,9 @@ YOUNG_DIR_REL = "02_Analisis/early/young"     # D-014-R-3: registro JSONL por to
 META_PER_POLL = 40                            # metadata IPFS de lanzamientos nuevos por poll
 META_BUDGET_S = 25                            # tope de tiempo por poll para la metadata (poll de 120 s)
 GITHUB_PER_POLL = 1                           # API de GitHub sin token: 60/h por IP
+TRADE_KEYS_MAX = 100                          # D-023-R3: mints jóvenes con trades suscriptos en PumpPortal [H]
+TRADE_KEEP = 300                              # trades guardados por mint
+TRADE_NEAR = 25                               # se siguen los trades de jóvenes con score >= umbral − 25
 YOUNG_NEAR = 15                               # RugCheck para jóvenes con score >= umbral − 15
 DEX_BATCH = 30
 RUGCHECK_URL = "https://api.rugcheck.xyz/v1/tokens/{mint}/report"
@@ -347,6 +350,7 @@ def evaluate(mint, entry, dx, state, now, scorer, root, min_age_min, threshold, 
     else:
         why = "emitible"
     return {"mint": mint, "score_base": base, "early": early, "score": score, "reasons": reasons,
+            "flags": inf.tradability(dx, liq),
             "age_min": round(age, 1) if age is not None else None, "emittable": why == "emitible", "why": why,
             "pool": dx.get("pairAddress"), "dex_id": dx.get("dexId"), "labels": dx.get("labels") or [],
             "price": dx.get("priceUsd")}
@@ -368,7 +372,17 @@ def young_signals(mint, entry, dx, state, now, info_ctx):
             inf.github_repo(repo)]
     snaps = (state.get("holders") or {}).get(mint) or []
     rug = snaps[-1] if snaps else None
-    struct = [inf.bonding_progress(dx), inf.holders_struct(rug), inf.dev_wallet(tok)]
+    prog = inf.bonding_progress(dx)
+    bond = push_series(state, "bonding", mint, [now, prog["s"]]) if prog else []
+    trades = (info_ctx.get("trades") or {}).get(mint) or []
+    holders = (rug or {}).get("holders")
+    if holders is None and trades:                       # sin RugCheck: compradores únicos del stream
+        holders = len({t[1] for t in trades if str(t[2]).lower() == "buy"})
+    txns = sum(int(dx.get(k) or 0) for k in ("txns_h1_buys", "txns_h1_sells"))
+    struct = [prog, inf.holders_struct(rug), inf.dev_wallet(tok),
+              inf.bonding_curve_velocity([(t, v) for t, v in bond]),
+              inf.unique_buyer_acceleration(trades, now), inf.avg_buy_size_trend(trades),
+              inf.holder_to_txn_ratio(holders, txns)]
     return price, info, struct, rug
 
 
@@ -376,7 +390,8 @@ def evaluate_young(mint, entry, dx, state, now, root, min_age_min, info_ctx):
     """Scorer joven (< 60 min): 60 % informacional / 25 % estructural / 15 % precio-volumen. Registra en JSONL."""
     price, info, struct, rug = young_signals(mint, entry, dx, state, now, info_ctx)
     token_data = {"token": entry.get("token") or {}, "dexscreener": dx}
-    d = ly.score_young_detail(token_data, price, info, now, rug, struct)
+    flags = inf.tradability(dx, (state.get("liquidity") or {}).get(mint))
+    d = ly.score_young_detail(token_data, price, info, now, rug, struct, flags)
     early = es.combine(price)
     early.update(bonus=0, reasons=[])                     # el precio/volumen ya está dentro del score joven
     age, score = d["age_min"], d["score"]
@@ -398,7 +413,7 @@ def evaluate_young(mint, entry, dx, state, now, root, min_age_min, info_ctx):
     return {"mint": mint, "score_base": score, "early": early, "score": score, "reasons": d["reasons"],
             "age_min": age, "emittable": why == "emitible", "why": why, "pool": dx.get("pairAddress"),
             "dex_id": dx.get("dexId"), "labels": dx.get("labels") or [], "price": dx.get("priceUsd"),
-            "scorer": "young", "scoring_version": ly.VERSION, "young": d,
+            "scorer": "young", "scoring_version": ly.VERSION, "young": d, "flags": flags,
             "near": score is not None and score >= ly.YOUNG_THRESHOLD - YOUNG_NEAR,
             "signals_young": (price, info, struct)}
 
@@ -670,13 +685,18 @@ def multichain_signals(targets, state, now, post, get, ctxs=None, fear_greed=Non
 
 class LaunchListener(threading.Thread):
     """subscribeNewToken en un hilo, con reconexión. drain() devuelve los lanzamientos que pasan el filtro de
-    script_82 (solAmount >= 0.5, marketCapSol 10–5000)."""
+    script_82 (solAmount >= 0.5, marketCapSol 10–5000).
+    D-023-R3: además se suscribe a los trades (subscribeTokenTrade) de los mints que pide set_trade_keys, para las
+    señales S-2/S-3 (compradores únicos, tamaño de compra). trades_snapshot() devuelve {mint: [(ts, wallet, side,
+    sol)]}. Los nombres de campo del evento de trade (txType, traderPublicKey, solAmount) son los del evento de
+    creación de PumpPortal [I: no verificado desde el contenedor]."""
 
-    def __init__(self, filter_fn):
+    def __init__(self, filter_fn, trade_keep=TRADE_KEEP):
         super().__init__(daemon=True)
         self.filter_fn, self._buf, self._lock, self.stop_flag = filter_fn, [], threading.Lock(), False
-        self.seen, self.connected_s = 0, 0.0
+        self.seen, self.connected_s, self.trades_seen = 0, 0.0, 0
         self._intervals, self._open = [], None
+        self._want, self._subscribed, self._trades, self._trade_keep = set(), set(), {}, trade_keep
 
     def intervals(self, now=None):
         """[inicio, fin] de cada conexión suscripta (la abierta, hasta now): mide la cobertura efectiva."""
@@ -691,6 +711,53 @@ class LaunchListener(threading.Thread):
         passed, _ = self.filter_fn(buf)
         return passed
 
+    def set_trade_keys(self, mints, cap=TRADE_KEYS_MAX):
+        with self._lock:
+            self._want = set(list(dict.fromkeys(m for m in mints if m))[:cap])
+            for m in list(self._trades):
+                if m not in self._want:
+                    del self._trades[m]
+
+    def trades_snapshot(self):
+        with self._lock:
+            return {m: list(v) for m, v in self._trades.items()}
+
+    def sync_messages(self):
+        """Mensajes de (des)suscripción pendientes para llevar _subscribed a _want. Puro sobre el estado."""
+        with self._lock:
+            add, drop = sorted(self._want - self._subscribed), sorted(self._subscribed - self._want)
+            self._subscribed = set(self._want)
+        out = []
+        if add:
+            out.append({"method": "subscribeTokenTrade", "keys": add})
+        if drop:
+            out.append({"method": "unsubscribeTokenTrade", "keys": drop})
+        return out
+
+    def handle_message(self, data, now=None):
+        """Procesa un evento: lanzamiento (create) al buffer; trade (buy/sell) de un mint seguido a su serie."""
+        if not isinstance(data, dict):
+            return
+        tx = str(data.get("txType") or "").lower()
+        if tx == "create":
+            tok = {k: data.get(k) for k in ("mint", "symbol", "name", "bondingCurveKey", "pool", "uri",
+                                            "signature", "traderPublicKey", "is_mayhem_mode")}
+            for k in ("solAmount", "marketCapSol", "initialBuy", "vTokensInBondingCurve", "vSolInBondingCurve"):
+                tok[k] = _f(data.get(k))
+            tok["timestamp"] = now_iso(now)
+            with self._lock:
+                self._buf.append(tok)
+                self.seen += 1
+        elif tx in ("buy", "sell"):
+            mint = data.get("mint")
+            with self._lock:
+                if mint in self._want:
+                    series = self._trades.setdefault(mint, [])
+                    series.append((now if now is not None else time.time(), data.get("traderPublicKey"), tx,
+                                   _f(data.get("solAmount"))))
+                    del series[:-self._trade_keep]
+                    self.trades_seen += 1
+
     def run(self):
         while not self.stop_flag:
             t0 = time.time()
@@ -701,6 +768,8 @@ class LaunchListener(threading.Thread):
             if self._open is not None:
                 self._intervals.append([self._open, time.time()])
                 self._open = None
+            with self._lock:
+                self._subscribed = set()          # conexión nueva: hay que volver a suscribir los trades
             self.connected_s += time.time() - t0
             time.sleep(3)
 
@@ -710,21 +779,16 @@ class LaunchListener(threading.Thread):
             await ws.send(json.dumps({"method": "subscribeNewToken"}))
             self._open = time.time()
             while not self.stop_flag:
+                for msg in self.sync_messages():
+                    await ws.send(json.dumps(msg))
                 try:
-                    msg = await asyncio.wait_for(ws.recv(), timeout=10)
+                    raw = await asyncio.wait_for(ws.recv(), timeout=10)
                 except asyncio.TimeoutError:
                     continue
-                data = json.loads(msg)
-                if data.get("txType") != "create":
+                try:
+                    self.handle_message(json.loads(raw))
+                except ValueError:
                     continue
-                tok = {k: data.get(k) for k in ("mint", "symbol", "name", "bondingCurveKey", "pool", "uri",
-                                                "signature", "traderPublicKey", "is_mayhem_mode")}
-                for k in ("solAmount", "marketCapSol", "initialBuy", "vTokensInBondingCurve", "vSolInBondingCurve"):
-                    tok[k] = _f(data.get(k))
-                tok["timestamp"] = now_iso()
-                with self._lock:
-                    self._buf.append(tok)
-                    self.seen += 1
 
 
 # ---------------------------------------------------------------------------
@@ -827,7 +891,7 @@ def alert_token(entry, dx, result, now):
     young = result.get("young") or {}
     young_scores = {k: young.get(k) for k in ("info_score", "struct_score", "pv_score", "h0_group")} if young else None
     return {"source": entry.get("source"), "windows": entry.get("windows"), "token": entry.get("token") or {},
-            "young_scores": young_scores,
+            "young_scores": young_scores, "tradability": result.get("flags"),
             "dexscreener": dx, "score": result["score"], "score_base": result["score_base"], "reasons": reasons,
             "early": {k: result["early"][k] for k in ("version", "bonus", "raw", "active", "reasons")},
             "detected_at": now_iso(now), "scoring_version": result.get("scoring_version") or "7.2.1+" + es.VERSION,
@@ -853,6 +917,8 @@ def emit_early(s97, root, mint, token, git, shadow, dry_run, now, gate_min=None)
               "scorer": token.get("scorer"), "scoring_version": token.get("scoring_version")}
     if token.get("young_scores"):                     # D-014-R-5: los tres subtotales en cada alerta (H-0)
         record.update(token["young_scores"])
+    if token.get("tradability"):                      # D-023-R3 T4: flag informativo, no bloquea
+        record.update(token["tradability"])
     claim_path = root / claim_rel(mint)
     detail_rel = f"02_Analisis/alerts/alert_{mint}_{ts}.json"
     if not dry_run:
@@ -910,6 +976,8 @@ def poll_once(ctx, now):
                 state.setdefault("clmm", {})[r["mint"]] = snap
     dexs = dexscreener_batch(ctx["get"], list(watch), ctx.get("sleep", time.sleep))
     info_ctx = young_info_context(ctx, root, watch, now, ctx["get"]) if ctx.get("young_scorer") else None
+    if info_ctx is not None and ctx.get("listener") and hasattr(ctx["listener"], "trades_snapshot"):
+        info_ctx["trades"] = ctx["listener"].trades_snapshot()
     results = []
     for mint, dx in dexs.items():
         if mint not in watch:
@@ -920,6 +988,10 @@ def poll_once(ctx, now):
         except Exception as e:
             print(f"[WARN] {mint[:10]}...: {type(e).__name__}: {e}")
     ctx["prev_results"] = results
+    if info_ctx is not None and ctx.get("listener") and hasattr(ctx["listener"], "set_trade_keys"):
+        young = sorted((r for r in results if r.get("scorer") == "young" and r["score"] is not None
+                        and r["score"] >= ly.YOUNG_THRESHOLD - TRADE_NEAR), key=lambda r: -r["score"])
+        ctx["listener"].set_trade_keys([r["mint"] for r in young])
     results.sort(key=lambda r: (not r["emittable"], -r["score"]))
 
     emitted = []
@@ -976,6 +1048,7 @@ def poll_once(ctx, now):
         state_out["clmm"] = {m: v for m, v in (state.get("clmm") or {}).items() if m in watch}
         state_out["meta"] = {m: v for m, v in (state.get("meta") or {}).items() if m in watch}
         state_out["ylog"] = {m: v for m, v in (state.get("ylog") or {}).items() if m in watch}
+        state_out["bonding"] = {m: v for m, v in (state.get("bonding") or {}).items() if m in watch}
         write_json_atomic(root / paths["watch"], dict(snapshot, state=state_out,
                                                           watch={m: {"source": e.get("source"), "since": e.get("since")}
                                                                  for m, e in watch.items()}))
