@@ -339,6 +339,88 @@ class EarlyWatch(unittest.TestCase):
         r = [x for x in c["prev_results"] if x["mint"] == MINT_A][0]
         self.assertIn("clmm_imbalance", r["early"]["active"])
 
+    # --- D-014-R-3: scorer joven ---------------------------------------------------------------------------------
+
+    def young_get(self, profiles=(), meta=None, repo=None):
+        base_get = self.fake_get
+
+        def get(url, timeout=None, headers=None):
+            if "token-profiles" in url:
+                return Resp([{"chainId": "solana", "tokenAddress": m} for m in profiles])
+            if "token-boosts" in url:
+                return Resp([{"chainId": "solana", "tokenAddress": m, "totalAmount": 500} for m in profiles])
+            if "ipfs" in url:
+                self.gets.append(url)
+                return Resp(meta or {})
+            if "api.github.com" in url:
+                self.gets.append(url)
+                return Resp(repo or {}, 200 if repo else 404)
+            return base_get(url, timeout, headers)
+        return get
+
+    def young_entry(self, mint, name="Frog King", symbol="FROG"):
+        return {"source": "pumpportal_live", "since": ew.now_iso(NOW - 15 * 60),
+                "token": {"mint": mint, "name": name, "symbol": symbol, "initialBuy": 10_000_000,
+                          "uri": f"https://ipfs.io/ipfs/{mint[:6]}"}}
+
+    def write_narrative(self, items=(), trending=()):
+        d = self.tmp / "02_Analisis" / "narrative"
+        (d / "_index.json").write_text(json.dumps({"coingecko_trending": list(trending)}))
+        (d / "_items.json").write_text(json.dumps({"items": list(items)}))
+
+    def test_joven_con_evidencia_informacional_emite_y_registra(self):
+        self.accumulate({})
+        self.write_narrative(items=[{"ts": NOW - 100, "a": [MINT_A], "c": [], "f": "reddit_rss"}] * 5,
+                             trending=[{"rank": 1, "symbol": "FROG", "name": "Frog"}])
+        meta = {"twitter": "https://x.com/f", "telegram": "https://t.me/f", "website": "https://github.com/f/frog",
+                "description": "x" * 60}
+        c = self.ctx(young_scorer=True, min_age_min=10, get=self.young_get([MINT_A], meta,
+                                                                           {"full_name": "f/frog", "stargazers_count": 99}))
+        c["watch"] = {MINT_A: self.young_entry(MINT_A), MINT_B: self.young_entry(MINT_B, "Frog Baby", "BFROG"),
+                      MINT_C: self.young_entry(MINT_C, "Cat", "CAT")}
+        self.pairs = [pair(MINT_A, 15, liq=0.0), pair(MINT_B, 15, liq=0.0), pair(MINT_C, 15, liq=0.0)]
+        for p in self.pairs:
+            p["dexId"], p["marketCap"] = "pumpfun", 34_500
+        snap = ew.poll_once(c, NOW)               # metadata y repo se traen antes de evaluar: emite en el 1.er poll
+        self.assertIn(MINT_A, [e["mint"] for e in snap["emitted"]])
+        self.assertEqual(ew.poll_once(c, NOW + 120)["emitted"], [])
+        rec = [r for r in self.early_alerts() if r["mint"] == MINT_A][0]
+        detail = json.loads((self.tmp / "02_Analisis" / "alerts" / f"alert_{MINT_A}_{rec['timestamp']}.json").read_text())
+        self.assertEqual((detail["scoring_version"], detail["scorer"]), (ew.ly.VERSION, "young"))
+        logs = list((self.tmp / "02_Analisis" / "early" / "young").glob("a_*.jsonl"))
+        self.assertEqual(len(logs), 1)
+        lines = [json.loads(x) for x in logs[0].read_text().splitlines()]
+        mine = [x for x in lines if x["mint"] == MINT_A]
+        self.assertTrue(mine[-1]["emitted"])
+        self.assertGreaterEqual(mine[-1]["signals_info"]["mentions"], 1.0)
+        self.assertEqual(mine[-1]["signals_info"]["trending_match"], 1.0)
+        self.assertGreater(mine[-1]["signals_info"]["narrative_wave"], 0)
+        self.assertEqual(sum("api.github.com" in u for u in self.gets), 1)
+
+    def test_joven_sin_info_no_emite_y_registra_una_vez(self):
+        self.accumulate({})
+        self.write_narrative()
+        c = self.ctx(young_scorer=True, min_age_min=10, get=self.young_get())
+        c["watch"] = {MINT_C: self.young_entry(MINT_C, "Cat", "CAT")}
+        self.pairs = [pair(MINT_C, 15, liq=0.0)]
+        snap = ew.poll_once(c, NOW)
+        self.assertEqual(snap["emitted"], [])
+        self.assertTrue(snap["top"][0]["why"].startswith("joven:"))
+        ew.poll_once(c, NOW + 120)
+        log = list((self.tmp / "02_Analisis" / "early" / "young").glob("a_*.jsonl"))[0]
+        self.assertEqual(len(log.read_text().splitlines()), 1)          # mismo score: no se repite
+
+    def test_maduro_sigue_con_v721(self):
+        self.accumulate({MINT_A: self.acc_entry(MINT_A)})
+        self.write_narrative()
+        self.scores[MINT_A] = 70
+        self.pairs = [pair(MINT_A, 90)]
+        snap = ew.poll_once(self.ctx(young_scorer=True, min_age_min=10, get=self.young_get()), NOW)
+        self.assertEqual(len(snap["emitted"]), 1)
+        rec = self.early_alerts()[0]
+        detail = json.loads((self.tmp / "02_Analisis" / "alerts" / f"alert_{MINT_A}_{rec['timestamp']}.json").read_text())
+        self.assertEqual(detail["scorer"], "v7.2.1+early")
+
     def test_lanzamientos_en_vivo_y_poda(self):
         w = ew.merge_launches({}, [{"mint": MINT_A, "timestamp": ew.now_iso(NOW - 200 * 60)},
                                    {"mint": MINT_B, "timestamp": ew.now_iso(NOW - 5 * 60)}], NOW)

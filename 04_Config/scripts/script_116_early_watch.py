@@ -48,9 +48,11 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 import lib_early_signals as es  # noqa: E402
+import lib_info_signals as inf  # noqa: E402
+import lib_scoring_young as ly  # noqa: E402
 
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
-VERSION = "116-0.2"
+VERSION = "116-0.3"
 INSTANCE = (os.environ.get("EARLY_INSTANCE") or "a").strip().lower() or "a"   # Fase 10b: a (:07/:37), b (:22/:52)
 EARLY_DIR_REL = "02_Analisis/early"
 CLAIMS_REL = f"{EARLY_DIR_REL}/alerts"      # un archivo por mint = reclamo de la emisión entre instancias
@@ -59,6 +61,14 @@ EARLY_MIN_AGE_MIN_DEFAULT = 10              # Fase 10b (Dirección): 30 -> 10; e
 PHOENIX_BOOK = "https://perp-api.phoenix.trade/v1/view/orderbook/{symbol}"
 RAYDIUM_LINE = "https://api-v3.raydium.io/pools/line/position?id={pool}"
 DEX_BATCH_URL = "https://api.dexscreener.com/tokens/v1/solana/{mints}"
+DEX_PROFILES_URL = "https://api.dexscreener.com/token-profiles/latest/v1"
+DEX_BOOSTS_URL = "https://api.dexscreener.com/token-boosts/latest/v1"
+GITHUB_REPO_URL = "https://api.github.com/repos/{repo}"
+YOUNG_DIR_REL = "02_Analisis/early/young"     # D-014-R-3: registro JSONL por token del scorer joven
+META_PER_POLL = 40                            # metadata IPFS de lanzamientos nuevos por poll
+META_BUDGET_S = 25                            # tope de tiempo por poll para la metadata (poll de 120 s)
+GITHUB_PER_POLL = 1                           # API de GitHub sin token: 60/h por IP
+YOUNG_NEAR = 15                               # RugCheck para jóvenes con score >= umbral − 15
 DEX_BATCH = 30
 RUGCHECK_URL = "https://api.rugcheck.xyz/v1/tokens/{mint}/report"
 HYPERLIQUID_INFO = "https://api.hyperliquid.xyz/info"
@@ -303,8 +313,12 @@ def holders_signal(state, mint):
     return es.holder_accumulation([(s["ts"], s.get("holders"), s.get("top10_pct")) for s in snaps])
 
 
-def evaluate(mint, entry, dx, state, now, scorer, root, min_age_min, threshold):
-    """Score v7.2.1 con datos frescos + bono anticipatorio. Devuelve el resultado (sin efectos salvo las series)."""
+def evaluate(mint, entry, dx, state, now, scorer, root, min_age_min, threshold, info_ctx=None):
+    """Score v7.2.1 con datos frescos + bono anticipatorio. Devuelve el resultado (sin efectos salvo las series).
+    D-014-R-3: con info_ctx (scorer joven activo) y par de < 60 min, puntúa lib_scoring_young (evaluate_young)."""
+    created0 = dx.get("pairCreatedAt") or 0
+    if info_ctx is not None and created0 > 0 and (now - created0 / 1000) / 60 < ly.SCOPE_MAX_AGE_MIN:
+        return evaluate_young(mint, entry, dx, state, now, root, min_age_min, info_ctx)
     base, reasons = scorer(entry.get("token") or {}, dx)
     # Paridad con script_97: dentro de los 60 min de la detección vale el score de script_82 si es mayor
     stored, det = entry.get("score_82"), parse_iso(entry.get("since"))
@@ -338,8 +352,132 @@ def evaluate(mint, entry, dx, state, now, scorer, root, min_age_min, threshold):
             "price": dx.get("priceUsd")}
 
 
+def young_signals(mint, entry, dx, state, now, info_ctx):
+    """Señales del scorer joven: (precio/volumen, informacionales, estructurales, rug)."""
+    tok = entry.get("token") or {}
+    name, symbol = tok.get("name"), tok.get("symbol")
+    liq = push_series(state, "liquidity", mint, [now, dx.get("liquidityUsd")])
+    price = es.dex_signals(dx, [(t, v) for t, v in liq]) + [holders_signal(state, mint)]
+    meta = (state.get("meta") or {}).get(mint, {}).get("data")
+    repo = github_link_cached(state, meta)
+    info = [inf.narrative_wave(mint, name, symbol, info_ctx.get("keywords") or {}),
+            inf.trending_match(name, symbol, info_ctx.get("trending")),
+            inf.metadata_socials(meta),
+            inf.dex_profile(mint, info_ctx.get("profiles"), info_ctx.get("boosts")),
+            inf.mentions(mint, symbol, info_ctx.get("items"), now),
+            inf.github_repo(repo)]
+    snaps = (state.get("holders") or {}).get(mint) or []
+    rug = snaps[-1] if snaps else None
+    struct = [inf.bonding_progress(dx), inf.holders_struct(rug), inf.dev_wallet(tok)]
+    return price, info, struct, rug
+
+
+def evaluate_young(mint, entry, dx, state, now, root, min_age_min, info_ctx):
+    """Scorer joven (< 60 min): 60 % informacional / 25 % estructural / 15 % precio-volumen. Registra en JSONL."""
+    price, info, struct, rug = young_signals(mint, entry, dx, state, now, info_ctx)
+    token_data = {"token": entry.get("token") or {}, "dexscreener": dx}
+    d = ly.score_young_detail(token_data, price, info, now, rug, struct)
+    early = es.combine(price)
+    early.update(bonus=0, reasons=[])                     # el precio/volumen ya está dentro del score joven
+    age, score = d["age_min"], d["score"]
+    if not d["fires"]:
+        why = (f"joven: score {score} < {ly.YOUNG_THRESHOLD}" if score < ly.YOUNG_THRESHOLD
+               else f"joven: info {d['parts']['info']:.0f} < {ly.INFO_MIN}")
+    elif age < min_age_min:
+        why = f"edad {age:.1f} < {min_age_min} min"
+    elif not dx.get("priceUsd"):
+        why = "sin precio"
+    else:
+        why = "emitible"
+    log = state.setdefault("ylog", {})
+    if info_ctx.get("log_path") and ly.should_log(log.get(mint), d):
+        sym = (entry.get("token") or {}).get("symbol")
+        ly.append_jsonl(Path(root) / info_ctx["log_path"],
+                        ly.young_record(mint, sym, d, price, info, struct, now_iso(now), info_ctx.get("instance")))
+        log[mint] = score
+    return {"mint": mint, "score_base": score, "early": early, "score": score, "reasons": d["reasons"],
+            "age_min": age, "emittable": why == "emitible", "why": why, "pool": dx.get("pairAddress"),
+            "dex_id": dx.get("dexId"), "labels": dx.get("labels") or [], "price": dx.get("priceUsd"),
+            "scorer": "young", "scoring_version": ly.VERSION, "young": d,
+            "near": score is not None and score >= ly.YOUNG_THRESHOLD - YOUNG_NEAR,
+            "signals_young": (price, info, struct)}
+
+
+def github_link_cached(state, meta):
+    repo = inf.github_link(meta) if meta else None
+    return ((state.get("gh") or {}).get(repo) or {}).get("data") if repo else None
+
+
+def young_info_context(ctx, root, watch, now, get):
+    """Contexto informacional del poll: trending y menciones (script_115), perfiles/boosts de DexScreener (2
+    llamadas), índice de palabras clave de los lanzamientos de la última hora. Y trae metadata IPFS de los
+    lanzamientos nuevos y, con cupo, el repo de GitHub enlazado."""
+    state = ctx["state"]
+    idx_doc = read_json(root / "02_Analisis" / "narrative" / "_index.json", {}) or {}
+    items_doc = read_json(root / "02_Analisis" / "narrative" / "_items.json", {}) or {}
+    profiles, boosts = set(), {}
+    for url, kind in ((DEX_PROFILES_URL, "p"), (DEX_BOOSTS_URL, "b")):
+        try:
+            r = get(url, timeout=15)
+            data = r.json() if r.status_code == 200 else []
+        except Exception:
+            data = []
+        for row in data if isinstance(data, list) else []:
+            if not isinstance(row, dict) or str(row.get("chainId")) != "solana" or not row.get("tokenAddress"):
+                continue
+            if kind == "p":
+                profiles.add(row["tokenAddress"])
+            else:
+                boosts[row["tokenAddress"]] = max(boosts.get(row["tokenAddress"], 0),
+                                                  _f(row.get("totalAmount") or row.get("amount")))
+    launches = []
+    for mint, e in watch.items():
+        since = parse_iso(e.get("since"))
+        tok = e.get("token") or {}
+        if since is not None and now - since <= 3600:
+            launches.append((mint, tok.get("name"), tok.get("symbol")))
+    meta = state.setdefault("meta", {})
+    fetched, t_start = 0, time.monotonic()
+    for mint, e in watch.items():
+        uri = (e.get("token") or {}).get("uri")
+        if fetched >= META_PER_POLL or time.monotonic() - t_start > META_BUDGET_S:
+            break
+        if not uri or mint in meta:
+            continue
+        fetched += 1
+        try:
+            r = get(uri, timeout=6)
+            data = r.json() if r.status_code == 200 else None
+        except Exception:
+            data = None
+        slim = {k: str(data.get(k) or "")[:160] for k in ("twitter", "telegram", "website", "description")} \
+            if isinstance(data, dict) else None
+        meta[mint] = {"ts": now, "data": slim}
+    gh = state.setdefault("gh", {})
+    asked = 0
+    for mint in watch:
+        repo = inf.github_link((meta.get(mint) or {}).get("data"))
+        if not repo or repo in gh or asked >= GITHUB_PER_POLL:
+            continue
+        asked += 1
+        try:
+            r = get(GITHUB_REPO_URL.format(repo=repo), timeout=10)
+            data = r.json() if r.status_code == 200 else None
+        except Exception:
+            data = None
+        gh[repo] = {"ts": now, "data": {k: data.get(k) for k in ("full_name", "stargazers_count", "created_at",
+                                                                 "pushed_at")} if isinstance(data, dict) else None}
+    day = datetime.fromtimestamp(now, timezone.utc).strftime("%Y-%m-%d")
+    inst = ctx.get("instance") or INSTANCE
+    return {"trending": idx_doc.get("coingecko_trending"), "items": items_doc.get("items"),
+            "profiles": profiles, "boosts": boosts, "keywords": inf.keyword_index(launches),
+            "log_path": f"{YOUNG_DIR_REL}/{inst}_{day}.jsonl", "instance": inst}
+
+
 def rugcheck_targets(results, state, now, threshold, per_poll=RUGCHECK_PER_POLL, refresh_s=RUGCHECK_REFRESH_S):
-    near = [r for r in results if r["score_base"] is not None and r["score_base"] + NEAR_THRESHOLD >= threshold]
+    near = [r for r in results if r.get("near") if "near" in r] + [
+        r for r in results if "near" not in r and r["score_base"] is not None
+        and r["score_base"] + NEAR_THRESHOLD >= threshold]
     near.sort(key=lambda r: -r["score_base"])
     out = []
     for r in near:
@@ -689,7 +827,8 @@ def alert_token(entry, dx, result, now):
     return {"source": entry.get("source"), "windows": entry.get("windows"), "token": entry.get("token") or {},
             "dexscreener": dx, "score": result["score"], "score_base": result["score_base"], "reasons": reasons,
             "early": {k: result["early"][k] for k in ("version", "bonus", "raw", "active", "reasons")},
-            "detected_at": now_iso(now), "scoring_version": "7.2.1+" + es.VERSION, "early_watch": VERSION}
+            "detected_at": now_iso(now), "scoring_version": result.get("scoring_version") or "7.2.1+" + es.VERSION,
+            "early_watch": VERSION, "scorer": result.get("scorer") or "v7.2.1+early"}
 
 
 def emit_early(s97, root, mint, token, git, shadow, dry_run, now, gate_min=None):
@@ -764,12 +903,14 @@ def poll_once(ctx, now):
             if snap:
                 state.setdefault("clmm", {})[r["mint"]] = snap
     dexs = dexscreener_batch(ctx["get"], list(watch), ctx.get("sleep", time.sleep))
+    info_ctx = young_info_context(ctx, root, watch, now, ctx["get"]) if ctx.get("young_scorer") else None
     results = []
     for mint, dx in dexs.items():
         if mint not in watch:
             continue
         try:
-            results.append(evaluate(mint, watch[mint], dx, state, now, ctx["scorer"], root, min_age, threshold))
+            results.append(evaluate(mint, watch[mint], dx, state, now, ctx["scorer"], root, min_age, threshold,
+                                    info_ctx))
         except Exception as e:
             print(f"[WARN] {mint[:10]}...: {type(e).__name__}: {e}")
     ctx["prev_results"] = results
@@ -787,6 +928,11 @@ def poll_once(ctx, now):
         watch.pop(r["mint"], None)          # emitida o reclamada por la otra instancia: sale de la vigilancia
         if rec:
             emitted.append(rec)
+            if r.get("scorer") == "young" and info_ctx and info_ctx.get("log_path"):
+                price_s, info_s, struct_s = r["signals_young"]
+                ly.append_jsonl(root / info_ctx["log_path"], ly.young_record(
+                    r["mint"], rec.get("symbol"), r["young"], price_s, info_s, struct_s, now_iso(now),
+                    info_ctx.get("instance"), emitted=True))
 
     mc = {}
     if ctx.get("multichain", True):
@@ -822,6 +968,8 @@ def poll_once(ctx, now):
         state_out["holders"] = {m: v for m, v in (state.get("holders") or {}).items() if m in watch}
         state_out["liquidity"] = {m: v for m, v in (state.get("liquidity") or {}).items() if m in watch}
         state_out["clmm"] = {m: v for m, v in (state.get("clmm") or {}).items() if m in watch}
+        state_out["meta"] = {m: v for m, v in (state.get("meta") or {}).items() if m in watch}
+        state_out["ylog"] = {m: v for m, v in (state.get("ylog") or {}).items() if m in watch}
         write_json_atomic(root / paths["watch"], dict(snapshot, state=state_out,
                                                           watch={m: {"source": e.get("source"), "since": e.get("since")}
                                                                  for m, e in watch.items()}))
@@ -832,7 +980,7 @@ def run_loop(ctx, loop_minutes, poll_seconds, clock=time.time, sleep=time.sleep)
     start, last_commit, polls = clock(), clock(), 0
     root = Path(ctx["root"])
     paths = instance_paths(ctx.get("instance"))
-    own = [paths["watch"], paths["signals"], CLAIMS_REL]
+    own = [paths["watch"], paths["signals"], CLAIMS_REL, YOUNG_DIR_REL]
     while True:
         t = clock()
         try:
@@ -886,9 +1034,11 @@ def main(argv=None):
            "watch": {}, "scorer": isolated_scorer(s82.score_token), "s97": s97, "git": git,
            "shadow": shadow, "dry_run": args.dry_run, "threshold": s97.EMIT_MIN_SCORE, "min_age_min": None,
            "poll_seconds": args.poll_seconds, "listener": listener, "instance": INSTANCE,
-           "intervals_prev": prev.get("listener_intervals") or []}
+           "intervals_prev": prev.get("listener_intervals") or [],
+           "young_scorer": (os.environ.get("YOUNG_SCORER") or "true").strip().lower() in {"1", "true", "yes", "on"}}
     print(f"[EARLY] {VERSION} · instancia {INSTANCE} · poll {args.poll_seconds}s · bucle {args.loop_minutes} min · "
-          f"umbral {s97.EMIT_MIN_SCORE} · edad mínima {resolve_min_age(ROOT)} min · sombra={shadow}")
+          f"umbral {s97.EMIT_MIN_SCORE} · edad mínima {resolve_min_age(ROOT)} min · sombra={shadow} · scorer joven "
+          f"{ly.VERSION if ctx['young_scorer'] else 'apagado'} (umbral {ly.YOUNG_THRESHOLD}, info >= {ly.INFO_MIN})")
     if args.once:
         if listener:
             time.sleep(min(args.poll_seconds, 60))   # junta lanzamientos antes del único poll
