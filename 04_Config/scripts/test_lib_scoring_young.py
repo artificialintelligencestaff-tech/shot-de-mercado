@@ -62,11 +62,24 @@ class Young(unittest.TestCase):
         t = token()
         full_struct = [{"name": n, "s": 1.0} for n in ly.STRUCT_WEIGHTS]
         full_price = [{"name": n, "s": 1.0, "points": p} for n, p in ly.PRICE_SIGNALS.items()]
-        weak_info = [{"name": "metadata_socials", "s": 1.0}]                       # 10 < INFO_MIN
+        weak_info = [{"name": "dex_profile", "s": 1.0}]                            # 5 < INFO_MIN (10)
         d = ly.score_young_detail(t, full_price, weak_info, NOW, structural=full_struct)
-        self.assertEqual(d["score"], 50)                                          # 10 + 25 + 15
+        self.assertEqual(d["score"], 45)                                          # 5 + 25 + 15 >= 40
         self.assertFalse(d["fires"])
         self.assertFalse(ly.fires(d["score"], d["parts"]["info"]))
+        enough = ly.score_young_detail(t, full_price, [{"name": "metadata_socials", "s": 1.0}], NOW,
+                                       structural=full_struct)
+        self.assertEqual((enough["score"], enough["fires"]), (50, True))          # info 10 = mínimo
+
+    def test_umbrales_d014r5_y_subtotales(self):
+        self.assertEqual((ly.YOUNG_THRESHOLD, ly.INFO_MIN, ly.H0_INFO_SPLIT), (40, 10, 20))
+        t = token()
+        d = ly.score_young_detail(t, [], [{"name": "mentions", "s": 1.0}, {"name": "trending_match", "s": 0.5}], NOW,
+                                  structural=[{"name": "bonding_progress", "s": 1.0}])
+        self.assertEqual((d["info_score"], d["struct_score"], d["pv_score"], d["h0_group"]), (20.0, 10.0, 0, "info_ge20"))
+        rec = ly.young_record("M", "T", d, [], [], [], "x", "a")
+        self.assertEqual((rec["info_score"], rec["struct_score"], rec["pv_score"], rec["h0_group"]),
+                         (20.0, 10.0, 0, "info_ge20"))
 
     def test_info_domina_sobre_precio(self):
         t = token()

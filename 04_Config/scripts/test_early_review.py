@@ -93,6 +93,28 @@ class Review(unittest.TestCase):
         self.add(3, 30, gate=10)
         self.assertEqual([r["mint"] for r in er.trial_rows(self.root)], ["M003pump"])
 
+    def test_h0_fisher_y_veredicto(self):
+        self.assertAlmostEqual(er.fisher_one_sided(5, 5, 0, 5), 1 / 252, places=6)
+        self.assertEqual(er.fisher_one_sided(0, 5, 5, 5), 1.0)
+        rows = [{"h0_group": "info_ge20", "primary": "hit" if i < 15 else "miss"} for i in range(20)] + \
+               [{"h0_group": "info_lt20", "primary": "hit" if i < 4 else "miss"} for i in range(20)]
+        v = er.evaluate_h0(rows)
+        self.assertEqual((v["n_resolved"], v["verdict"]), (40, "H-0 rechazada"))
+        same = [dict(r, h0_group="info_lt20" if r["h0_group"] == "info_ge20" else "info_ge20") for r in rows]
+        self.assertEqual(er.evaluate_h0(same)["verdict"], "H-0 no rechazada")
+        self.assertEqual(er.evaluate_h0(rows[:30])["verdict"], "pendiente")
+
+    def test_h0_toma_las_alertas_con_subtotales(self):
+        pool, _ = self.add(7, 30)
+        d = self.root / "02_Analisis" / "early" / "alerts"
+        rec = json.loads((d / "M007pump.json").read_text())
+        rec.update(h0_group="info_ge20", info_score=31.0, struct_score=12.0, pv_score=3.0)
+        (d / "M007pump.json").write_text(json.dumps(rec))
+        rows = er.h0_rows(self.root)
+        self.assertEqual([(r["h0_group"], r["pool"], r["info_score"]) for r in rows], [("info_ge20", pool, 31.0)])
+        rep = er.run(self.root, Source({pool: "hit"}), NOW)
+        self.assertEqual(rep["h0"]["groups"]["info_ge20"], {"n": 1, "k_hit": 1, "rate": 1.0})
+
     def test_cobertura_union_de_instancias(self):
         d = self.root / "02_Analisis" / "early"
         h = 3600

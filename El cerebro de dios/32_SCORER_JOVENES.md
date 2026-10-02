@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: v0.2 (D-014-R-3) — integrado en la rama, sin merge
+status: v0.3 (D-014-R-5) — integrado en la rama, sin merge
 last_updated: 2026-10-02
-version: 0.2
+version: 0.3
 ---
 
 # 32 — Scorer de tokens jóvenes (< 60 min), v0.2: informacional primero
@@ -37,16 +37,20 @@ se registra.
 **Liquidez 0 aceptada.** Se saca el filtro de $20K por P-13: dejaba afuera al 95,6 % de los lanzamientos (§4 de
 la v0.1).
 
-**Regla de emisión.** Se emite si:
-- `score ≥ YOUNG_THRESHOLD` (50 [H], configurable por env);
-- **subtotal informacional ≥ 20**: sin evidencia informacional no hay alerta, aunque la estructura y el precio
-  sumen hasta 40;
+**Regla de emisión (v0.3, D-014-R-5).** Se emite si:
+- `score ≥ YOUNG_THRESHOLD` (**40**; antes 50; configurable por env);
+- **subtotal informacional ≥ 10** (antes 20);
 - edad ≥ edad mínima del early watch (10 min, `_gate.json`);
 - hay precio y guía de compra.
 
-**Por qué 50.** Exige información y además otra cosa. Con info 20 (por ejemplo, trending + metadata) hacen falta
-30 más entre estructura y precio, que rara vez llegan juntos al máximo (25 + 15 = 40). Con info ≥ 35 alcanza con
-estructura media. **No está calibrado**: P-13 lo revisa con los resultados (§3).
+Umbrales 40 / 10 decididos por Dirección (D-014-R-5). Con info 10 (por ejemplo, metadata completa) hacen falta
+30 de estructura + precio, de un máximo de 40. **No están calibrados**: P-13 los revisa con los resultados (§3),
+y H-0 (§6) mide si la parte informacional aporta.
+
+**Cada alerta registra** `info_score`, `struct_score`, `pv_score` y `h0_group` (`info_ge20` / `info_lt20`):
+- en el reclamo `early/alerts/<mint>.json`;
+- en `_all_alerts.json` y `historical_alerts.jsonl` (los adopta script_97);
+- en cada línea del JSONL.
 
 **Variantes registradas** (flag): A, B y C sobre precio/volumen (como en la v0.1) e `I_ge2_info` (≥ 2 señales
 informacionales activas). Cada línea del JSONL lleva `variant = young-0.2`.
@@ -98,7 +102,7 @@ sesión: estrellas y fechas sin verificar por API [I].
 | [AtenovD/grokbot-pumpfun](https://github.com/AtenovD/grokbot-pumpfun) | 24 | v1.1 | Agente "narrativa" sobre nombre/símbolo + libro de reputación de creadores (bloqueo tras rug) | MIT | **No para nosotros**: pide una API de LLM paga (Grok) y en realidad indexa hood.fun, no pump.fun. La reputación de creadores es una idea gratis reutilizable [P]. |
 | [ian05012/solana-memecoin-dataset](https://github.com/ian05012/solana-memecoin-dataset) | 4 | n/d (4 commits) | **Dataset**: 44.460 snapshots tempranos, 9,5 M trades, ~80 features y etiquetas de retorno a 1 h/6 h/24 h/3 d (junio 2026, GMGN + Helius) | MIT | **Sí, para calibrar** el estructural y el de precio (no trae menciones). Parquet (~2 GB de RAM): lo tiene que bajar YIN o Actions. |
 | [aethernet404/rugcheck](https://github.com/aethernet404/rugcheck) | 0 | 2026-08-22 | Mint/freeze authority, top-10, creador, supply; RPC público, stdlib | sin licencia | **No** (sin licencia); ya usamos RugCheck API. |
-| [nkd077/solana-memecoin-research](https://github.com/nkd077/solana-memecoin-research) | 0 | n/d (3 commits) | 11 hipótesis sobre 29.814 lanzamientos de pump.fun | sin licencia | **Como evidencia**: informa que **ninguna señal social, de metadata, de dev o de holders dio ventaja**; solo el 0,52 % gradúa; la mediana post-graduación es −75 % a −95 % [I: autor único, sin revisión]. |
+| [nkd077/solana-memecoin-research](https://github.com/nkd077/solana-memecoin-research) | 0 | n/d (3 commits) | 11 hipótesis sobre 29.814 lanzamientos de pump.fun | sin licencia | **Baseline de calibración** (D-014-R-5): tasas de la población (0,52 % gradúa; retornos de entrada y post-graduación). Su métrica no es la nuestra (+20 % antes de −30 %), así que no refuta las señales [I: autor único]. |
 | [ExpertVagabond/solana-narrative-tracker](https://github.com/ExpertVagabond/solana-narrative-tracker) | 0 | n/d (35 commits) | Narrativas desde 8 fuentes gratuitas + síntesis con LLM | MIT | **Parcial**: la recolección es gratis; la síntesis pide la API de Anthropic, que es paga. Escala de ecosistema, no de token. |
 | [Figu3/crypto-narrative-tracker](https://github.com/Figu3/crypto-narrative-tracker) | 0 | n/d (32 commits) | Mindshare de 25 narrativas (Google Trends + DefiLlama), semanal | sin licencia | Taxonomía de narrativas como idea [P]; escala semanal. |
 | Repos de sentiment (rishikonapure 48★, Drabble 108★, crypto-sentiment 45★…) | 15–108 | viejos | VADER/RoBERTa sobre Twitter y noticias de BTC/ETH | varias | **No**: dependen de la API de Twitter y apuntan a majors, no a tokens de minutos. |
@@ -111,14 +115,16 @@ Lo que sale de la revisión: **ningún repo gratuito resuelve las "menciones de 
 
 ## 5. Bloqueos y riesgos
 
-1. **`mentions` casi sin materia prima** [V]. El almacén de script_115 tiene **43 ítems en 26 h**, y solo 6 con
+1. **`mentions` con poca materia prima: tarea, no bloqueo** (D-014-R-5). Se amplían fuentes con la arquitectura multi-bot del doc 33 [V el diagnóstico]. El almacén de script_115 tiene **43 ítems en 26 h**, y solo 6 con
    dirección. Para un token de 15 minutos va a dar 0 casi siempre. Es el peso más alto del grupo (15/60). Opciones
    para YIN / Dirección:
    - sumar fuentes (más canales de `t.me/s`, subreddits de memecoins como r/SolanaMemeCoins, búsqueda de 4chan por
      dirección);
    - o bajar su peso a favor de `narrative_wave` hasta que haya volumen.
-2. **Evidencia externa en contra** (nkd077, [I]). En 29.814 lanzamientos, las señales sociales y de metadata no
-   dieron ventaja. Con emisión real desde el día 1, P-13 tiene que mirar el JSONL temprano.
+2. **nkd077 como baseline de calibración, no como refutación** (corrección de Dirección, D-014-R-5). Ese trabajo
+   mide **graduación** (0,52 % migra al AMM) y retornos de entrada/post-graduación. Nosotros medimos **+20 % antes
+   de −30 % en 24–48 h**: son métricas distintas. Lo que aporta: tasas base de la población de pump.fun
+   (graduación, distribución de retornos) para comparar la tasa de nuestras alertas contra la población.
 3. **Metadata IPFS.** `ipfs.io` puede ser lento o rate-limitar; hay un tope de 25 s por poll. Si falla, la señal
    queda sin dato.
 4. **GitHub sin token** (60/h por IP): 1 consulta por poll e instancia.
@@ -126,3 +132,25 @@ Lo que sale de la revisión: **ningún repo gratuito resuelve las "menciones de 
    Actions; los tests son sin red. La parte de red la ejecuta YIN o el workflow.
 6. **Umbral 50 sin calibrar.** Con emisión real puede dar demasiadas o ninguna alerta: hay que mirar el JSONL de la
    primera hora.
+
+## 6. H-0 pre-registrada (2026-10-02, D-014-R-5)
+
+Registrada **antes** de ver cualquier resultado del scorer joven.
+
+- **Hipótesis:** las señales informacionales no discriminan mejor que las estructurales y de precio/volumen en
+  tokens de < 60 min.
+- **Predicción:** la tasa primaria de las alertas con `info_score ≥ 20` **no supera** la de las alertas con
+  `info_score < 20`, con **n ≥ 40** primarias resueltas en total.
+- **Métrica:** primaria (+20 % antes de −30 % en 48 h, desde el precio de la alerta, `evaluate_outcome` con velas
+  de 15 min de GeckoTerminal).
+- **Población:** alertas emitidas por el scorer joven (`scorer = young`). El grupo sale de `h0_group`, registrado
+  al emitir. No se reclasifica después.
+- **Prueba:** Fisher exacto a una cola (¿la tasa de `info_ge20` es mayor?), **α = 0,10**. Se decide recién con
+  n ≥ 40 y con los dos grupos no vacíos.
+- **Decisión:**
+  - **p < 0,10** → H-0 rechazada: lo informacional discrimina y se mantienen los pesos 60/25/15.
+  - **p ≥ 0,10** → H-0 no rechazada: por P-13 se revisan los pesos o se buscan otras señales informacionales.
+- **Implementación:** `early_review.py` → `evaluate_h0`, cada 6 h, en `02_Analisis/diagnostics/early_review.json`
+  (campo `h0`). Mientras n < 40, el veredicto es `pendiente`.
+- **Riesgo conocido:** el umbral de emisión (40) y el mínimo informacional (10) seleccionan qué tokens llegan a
+  ser alertas. La comparación es entre alertas, no entre toda la población.

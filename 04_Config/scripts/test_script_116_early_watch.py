@@ -383,8 +383,12 @@ class EarlyWatch(unittest.TestCase):
             p["dexId"], p["marketCap"] = "pumpfun", 34_500
         snap = ew.poll_once(c, NOW)               # metadata y repo se traen antes de evaluar: emite en el 1.er poll
         self.assertIn(MINT_A, [e["mint"] for e in snap["emitted"]])
-        self.assertEqual(ew.poll_once(c, NOW + 120)["emitted"], [])
+        self.assertNotIn(MINT_A, [e["mint"] for e in ew.poll_once(c, NOW + 120)["emitted"]])   # no se repite
         rec = [r for r in self.early_alerts() if r["mint"] == MINT_A][0]
+        self.assertEqual(rec["h0_group"], "info_ge20")                    # D-014-R-5: subtotales en la alerta
+        self.assertGreaterEqual(rec["info_score"], 20)
+        self.assertIn("struct_score", rec)
+        self.assertIn("pv_score", rec)
         detail = json.loads((self.tmp / "02_Analisis" / "alerts" / f"alert_{MINT_A}_{rec['timestamp']}.json").read_text())
         self.assertEqual((detail["scoring_version"], detail["scorer"]), (ew.ly.VERSION, "young"))
         logs = list((self.tmp / "02_Analisis" / "early" / "young").glob("a_*.jsonl"))

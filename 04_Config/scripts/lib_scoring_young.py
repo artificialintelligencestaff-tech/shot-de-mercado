@@ -10,7 +10,7 @@ Ponderación (decisión de Dirección: para < 60 min la narrativa informacional 
   15 % precio/volumen   (lib_early_signals: las 5 señales que existen para un token joven, ahora complementarias)
 
 score = Σ peso · s (0..100). Señal sin dato = 0 (conservador) y baja la cobertura, que se informa.
-Emite si score >= YOUNG_THRESHOLD (50 [H]) Y el subtotal informacional >= INFO_MIN (20): sin evidencia
+Emite si score >= YOUNG_THRESHOLD (40, D-014-R-5) Y el subtotal informacional >= INFO_MIN (10): sin evidencia
 informacional no hay alerta, aunque la estructura y el flujo sumen. Liquidez 0 (curva de bonding) se acepta.
 Variantes (A/B/C sobre precio/volumen, I sobre informacionales) se registran en el JSONL para comparar.
 Parámetros heurísticos [H]; P-13: lo que no sirva al resultado se saca.
@@ -19,7 +19,7 @@ import json
 import os
 from pathlib import Path
 
-VERSION = "young-0.2"
+VERSION = "young-0.3"
 SCOPE_MAX_AGE_MIN = 60
 INFO_WEIGHTS = {"mentions": 15, "narrative_wave": 15, "trending_match": 10, "metadata_socials": 10,
                 "dex_profile": 5, "github_repo": 5}                                   # 60
@@ -28,8 +28,9 @@ PRICE_WEIGHT = 15
 PRICE_SIGNALS = {"volume_acceleration": 3, "buy_pressure_shift": 2, "quiet_accumulation": 3,
                  "liquidity_inflow": 2, "holder_accumulation": 2}                     # puntos máx. (lib_early_signals)
 ELIGIBLE = tuple(PRICE_SIGNALS)
-YOUNG_THRESHOLD = int(os.environ.get("YOUNG_THRESHOLD") or 50)
-INFO_MIN = 20
+YOUNG_THRESHOLD = int(os.environ.get("YOUNG_THRESHOLD") or 40)   # D-014-R-5: 50 -> 40
+INFO_MIN = 10                        # D-014-R-5: 20 -> 10
+H0_INFO_SPLIT = 20                   # H-0 pre-registrada: info_score >= 20 vs < 20 (doc 32 §6)
 MIN_HOLDERS = 50                     # [H] kill switch solo si RugCheck dio el dato
 MAX_TOP10_PCT = 50.0                 # [H]
 MAX_DEV_SUPPLY_PCT = 10.0            # [H]
@@ -137,7 +138,10 @@ def score_young_detail(token_data, signals, signals_info=None, now_s=None, rug=N
     fire = score >= YOUNG_THRESHOLD and parts["info"] >= INFO_MIN
     reasons.append(f"score {score} (umbral {YOUNG_THRESHOLD}, info mínima {INFO_MIN}) → "
                    + ("EMITE" if fire else "no emite"))
-    return {"score": score, "raw": raw, "parts": {k: round(v, 2) for k, v in parts.items()}, "coverage": covered,
+    return {"score": score, "raw": raw, "parts": {k: round(v, 2) for k, v in parts.items()},
+            "info_score": round(parts["info"], 2), "struct_score": round(parts["struct"], 2),
+            "pv_score": round(parts["price"], 2), "h0_group": "info_ge20" if parts["info"] >= H0_INFO_SPLIT else "info_lt20",
+            "coverage": covered,
             "blocks": blocks, "fires": fire, "variants": variants(signals, signals_info), "reasons": reasons,
             "age_min": round(age, 1), "variant": VERSION}
 
@@ -172,6 +176,8 @@ def young_record(mint, symbol, detail, signals, signals_info, structural, now_is
         return {s["name"]: s["s"] for s in sigs or [] if s}
     return {"at": now_iso, "mint": mint, "symbol": symbol, "instance": instance, "version": VERSION,
             "age_min": detail.get("age_min"), "score": detail.get("score"), "raw": detail.get("raw"),
+            "info_score": detail.get("info_score"), "struct_score": detail.get("struct_score"),
+            "pv_score": detail.get("pv_score"), "h0_group": detail.get("h0_group"),
             "parts": detail.get("parts"), "coverage": detail.get("coverage"), "fires": detail.get("fires"),
             "emitted": emitted, "blocks": detail.get("blocks"), "variants": detail.get("variants"),
             "variant": detail.get("variant"), "signals_info": slim(signals_info), "structural": slim(structural),

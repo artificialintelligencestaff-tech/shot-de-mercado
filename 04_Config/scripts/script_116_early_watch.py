@@ -824,7 +824,10 @@ def alert_token(entry, dx, result, now):
     if result["early"]["bonus"]:
         reasons.append(f"Anticipación (lib_early_signals {es.VERSION}): +{result['early']['bonus']} — "
                        + "; ".join(result["early"]["reasons"]))
+    young = result.get("young") or {}
+    young_scores = {k: young.get(k) for k in ("info_score", "struct_score", "pv_score", "h0_group")} if young else None
     return {"source": entry.get("source"), "windows": entry.get("windows"), "token": entry.get("token") or {},
+            "young_scores": young_scores,
             "dexscreener": dx, "score": result["score"], "score_base": result["score_base"], "reasons": reasons,
             "early": {k: result["early"][k] for k in ("version", "bonus", "raw", "active", "reasons")},
             "detected_at": now_iso(now), "scoring_version": result.get("scoring_version") or "7.2.1+" + es.VERSION,
@@ -846,7 +849,10 @@ def emit_early(s97, root, mint, token, git, shadow, dry_run, now, gate_min=None)
               "confidence": confidence, "initial_price": price,
               "status": "shadow" if shadow else "active_tracking", "trust_updates": [], "early": True,
               "age_min_at_alert": round((now - (token["dexscreener"].get("pairCreatedAt") or 0) / 1000) / 60, 1),
-              "gate_min": gate_min, "instance": INSTANCE, "early_watch": VERSION, "telegram_sent": None}
+              "gate_min": gate_min, "instance": INSTANCE, "early_watch": VERSION, "telegram_sent": None,
+              "scorer": token.get("scorer"), "scoring_version": token.get("scoring_version")}
+    if token.get("young_scores"):                     # D-014-R-5: los tres subtotales en cada alerta (H-0)
+        record.update(token["young_scores"])
     claim_path = root / claim_rel(mint)
     detail_rel = f"02_Analisis/alerts/alert_{mint}_{ts}.json"
     if not dry_run:
