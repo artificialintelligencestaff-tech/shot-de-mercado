@@ -92,6 +92,19 @@ def instance_paths(instance=None):
             "op": f"early_watch_{inst}"}
 
 
+def merge_intervals(intervals):
+    """Unión de [inicio, fin]: colapsa solapados (el intervalo abierto del listener crece en cada poll y el archivo
+    guarda versiones anteriores del mismo intervalo)."""
+    out = []
+    for a, b in sorted((float(i[0]), float(i[1])) for i in intervals or []
+                       if isinstance(i, (list, tuple)) and len(i) == 2 and i[1] >= i[0]):
+        if out and a <= out[-1][1]:
+            out[-1][1] = max(out[-1][1], b)
+        else:
+            out.append([a, b])
+    return out
+
+
 def claim_rel(mint):
     return f"{CLAIMS_REL}/{mint}.json"
 
@@ -786,7 +799,11 @@ def poll_once(ctx, now):
 
     top = sorted(results, key=lambda r: -r["score"])[:15]
     listener = ctx.get("listener")
-    intervals = [i for i in (ctx.get("intervals_prev") or []) + (listener.intervals(now) if listener else [])
+    # Fase 11: se une con lo que ya está en el archivo después del pull (la corrida anterior de esta instancia puede
+    # haber escrito después del checkout de esta: Actions hace checkout del SHA del momento en que se encoló)
+    on_file = (read_json(root / paths["watch"], {}) or {}).get("listener_intervals") or []
+    intervals = [i for i in merge_intervals(list(on_file) + list(ctx.get("intervals_prev") or [])
+                                            + (listener.intervals(now) if listener else []))
                  if i[1] >= now - COVERAGE_KEEP_S]
     snapshot = {"version": VERSION, "instance": ctx.get("instance") or INSTANCE, "updated_at": now_iso(now),
                 "poll_seconds": ctx["poll_seconds"], "listener_intervals": intervals,
@@ -858,13 +875,15 @@ def main(argv=None):
     s97 = _load_module("script_97_emit_alerts", "script_97_emit_alerts.py")
     s82 = _load_module("script_82_final_detection", "script_82_final_detection.py")
     shadow = (os.environ.get("SHADOW_MODE") or "").strip().lower() in {"1", "true", "yes", "on"}
+    git = Git(ROOT, enabled=not args.no_git)
+    git.pull()     # Fase 11: el checkout es del SHA de cuando se encoló la corrida; el estado se lee del main actual
     prev = read_json(ROOT / instance_paths()["watch"], {})
     listener = None
     if not args.no_listen:
         listener = LaunchListener(s82.filter_pumpportal_tokens)
         listener.start()
     ctx = {"root": ROOT, "get": requests.get, "post": requests.post, "state": prev.get("state") or {},
-           "watch": {}, "scorer": isolated_scorer(s82.score_token), "s97": s97, "git": Git(ROOT, enabled=not args.no_git),
+           "watch": {}, "scorer": isolated_scorer(s82.score_token), "s97": s97, "git": git,
            "shadow": shadow, "dry_run": args.dry_run, "threshold": s97.EMIT_MIN_SCORE, "min_age_min": None,
            "poll_seconds": args.poll_seconds, "listener": listener, "instance": INSTANCE,
            "intervals_prev": prev.get("listener_intervals") or []}

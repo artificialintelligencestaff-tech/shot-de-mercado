@@ -270,3 +270,17 @@ si la cobertura queda bajo ~95 % o si los 2 min de poll pesan en el gap.
 | **Meteora DLMM** `dlmm.datapi.meteora.ag` (30 req/s, sin key) | Pools, OHLCV, volumen | Encontrada. El endpoint de bins no está confirmado [P]. |
 | **OpenBook v2** | CLOB on-chain | Sin REST pública propia: hace falta leer las cuentas por RPC o pasar por proveedores (Bitquery, bloXroute, con cuenta). No integrada. |
 | PumpSwap / Raydium CPMM (donde vive la mayoría de las memecoins) | Producto constante | No hay "libro": la profundidad es simétrica por construcción, así que un desequilibrio no informa nada. Para memecoins vale la serie de liquidez del pool (`liquidity_inflow`). |
+
+## 10. Estado real en main (2026-10-02 ~00:10 UTC, base de la Fase 11)
+
+| Hecho | Dato | Rótulo |
+|---|---|---|
+| Early watch en producción | Las 2 instancias corren desde las 22:22 UTC (dispatch), después por cron. Corridas de ~38 min consecutivas. | [V] Actions |
+| Alertas tempranas | 3, todas enviadas y adoptadas en `_all_alerts.json`: **HOOKED** (22:23, 88 sin bono, 153 min de edad, t+1h +1,1 %), **silent** (22:45, 55+3, 244 min, t+1h −3,5 %), **Nike** (22:57, 55+1, **25 min**, t+1h **−99,8 %**). | [V] |
+| Edad al emitir | 25 / 153 / 244 min. **El mínimo de 10 min no es lo que limita.** En 20 polls (a#2), el mejor lanzamiento en vivo llegó a 49. Solo uno tocó 65, a los 6 min, y lo frenó el mínimo. Con v7.2.1 los lanzamientos nuevos casi nunca llegan a 56 en sus primeros minutos (bonos temporales omitidos antes de los 60 min, `ACCEL_GATE_MIN_AGE`). | [V] log + `_watch_*` · [I] causa |
+| El bono en el margen | 2 de 3 alertas cruzaron 56 solo por el bono (+1 y +3). Una de esas dos es Nike: −99,8 % en 1 h (patrón H-84). | [V] |
+| Listener | Continuo dentro de cada corrida (a#2: 22:57–23:35 sin cortes; ~30 lanzamientos por minuto). | [V] commits de `_watch_a.json` |
+| **Bug 1 (corregido)** | Actions hace checkout del SHA de **cuando se encoló** la corrida (a#3: encolada 23:15, arrancó 23:35). script_116 leía `_watch_<inst>.json` antes del primer `git pull` y pisaba los intervalos más nuevos, así que la cobertura persistida subestimaba. Fix: pull antes de leer + unión de intervalos con lo que hay en el archivo. | [V] |
+| **Bug 2 (corregido)** | Sin `PYTHONUNBUFFERED`, todo el stdout de 38 min salía junto al terminar el job (log de a#2: 20 polls con la misma marca de tiempo). | [V] |
+| Instancias en fase | Como la cola siempre tiene una corrida esperando (cron cada 30 min, bucle de 40), cada corrida arranca cuando termina la anterior. a y b quedaron sincronizadas por los dispatch simultáneos de las 22:22 y el desfase de 15 min se perdió. El hueco entre corridas es de ~6–15 s por instancia, así que la cobertura igual es ~99 % [I]. | [V] tiempos de los jobs |
+| Pendiente de correr | `early_review.yml` (primera corrida 00:41 UTC) y `latency_analysis.yml` (manual; el `.json` en main sigue siendo el estructural sin red). | [V] |

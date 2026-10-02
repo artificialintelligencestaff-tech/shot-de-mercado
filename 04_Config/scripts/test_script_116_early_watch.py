@@ -290,6 +290,19 @@ class EarlyWatch(unittest.TestCase):
         saved = json.loads((self.tmp / "02_Analisis" / "early" / "_watch_a.json").read_text())
         self.assertEqual(saved["instance"], "a")
 
+    def test_intervalos_se_unen_con_el_archivo_tras_el_pull(self):
+        """Fase 11: la corrida anterior de la instancia escribió después del checkout de esta; no se pisa."""
+        self.assertEqual(ew.merge_intervals([[0, 10], [5, 20], [30, 40], [25, 26]]), [[0, 20], [25, 26], [30, 40]])
+        self.assertEqual(ew.merge_intervals([[5, 1], "x", None]), [])
+        (self.tmp / "02_Analisis" / "early" / "_watch_a.json").write_text(json.dumps(
+            {"listener_intervals": [[NOW - 3000, NOW - 600]]}))         # versión nueva (38 min) ya en main
+        listener = ew.LaunchListener(lambda toks: (toks, []))
+        listener._open = NOW - 500
+        self.accumulate({})
+        c = self.ctx(listener=listener, intervals_prev=[[NOW - 3000, NOW - 2400]])   # versión vieja del checkout
+        snap = ew.poll_once(c, NOW)
+        self.assertEqual(snap["listener_intervals"], [[NOW - 3000, NOW - 600], [NOW - 500, NOW]])
+
     def test_phoenix_de_respaldo_y_formatos(self):
         def get(url, timeout=None, headers=None):
             if "phoenix" in url:
