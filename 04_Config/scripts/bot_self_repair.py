@@ -14,7 +14,8 @@ bot_self_repair.py — bot reparador de los bots de fuentes (patrón #20; doc 34
   _state.json / _health.json que no parsea   se renombra a .corrupt-<ts> (el dueño lo recrea) más de 1 por día
   _state.json inflado (seen > 50.000)        recorta seen a la ventana de dedup              —
 
-Archivos propios (un dueño por archivo): 02_Analisis/sources/_repair_state.json y _repair_log.jsonl (7 días), más el
+Archivos propios (un dueño por archivo): 02_Analisis/sources/_repair_state.json y _repair_log.jsonl (7 días),
+_episodes_self_repair.jsonl (memoria episódica #12: feed_caido y bot_reparado, solo transiciones), más el
 bloque <!-- AUTO:repair --> de _servicios_open_source/_INSTALADOS.md (una fila por problema abierto; se borra
 sola al resolverse). Toca el _state.json de un bot solo para renombrarlo si está corrupto o recortar `seen`.
 No toca código, YAML de configuración, score ni emisión.
@@ -31,6 +32,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import lib_episodic_memory as episodes  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
 VERSION = "repair-0.1"
@@ -296,6 +298,7 @@ class Repair:
             (self.base / "_repair_state.json").write_text(
                 json.dumps(self.state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
             append_log(self.base / "_repair_log.jsonl", self.actions, self.now)
+            episodes.write_episodes(episodes.repair_episodes(self.actions, self.now), self.root, "self_repair")
             update_installed(self.root / "_servicios_open_source" / "_INSTALADOS.md", self.state["escalations"])
         return {"actions": self.actions, "escalations": self.state["escalations"]}
 

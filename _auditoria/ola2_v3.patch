@@ -1,0 +1,2336 @@
+diff --git a/02_Analisis/hypotheses/_registry.jsonl b/02_Analisis/hypotheses/_registry.jsonl
+new file mode 100644
+index 00000000..1202ba39
+--- /dev/null
++++ b/02_Analisis/hypotheses/_registry.jsonl
+@@ -0,0 +1 @@
++{"acceptance": {"all": [["p_value", ">=", 0.1]]}, "event": "register", "group": "a", "hash": "2538fc0e0d8916a9", "id": "H-0", "labels": {"aceptada": "H-0 no rechazada", "pendiente": "pendiente", "rechazada": "H-0 rechazada"}, "prediction": {"alpha": 0.1, "event": "+20% antes de -30% en 48 h desde el precio de la alerta (velas 15 min GeckoTerminal)", "group_a": "info_ge20", "group_b": "info_lt20", "group_field": "h0_group", "hit": "hit", "min_n": 40, "miss": "miss", "outcome_field": "primary", "population": "alertas del scorer joven (scorer = young), grupo fijado al emitir", "test": "fisher_one_sided"}, "registered_at": "2026-10-02", "rejection": {"all": [["p_value", "<", 0.1]]}, "source": "doc 32 §6 (D-014-R-5); evaluador de producción: early_review.evaluate_h0", "statement": "H-0: info_score >= 20 no supera a info_score < 20 en tasa primaria (tokens < 60 min)", "ts": 1791034201, "v": 1}
+diff --git a/04_Config/scripts/bot_self_repair.py b/04_Config/scripts/bot_self_repair.py
+index 9b0683bd..e39a6eef 100644
+--- a/04_Config/scripts/bot_self_repair.py
++++ b/04_Config/scripts/bot_self_repair.py
+@@ -14,7 +14,8 @@ bot_self_repair.py — bot reparador de los bots de fuentes (patrón #20; doc 34
+   _state.json / _health.json que no parsea   se renombra a .corrupt-<ts> (el dueño lo recrea) más de 1 por día
+   _state.json inflado (seen > 50.000)        recorta seen a la ventana de dedup              —
+ 
+-Archivos propios (un dueño por archivo): 02_Analisis/sources/_repair_state.json y _repair_log.jsonl (7 días), más el
++Archivos propios (un dueño por archivo): 02_Analisis/sources/_repair_state.json y _repair_log.jsonl (7 días),
++_episodes_self_repair.jsonl (memoria episódica #12: feed_caido y bot_reparado, solo transiciones), más el
+ bloque <!-- AUTO:repair --> de _servicios_open_source/_INSTALADOS.md (una fila por problema abierto; se borra
+ sola al resolverse). Toca el _state.json de un bot solo para renombrarlo si está corrupto o recortar `seen`.
+ No toca código, YAML de configuración, score ni emisión.
+@@ -31,6 +32,7 @@ from pathlib import Path
+ 
+ SCRIPTS = Path(__file__).resolve().parent
+ sys.path.insert(0, str(SCRIPTS))
++import lib_episodic_memory as episodes  # noqa: E402
+ import lib_sources_store as store  # noqa: E402
+ 
+ VERSION = "repair-0.1"
+@@ -296,6 +298,7 @@ class Repair:
+             (self.base / "_repair_state.json").write_text(
+                 json.dumps(self.state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+             append_log(self.base / "_repair_log.jsonl", self.actions, self.now)
++            episodes.write_episodes(episodes.repair_episodes(self.actions, self.now), self.root, "self_repair")
+             update_installed(self.root / "_servicios_open_source" / "_INSTALADOS.md", self.state["escalations"])
+         return {"actions": self.actions, "escalations": self.state["escalations"]}
+ 
+diff --git a/04_Config/scripts/lib_adversarial_debate.py b/04_Config/scripts/lib_adversarial_debate.py
+new file mode 100644
+index 00000000..fab7d0de
+--- /dev/null
++++ b/04_Config/scripts/lib_adversarial_debate.py
+@@ -0,0 +1,460 @@
++#!/usr/bin/env python3
++"""
++lib_adversarial_debate.py — debate adversario formalizado (patrón #8, doc 36 §1 paso 6 y §4.1).
++
++Antes de aceptar que una señal funciona, dos roles discuten sobre LA MISMA evidencia:
++  advocate    busca soporte: significancia, tamaño del efecto, n holgado, consistencia por submuestra, placebo que
++              el real supera con significancia, estabilidad temporal.
++  challenger  intenta romperla: n insuficiente, efecto chico o en contra, una submuestra que invierte el signo CON
++              significancia, placebo que rinde con significancia y que el real no supera, inestabilidad temporal
++              significativa, datos faltantes, dependencia de una sola submuestra, ausencia de placebo.
++Sin LLM: cada argumento sale de una regla explícita con su peso. Determinista: los tests son exactos (Fisher,
++hipergeométrica); solo el placebo de medianas usa Monte Carlo, con semilla derivada del hash de los datos.
++
++Control de error (D-058, auditoría Claude1): una regla del challenger solo refuta con un test formal detrás.
++  C4  la submuestra invertida debe ser significativa EN CONTRA (Fisher a una cola invertido, α = 0,10); si no lo
++      es, se registra como ruido con peso 0.
++  C5  placebo vs real con test de permutación exacto (hipergeométrico, estratificado por grupo): refuta solo si el
++      placebo es significativo por sí mismo Y el real no lo supera con significancia (p ≥ α).
++  A6/C6 (permutación de etiquetas de grupo) eliminadas: con resultados binarios son el mismo test exacto de Fisher
++      y contaban dos veces la misma evidencia.
++  C7  igual que C4 para la mitad del periodo con el signo cambiado.
++  C9  sin la submuestra más grande, el efecto restante tiene que invertirse (no alcanza con perder significancia:
++      eso es pérdida de potencia, no evidencia).
++Sin significancia en el total y sin fatales, el veredicto es "inconclusa" (doc 36 paso 7: se sigue midiendo), no
++"refutada": la falta de potencia no es evidencia en contra.
++Calibración por simulación: `calibrate()`; los pesos y cortes son [H] hasta calibrar con datos reales (doc 36 §4.1).
++
++Afirmación que se debate: "el efecto que predice la hipótesis es real".
++  fisher_one_sided  → tasa(grupo A) − tasa(grupo B) > 0
++  rate_vs_baseline  → tasa − baseline > 0
++  median_ci         → mediana > 0
++(Para H-0, que es una nula, "sostenida" significa que el efecto informacional es real, es decir, H-0 rechazada con
++robustez.)
++
++Veredicto:
++  insuficiente  n < min_n (no hay debate posible)
++  refutada      algún argumento fatal del challenger, o el challenger pesa más o igual que el advocate
++  inconclusa    sin significancia en el total y sin fatales
++  sostenida     hay significancia, no hay fatales y el advocate pesa más
++confianza = peso del lado ganador / peso total (0–1).
++
++Entrada: run_debate(hypothesis_id, evidence_set, root=None)
++  evidence_set = {"rows": [...],                       filas como las de evaluate_hypothesis
++                  "placebo_rows": [...] (opcional),    mismas filas medidas en fechas desplazadas ±6–24 h
++                  "subsample_fields": ["chain", "week"] (opcional; "week" sale del tiempo de cada fila)}
++Solo biblioteca estándar.
++"""
++import argparse
++import json
++import math
++import random
++import statistics
++import sys
++from datetime import datetime, timezone
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_normalize as norm  # noqa: E402
++import lib_scientific_method as sm  # noqa: E402
++
++# Pesos y cortes: [H] hasta calibrar con datos reales (doc 36 §4.1). La calibración sintética está en calibrate().
++ALPHA = 0.10
++EFFECT_MIN_PP = 10.0          # doc 36 §2: diferencia ≥ 10 pp
++EFFECT_TINY_PP = 5.0
++SUB_MIN_N = 10                # una submuestra con menos filas resueltas no vota
++CONSISTENT_SHARE = 0.75
++MISSING_MAX = 0.30
++PERMUTATIONS = 500              # solo placebo vs real con medianas (Monte Carlo)
++TIME_FIELDS = ("t0", "ts", "alert_ts", "timestamp")
++
++
++# ---------------------------------------------------------------------------
++# Lectura de la evidencia
++# ---------------------------------------------------------------------------
++
++def effect_of(test, result):
++    """(efecto en pp o unidades, ¿significativo a favor?, p o None) según la prueba preregistrada."""
++    if not result.get("valid"):
++        return None, False, None
++    if test == "fisher_one_sided":
++        p = result.get("p_value")
++        return result.get("diff_pp"), p is not None and p < ALPHA, p
++    if test == "rate_vs_baseline":
++        return result.get("diff_pp"), result.get("wilson_lo", 0) > result.get("baseline", 1), None
++    if test == "median_ci":
++        return result.get("median"), (result.get("ci_lo") or 0) > 0, None
++    return None, False, None
++
++
++def against_of(pred, result):
++    """(¿significativo EN CONTRA de lo predicho?, p o None): el mismo test con la dirección invertida."""
++    if not result.get("valid"):
++        return False, None
++    if pred["test"] == "fisher_one_sided":
++        a, b = result["groups"][pred["group_a"]], result["groups"][pred["group_b"]]
++        p = round(sm.fisher_one_sided(b["k_hit"], b["n"], a["k_hit"], a["n"]), 4)
++        return p < ALPHA, p
++    if pred["test"] == "rate_vs_baseline":
++        return result.get("wilson_hi", 1) < result.get("baseline", 0), None
++    if pred["test"] == "median_ci":
++        return result.get("ci_hi") is not None and result["ci_hi"] < 0, None
++    return False, None
++
++
++def row_time(r):
++    for f in TIME_FIELDS:
++        t = norm.timestamp(r.get(f)) if r.get(f) is not None else None
++        if t:
++            return t
++    return None
++
++
++def week_of(r):
++    t = row_time(r)
++    if not t:
++        return None
++    y, w, _ = datetime.fromtimestamp(t, timezone.utc).isocalendar()
++    return f"{y}-W{w:02d}"
++
++
++def resolved_rows(rows, pred):
++    if pred["test"] == "median_ci":
++        f = pred["value_field"]
++        return [r for r in rows if isinstance(r.get(f), (int, float)) and not isinstance(r.get(f), bool)]
++    f, hit, miss = pred.get("outcome_field", "primary"), pred.get("hit", "hit"), pred.get("miss", "miss")
++    res = [r for r in rows if r.get(f) in (hit, miss)]
++    if pred["test"] == "fisher_one_sided":
++        gf = pred.get("group_field", "group")
++        res = [r for r in res if r.get(gf) in (pred["group_a"], pred["group_b"])]
++    return res
++
++
++def run_test(pred, rows):
++    return sm.TESTS[pred["test"]](rows, pred)
++
++
++def judge(pred, rows):
++    """Resultado + lectura en ambas direcciones de un subconjunto de filas."""
++    res = run_test(pred, rows)
++    eff, sig, p = effect_of(pred["test"], res)
++    against, p_against = against_of(pred, res)
++    return {"n": res.get("n", 0), "effect": eff, "significant": sig, "p_value": p, "against": against,
++            "p_against": p_against}
++
++
++def sub_key(r, field):
++    key = week_of(r) if field == "week" else r.get(field)
++    return None if key is None else str(key)
++
++
++def subsamples(pred, rows, fields):
++    """Lectura por submuestra. Un campo con una sola submuestra evaluable no prueba nada y no vota."""
++    out = {}
++    for field in fields:
++        groups, votes = {}, {}
++        for r in rows:
++            key = sub_key(r, field)
++            if key is not None:
++                groups.setdefault(key, []).append(r)
++        for key, g in sorted(groups.items()):
++            if len(g) < SUB_MIN_N:
++                continue
++            j = judge(pred, g)
++            if j["effect"] is not None:
++                votes[f"{field}={key}"] = {k: j[k] for k in ("n", "effect", "against", "p_against")}
++        if len(votes) >= 2:
++            out.update(votes)
++    return out
++
++
++# ---------------------------------------------------------------------------
++# Placebo vs real: test formal de que el efecto real supera al del placebo (C5 / A5)
++# ---------------------------------------------------------------------------
++# Es un test de permutación de la pertenencia real/placebo. Con resultados binarios su distribución es exacta
++# (hipergeométrica), así que se calcula sin azar. Para medianas se usa Monte Carlo con semilla.
++# (La permutación de etiquetas de grupo de la versión anterior, A6/C6, se eliminó: con resultados binarios y
++# márgenes fijos ES el test exacto de Fisher, así que duplicaba A1/C2.)
++
++def _hits(pred, rows):
++    f, hit = pred.get("outcome_field", "primary"), pred.get("hit", "hit")
++    return sum(r.get(f) == hit for r in rows), len(rows)
++
++
++def _hyper(N, K, n):
++    """P(X = x) de una hipergeométrica: x éxitos al sacar n de N con K éxitos."""
++    total = math.comb(N, n)
++    return {x: math.comb(K, x) * math.comb(N - K, n - x) / total
++            for x in range(max(0, n - (N - K)), min(n, K) + 1)}
++
++
++def placebo_gap_p(pred, rows, placebo, seed):
++    """p (una cola) de que efecto(real) − efecto(placebo) sea tan grande como el observado si real y placebo
++    fueran intercambiables. En Fisher se permuta dentro de cada grupo (A y B), así cada lado conserva su
++    composición."""
++    if pred["test"] == "fisher_one_sided":
++        gf = pred.get("group_field", "group")
++        side = {}
++        for name, data in (("r", rows), ("p", placebo)):
++            for g in (pred["group_a"], pred["group_b"]):
++                side[name, g] = _hits(pred, [r for r in data if r.get(gf) == g])
++        (kar, nar), (kbr, nbr) = side["r", pred["group_a"]], side["r", pred["group_b"]]
++        (kap, nap), (kbp, nbp) = side["p", pred["group_a"]], side["p", pred["group_b"]]
++        if not all((nar, nbr, nap, nbp)):
++            return None
++        ka, kb = kar + kap, kbr + kbp
++
++        def gap(x, y):                         # x, y: aciertos del lado real en A y en B
++            return (x / nar - y / nbr) - ((ka - x) / nap - (kb - y) / nbp)
++        observed = gap(kar, kbr)
++        pa, pb = _hyper(nar + nap, ka, nar), _hyper(nbr + nbp, kb, nbr)
++        p = sum(px * py for x, px in pa.items() for y, py in pb.items() if gap(x, y) >= observed - 1e-12)
++        return round(min(1.0, p), 4)
++    if pred["test"] == "rate_vs_baseline":
++        (kr, nr), (kp, np_) = _hits(pred, rows), _hits(pred, placebo)
++        return round(sm.fisher_one_sided(kr, nr, kp, np_), 4) if nr and np_ else None
++    f = pred["value_field"]
++    real, plac = [r[f] for r in rows], [r[f] for r in placebo]
++    if not real or not plac:
++        return None
++    observed = statistics.median(real) - statistics.median(plac)
++    pool, n_r, rng, ge = real + plac, len(real), random.Random(seed), 0
++    for _ in range(PERMUTATIONS):
++        rng.shuffle(pool)
++        if statistics.median(pool[:n_r]) - statistics.median(pool[n_r:]) >= observed - 1e-12:
++            ge += 1
++    return round((ge + 1) / (PERMUTATIONS + 1), 4)
++
++
++def halves(pred, rows):
++    timed = sorted((r for r in rows if row_time(r)), key=row_time)
++    if len(timed) < 2 * SUB_MIN_N:
++        return None
++    mid = len(timed) // 2
++    a, b = judge(pred, timed[:mid]), judge(pred, timed[mid:])
++    return None if a["effect"] is None or b["effect"] is None else (a, b)
++
++
++def features(reg, evidence):
++    pred = reg["prediction"]
++    rows = [r for r in evidence.get("rows") or [] if isinstance(r, dict)]
++    res_rows = resolved_rows(rows, pred)
++    result = run_test(pred, rows)
++    effect, significant, p = effect_of(pred["test"], result)
++    against, p_against = against_of(pred, result)
++    fx = {"test": pred["test"], "n": result.get("n", 0), "min_n": pred.get("min_n", 1), "effect": effect,
++          "significant": significant, "p_value": p, "against": against, "p_against": p_against,
++          "valid": bool(result.get("valid")),
++          "missing_share": round(1 - len(res_rows) / len(rows), 4) if rows else 0.0}
++    if effect is None:
++        return fx, result
++    seed = int(sm.sha(res_rows), 16)
++    fx["subsamples"] = subsamples(pred, res_rows, evidence.get("subsample_fields") or ["chain", "week"])
++    h = halves(pred, res_rows)
++    fx["halves"] = [{k: x[k] for k in ("n", "effect", "against", "p_against")} for x in h] if h else None
++    if fx["subsamples"]:                       # dependencia: ¿sin la submuestra más grande sigue el signo?
++        big = max(fx["subsamples"].items(), key=lambda kv: kv[1]["n"])[0]
++        field, key = big.split("=", 1)
++        rest = [r for r in res_rows if sub_key(r, field) != key]
++        j = judge(pred, rest) if rest else {"effect": None, "significant": False}
++        fx["without_largest"] = {"dropped": big, "effect": j["effect"], "significant": j["significant"]}
++    placebo = resolved_rows([r for r in evidence.get("placebo_rows") or [] if isinstance(r, dict)], pred)
++    if placebo:
++        jp = judge(pred, placebo)
++        fx["placebo"] = {"effect": jp["effect"], "significant": jp["significant"], "p_value": jp["p_value"],
++                         "gap_p": placebo_gap_p(pred, res_rows, placebo, seed + 1)}
++    return fx, result
++
++
++# ---------------------------------------------------------------------------
++# Roles
++# ---------------------------------------------------------------------------
++
++def arg(role, rule, claim, weight, fatal=False, **evidence):
++    return {"role": role, "rule": rule, "claim": claim, "weight": weight, "fatal": fatal, "evidence": evidence}
++
++
++def advocate(fx):
++    out = []
++    eff = fx["effect"]
++    if fx["significant"]:
++        out.append(arg("advocate", "A1_significancia", "el efecto es estadísticamente significativo", 2,
++                       p_value=fx["p_value"]))
++    if fx["test"] != "median_ci" and eff >= EFFECT_MIN_PP:
++        out.append(arg("advocate", "A2_efecto", f"el efecto supera {EFFECT_MIN_PP:g} pp", 1, effect=eff))
++    if fx["n"] >= 2 * fx["min_n"]:
++        out.append(arg("advocate", "A3_muestra", "la muestra duplica el mínimo preregistrado", 1, n=fx["n"]))
++    subs = fx.get("subsamples") or {}
++    if len(subs) >= 2:
++        same = sum((s["effect"] > 0) == (eff > 0) for s in subs.values())
++        if same / len(subs) >= CONSISTENT_SHARE:
++            out.append(arg("advocate", "A4_consistencia", "el signo se repite en las submuestras", 1,
++                           same=same, total=len(subs)))
++    pl = fx.get("placebo")
++    if pl and not pl["significant"] and pl["gap_p"] is not None and pl["gap_p"] < ALPHA:
++        out.append(arg("advocate", "A5_placebo_nulo", "el placebo no rinde y el real lo supera con significancia",
++                       1, **pl))
++    h = fx.get("halves")
++    if h and (h[0]["effect"] > 0) == (h[1]["effect"] > 0) == (eff > 0):
++        out.append(arg("advocate", "A7_estabilidad", "las dos mitades del periodo tienen el mismo signo", 1,
++                       first=h[0]["effect"], second=h[1]["effect"]))
++    return out
++
++
++def challenger(fx):
++    out = []
++    eff = fx["effect"]
++    if not fx["significant"]:
++        out.append(arg("challenger", "C2_no_significativo", "el efecto no es significativo", 2, p_value=fx["p_value"]))
++    if fx["test"] != "median_ci" and abs(eff) < EFFECT_TINY_PP:
++        out.append(arg("challenger", "C3_efecto_chico", f"el efecto es menor a {EFFECT_TINY_PP:g} pp", 1, effect=eff))
++    if eff <= 0:
++        if fx["against"]:
++            out.append(arg("challenger", "C3s_en_contra", "el efecto va significativamente en contra de lo predicho",
++                           3, fatal=True, effect=eff, p_against=fx["p_against"]))
++        else:
++            out.append(arg("challenger", "C3b_signo", "el efecto no va en la dirección predicha", 2, effect=eff))
++    inverted = {k: s for k, s in (fx.get("subsamples") or {}).items()
++                if eff and s["effect"] != 0 and (s["effect"] > 0) != (eff > 0)}
++    strong = {k: s for k, s in inverted.items() if s["against"]}
++    if strong:
++        out.append(arg("challenger", "C4_inversion", "una submuestra invierte el signo con significancia", 3,
++                       fatal=True, subsamples=strong))
++    elif inverted:
++        out.append(arg("challenger", "C4n_inversion_ruido", "una submuestra invierte el signo sin significancia "
++                       "(ruido)", 0, subsamples=inverted))
++    pl = fx.get("placebo")
++    if pl:
++        real_beats = pl["gap_p"] is not None and pl["gap_p"] < ALPHA
++        if pl["significant"] and not real_beats:
++            out.append(arg("challenger", "C5_placebo", "el placebo rinde con significancia y el real no lo supera",
++                           3, fatal=True, **pl))
++        elif pl["significant"] or not real_beats:
++            out.append(arg("challenger", "C5n_placebo_cercano", "el real no se separa con claridad del placebo", 1,
++                           **pl))
++    else:
++        out.append(arg("challenger", "C10_sin_placebo", "no hay control placebo", 1))
++    h = fx.get("halves")
++    if h and eff:
++        flipped = [x for x in h if x["effect"] != 0 and (x["effect"] > 0) != (eff > 0)]
++        if any(x["against"] for x in flipped):
++            out.append(arg("challenger", "C7_inestable", "una mitad del periodo va en contra con significancia", 2,
++                           first=h[0]["effect"], second=h[1]["effect"]))
++    if fx["missing_share"] > MISSING_MAX:
++        out.append(arg("challenger", "C8_faltantes", "faltan resultados en más del 30 % de las filas", 1,
++                       missing_share=fx["missing_share"]))
++    wl = fx.get("without_largest")
++    if wl and fx["significant"] and (wl["effect"] is None or wl["effect"] <= 0):
++        out.append(arg("challenger", "C9_dependencia", "sin la submuestra más grande el efecto desaparece", 2, **wl))
++    return out
++
++
++def debate(reg, evidence_set, hypothesis_id=None):
++    """Debate sobre una registración ya cargada (run_debate la busca en el registro; calibrate la arma)."""
++    ev = evidence_set or {}
++    fx, result = features(reg, ev)
++    verdict = sm.decide(reg, result)
++    base = {"hypothesis_id": hypothesis_id or reg.get("id"), "hash": reg.get("hash"),
++            "data_hash": sm.sha(ev.get("rows") or []),
++            "evaluation": {"verdict": verdict, "label": (reg.get("labels") or {}).get(verdict, verdict)},
++            "features": fx}
++    if fx["n"] < fx["min_n"] or fx["effect"] is None:
++        a = [arg("challenger", "C1_muestra", "n menor al mínimo preregistrado: no hay debate", 3, fatal=True,
++                 n=fx["n"], min_n=fx["min_n"])]
++        return dict(base, verdict="insuficiente", confidence=1.0, advocate=[], challenger=a,
++                    reasons=[a[0]["claim"]])
++    adv, cha = advocate(fx), challenger(fx)
++    wa, wc = sum(x["weight"] for x in adv), sum(x["weight"] for x in cha)
++    fatal = [x for x in cha if x["fatal"]]
++    by_weight = sorted((x for x in cha if x["weight"] > 0), key=lambda x: -x["weight"])
++    if fatal:
++        verdict, conf, reasons = "refutada", wc / (wa + wc), [x["claim"] for x in fatal]
++    elif not fx["significant"]:
++        verdict, conf, reasons = "inconclusa", wc / (wa + wc) if wa + wc else 1.0, [x["claim"] for x in by_weight]
++    elif wc >= wa:
++        verdict, conf, reasons = "refutada", wc / (wa + wc), [x["claim"] for x in by_weight]
++    else:
++        verdict, conf = "sostenida", wa / (wa + wc)
++        reasons = [x["claim"] for x in sorted(adv, key=lambda x: -x["weight"])]
++    return dict(base, verdict=verdict, confidence=round(conf, 2), weights={"advocate": wa, "challenger": wc},
++                advocate=adv, challenger=cha, reasons=reasons)
++
++
++def run_debate(hypothesis_id, evidence_set, root=None):
++    h = sm.get_hypothesis(hypothesis_id, root)
++    if not h:
++        raise KeyError(f"{hypothesis_id} no está preregistrada")
++    return debate(h["registration"], evidence_set, hypothesis_id)
++
++
++# ---------------------------------------------------------------------------
++# Calibración por simulación (D-058)
++# ---------------------------------------------------------------------------
++
++SIM_PRED = {"test": "fisher_one_sided", "min_n": 40, "group_field": "sig", "group_a": "si", "group_b": "no",
++            "outcome_field": "primary", "hit": "hit", "miss": "miss"}
++SIM_T0, SIM_WEEK = 1791000000, 7 * 86400
++
++
++def simulate_rows(rng, p_a, p_b, per_cell, chains=3, weeks=2):
++    """Filas sintéticas: chains × semanas × {si, no}, `per_cell` filas por celda y grupo."""
++    rows = []
++    for c in range(chains):
++        for w in range(weeks):
++            for group, p in (("si", p_a), ("no", p_b)):
++                for i in range(per_cell):
++                    rows.append({"chain": f"chain{c}", "t0": SIM_T0 + w * SIM_WEEK + i * 60, "sig": group,
++                                 "primary": "hit" if rng.random() < p else "miss"})
++    return rows
++
++
++def calibrate(n_sims=200, effect=(0.20, 0.30), base=(0.25, 0.40), per_cell=17, chains=3, weeks=2, seed=20261003):
++    """Corre el debate sobre n_sims escenarios con efecto real (p_a = p_b + U(effect)) y n_sims nulos (p_a = p_b),
++    los dos con placebo nulo. Devuelve conteos y tasas: refutación de reales y aceptación de nulos."""
++    reg = {"id": "H-sim", "hash": "sim", "prediction": dict(SIM_PRED),
++           "acceptance": {"all": [["p_value", "<", ALPHA]]}, "rejection": {"all": [["p_value", ">=", ALPHA]]}}
++    rng = random.Random(seed)
++    out = {"params": {"n_sims": n_sims, "effect": list(effect), "base": list(base), "per_cell": per_cell,
++                      "chains": chains, "weeks": weeks, "n_per_group": per_cell * chains * weeks, "seed": seed}}
++    for kind in ("real", "null"):
++        counts = {"sostenida": 0, "refutada": 0, "inconclusa": 0, "insuficiente": 0}
++        causes = {}
++        for _ in range(n_sims):
++            p_b = rng.uniform(*base)
++            p_a = p_b + (rng.uniform(*effect) if kind == "real" else 0.0)
++            ev = {"rows": simulate_rows(rng, p_a, p_b, per_cell, chains, weeks),
++                  "placebo_rows": simulate_rows(rng, p_b, p_b, per_cell, chains, weeks)}
++            d = debate(reg, ev)
++            counts[d["verdict"]] += 1
++            if d["verdict"] == "refutada":
++                for a in d["challenger"]:
++                    if a["fatal"] or a["weight"] >= 2:
++                        causes[a["rule"]] = causes.get(a["rule"], 0) + 1
++        out[kind] = dict(counts, causes_refutada=causes)
++    out["rates"] = {"real_refutada": round(out["real"]["refutada"] / n_sims, 4),
++                    "real_no_sostenida": round(1 - out["real"]["sostenida"] / n_sims, 4),
++                    "null_aceptada": round(out["null"]["sostenida"] / n_sims, 4)}
++    return out
++
++
++def main(argv=None):
++    ap = argparse.ArgumentParser(description="Debate adversario (patrón #8)")
++    ap.add_argument("hypothesis_id", nargs="?")
++    ap.add_argument("--evidence", help='JSON {"rows": [...], "placebo_rows": [...]}')
++    ap.add_argument("--calibrate", action="store_true", help="simulación de calibración (D-058)")
++    ap.add_argument("--per-cell", type=int, default=17)
++    ap.add_argument("--sims", type=int, default=200)
++    a = ap.parse_args(argv)
++    if a.calibrate:
++        print(json.dumps(calibrate(a.sims, per_cell=a.per_cell), ensure_ascii=False, indent=1))
++        return 0
++    if not (a.hypothesis_id and a.evidence):
++        ap.error("hypothesis_id y --evidence, o --calibrate")
++    ev = json.loads(Path(a.evidence).read_text(encoding="utf-8"))
++    print(json.dumps(run_debate(a.hypothesis_id, ev), ensure_ascii=False, indent=1))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/04_Config/scripts/lib_episodic_memory.py b/04_Config/scripts/lib_episodic_memory.py
+new file mode 100644
+index 00000000..31f19755
+--- /dev/null
++++ b/04_Config/scripts/lib_episodic_memory.py
+@@ -0,0 +1,238 @@
++#!/usr/bin/env python3
++"""
++lib_episodic_memory.py — memoria episódica del sistema (patrón #12, doc 36 §1 paso 8).
++
++Un episodio es un hecho cerrado: qué pasó, con qué, en qué contexto y cómo terminó. Es la memoria que evita
++re-probar lo ya descartado y la que permite preguntar "¿esto ya pasó antes?".
++
++  {"v":1, "id", "ts", "timestamp", "tipo", "entidad", "contexto", "resultado", "tags", "writer"}
++  tipo ∈ alerta_emitida · feed_caido · bot_reparado · hipotesis_evaluada
++
++Persistencia: 02_Analisis/sources/_episodes.jsonl (append-only). Un escritor de producción (un workflow) escribe en
++su propio fragmento _episodes_<writer>.jsonl: dos workflows que agregan líneas al MISMO archivo chocan en el
++`pull --rebase`, así que cada fragmento tiene un solo dueño (doc 34). `query_episodes` lee el archivo principal más
++todos los fragmentos. Escritores hoy: self_repair (feed_caido, bot_reparado) y method (hipotesis_evaluada).
++Dedup por id = hash(ts, tipo, entidad, contexto, resultado): reescribir el mismo episodio no duplica.
++Solo biblioteca estándar.
++"""
++import argparse
++import hashlib
++import json
++import os
++import re
++import sys
++import time
++from datetime import datetime, timezone
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_normalize as norm  # noqa: E402
++
++ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
++SOURCES_REL = "02_Analisis/sources"
++MAIN_NAME = "_episodes.jsonl"
++SCHEMA = 1
++TIPOS = ("alerta_emitida", "feed_caido", "bot_reparado", "hipotesis_evaluada")
++WRITER_RE = re.compile(r"^[a-z0-9_]{1,32}$")
++ENTITY_MAX = 200
++DEDUP_TAIL = 2000             # el dedup mira las últimas N líneas del archivo destino
++
++
++def episodes_path(root=None, writer=None):
++    base = Path(root or ROOT) / SOURCES_REL
++    if writer is None:
++        return base / MAIN_NAME
++    if not WRITER_RE.match(writer):
++        raise ValueError(f"writer inválido {writer!r}")
++    return base / f"_episodes_{writer}.jsonl"
++
++
++def _entity(value):
++    if norm.is_null(value):
++        raise ValueError("entidad vacía")
++    s = str(value).strip()
++    return (norm.address(s) or s)[:ENTITY_MAX]
++
++
++def _tags(tags):
++    out = []
++    for t in tags or ():
++        k = norm.keyword(t)
++        if k and k not in out:
++            out.append(k)
++    return sorted(out)
++
++
++def _epoch(value):
++    return norm.timestamp(value) if value is not None else None
++
++
++def make_episode(tipo, entidad, contexto=None, resultado=None, tags=None, now=None, writer=None):
++    if tipo not in TIPOS:
++        raise ValueError(f"tipo {tipo!r} fuera de {TIPOS}")
++    if contexto is not None and not isinstance(contexto, dict):
++        raise ValueError("contexto debe ser un dict")
++    if resultado is not None and not isinstance(resultado, (str, int, float, dict)):
++        raise ValueError("resultado debe ser str, número o dict")
++    ts = int(now if now is not None else time.time())
++    body = {"ts": ts, "tipo": tipo, "entidad": _entity(entidad), "contexto": contexto or {}, "resultado": resultado}
++    json.dumps(body)                                    # falla aquí, no al escribir, si algo no es serializable
++    digest = hashlib.sha256(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:16]
++    return dict(body, v=SCHEMA, id=digest, tags=_tags(tags), writer=writer,
++                timestamp=datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="seconds"))
++
++
++def _read(path):
++    try:
++        lines = Path(path).read_text(encoding="utf-8").splitlines()
++    except OSError:
++        return []
++    out = []
++    for line in lines:
++        try:
++            r = json.loads(line)
++        except ValueError:
++            continue                                    # línea cortada por un push a medias
++        if isinstance(r, dict) and r.get("tipo") in TIPOS:
++            out.append(r)
++    return out
++
++
++def write_episodes(episodes, root=None, writer=None):
++    """Agrega episodios (ya armados con make_episode) al archivo del escritor. Devuelve los que eran nuevos."""
++    path = episodes_path(root, writer)
++    seen = {r.get("id") for r in _read(path)[-DEDUP_TAIL:]}
++    new = []
++    for e in episodes:
++        if e["id"] not in seen:
++            seen.add(e["id"])
++            new.append(e)
++    if new:
++        path.parent.mkdir(parents=True, exist_ok=True)
++        with path.open("a", encoding="utf-8", newline="\n") as f:
++            for e in new:
++                f.write(json.dumps(e, ensure_ascii=False, sort_keys=True) + "\n")
++    return new
++
++
++def write_episode(tipo, entidad, contexto=None, resultado=None, tags=None, now=None, root=None, writer=None):
++    """Escribe un episodio. Devuelve el episodio, o None si ya estaba (mismo id)."""
++    e = make_episode(tipo, entidad, contexto, resultado, tags, now, writer)
++    return e if write_episodes([e], root, writer) else None
++
++
++def read_episodes(root=None):
++    base = Path(root or ROOT) / SOURCES_REL
++    paths = [base / MAIN_NAME] + sorted(base.glob("_episodes_*.jsonl"))
++    seen, out = set(), []
++    for p in paths:
++        for r in _read(p):
++            if r.get("id") not in seen:
++                seen.add(r.get("id"))
++                out.append(r)
++    out.sort(key=lambda r: (r.get("ts") or 0, r.get("id") or ""))
++    return out
++
++
++def query_episodes(filtro=None, root=None, limit=None):
++    """Episodios que cumplen `filtro`, del más viejo al más nuevo (los últimos `limit` si se pide).
++    filtro: dict con cualquiera de
++      tipo (str o lista) · entidad (exacta, en forma canónica) · tags (todas presentes) · writer
++      desde / hasta (epoch o ISO, inclusive) · resultado (igualdad; en un dict, sus claves deben coincidir)
++    o una función episodio -> bool."""
++    eps = read_episodes(root)
++    if callable(filtro):
++        out = [e for e in eps if filtro(e)]
++    else:
++        f = dict(filtro or {})
++        tipos = f.get("tipo")
++        tipos = {tipos} if isinstance(tipos, str) else set(tipos or ())
++        ent = _entity(f["entidad"]) if f.get("entidad") is not None else None
++        tags = set(_tags(f.get("tags")))
++        desde, hasta = _epoch(f.get("desde")), _epoch(f.get("hasta"))
++        res = f.get("resultado")
++
++        def ok(e):
++            if tipos and e.get("tipo") not in tipos:
++                return False
++            if ent is not None and e.get("entidad") != ent:
++                return False
++            if tags and not tags.issubset(e.get("tags") or ()):
++                return False
++            if f.get("writer") is not None and e.get("writer") != f["writer"]:
++                return False
++            if desde is not None and (e.get("ts") or 0) < desde:
++                return False
++            if hasta is not None and (e.get("ts") or 0) > hasta:
++                return False
++            if res is not None:
++                got = e.get("resultado")
++                if isinstance(res, dict):
++                    return isinstance(got, dict) and all(got.get(k) == v for k, v in res.items())
++                return got == res
++            return True
++        out = [e for e in eps if ok(e)]
++    return out[-limit:] if limit else out
++
++
++# ---------------------------------------------------------------------------
++# Constructores por tipo (los escritores llaman a estos, no arman el dict a mano)
++# ---------------------------------------------------------------------------
++
++REPAIRED = {"auto_on", "rerun", "dispatch", "reset_state", "trim_seen", "resolved"}
++
++
++def repair_episodes(actions, now=None):
++    """Acciones de bot_self_repair -> episodios. Solo transiciones: la primera caída de una fuente y cada arreglo
++    hecho (no las renovaciones de auto_off ni los intentos fallidos, que ya quedan en _repair_log.jsonl)."""
++    out = []
++    for a in actions:
++        ts = a.get("ts", now)
++        if a.get("action") == "auto_off" and a.get("detection") == "fuente caída":
++            name = str(a.get("evidence", "")).split(":")[0].strip() or a.get("bot")
++            out.append(make_episode("feed_caido", f"{a.get('bot')}/{name}", {"bot": a.get("bot"),
++                                    "evidence": a.get("evidence")}, "auto_off", [a.get("bot"), "fuente"], ts,
++                                    "self_repair"))
++        elif a.get("action") in REPAIRED:
++            out.append(make_episode("bot_reparado", a.get("bot") or "desconocido", {"detection": a.get("detection"),
++                                    "evidence": a.get("evidence")}, a.get("action"), [a.get("bot"), a.get("action")],
++                                    ts, "self_repair"))
++    return out
++
++
++def hypothesis_episode(evaluation, registration):
++    r = evaluation.get("result") or {}
++    ctx = {"test": registration["prediction"]["test"], "n": r.get("n"), "hash": evaluation.get("hash"),
++           "data_hash": evaluation.get("data_hash"), "verdict": evaluation.get("verdict")}
++    ctx.update({k: r[k] for k in ("p_value", "diff_pp", "rate", "median") if k in r})
++    return make_episode("hipotesis_evaluada", evaluation["id"], ctx, evaluation.get("label"),
++                        [registration.get("group") or "sin_grupo", evaluation.get("verdict")], evaluation.get("ts"),
++                        "method")
++
++
++def alert_episode(alert, now=None, writer="alerts"):
++    """Alerta emitida -> episodio. Pensado para el emisor (script_97) después de un envío OK; no está cableado
++    porque el emisor es producción (se consulta antes de tocarlo)."""
++    ent = alert.get("mint") or alert.get("address") or alert.get("symbol")
++    ctx = {k: alert.get(k) for k in ("symbol", "chain", "group", "score", "scorer", "age_min_at_alert",
++                                     "initial_price") if alert.get(k) is not None}
++    return make_episode("alerta_emitida", ent, ctx, "emitida", [alert.get("chain"), alert.get("scorer")],
++                        _epoch(alert.get("timestamp")) or now, writer)
++
++
++def main(argv=None):
++    ap = argparse.ArgumentParser(description="Memoria episódica (patrón #12)")
++    ap.add_argument("--tipo", action="append")
++    ap.add_argument("--entidad")
++    ap.add_argument("--desde")
++    ap.add_argument("--limit", type=int, default=20)
++    a = ap.parse_args(argv)
++    f = {k: v for k, v in (("tipo", a.tipo), ("entidad", a.entidad), ("desde", a.desde)) if v}
++    for e in query_episodes(f, limit=a.limit):
++        print(f"{e['timestamp']}  {e['tipo']:18s} {e['entidad']:40.40s} {json.dumps(e.get('resultado'), ensure_ascii=False)}")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/04_Config/scripts/lib_reactive_state.py b/04_Config/scripts/lib_reactive_state.py
+new file mode 100644
+index 00000000..78d5dea3
+--- /dev/null
++++ b/04_Config/scripts/lib_reactive_state.py
+@@ -0,0 +1,204 @@
++#!/usr/bin/env python3
++"""
++lib_reactive_state.py — estado reactivo por polling (patrón #3). Sin webhooks: cada consumidor mira los archivos
++clave de la pizarra cuando corre y reacciona a lo que cambió desde la última vez.
++
++  rs = ReactiveState(consumer="orchestrator")
++  rs.subscribe("02_Analisis/sources/*/_state*.json", on_change, name="estados", keys=["feeds", "channels"])
++  events = rs.poll()          # llama on_change(event) por cada archivo creado, modificado o borrado; guarda el estado
++
++Evento: {"subscriber", "path" (relativa al repo), "change": created|modified|deleted, "sha", "prev_sha", "ts",
++         "data" (JSON ya parseado si el archivo es .json; None si no)}
++
++- Cambio = cambió el CONTENIDO (sha256), no el mtime: en Actions cada checkout reescribe los mtime. (size, mtime)
++  iguales se usan solo como atajo para no re-hashear.
++- `keys` (opcional): reaccionar solo si cambian esas claves del JSON (rutas con punto: "feeds.messari.status").
++  Un _state.json cambia en cada corrida por `last_run`; con keys=["feeds"] solo dispara cuando cambia una fuente.
++- Primera vez que se ve una suscripción: registra la línea de base sin disparar (fire_initial=True para disparar).
++- Al menos una vez: si el callback lanza una excepción, esa huella no avanza y el evento se repite en el próximo
++  poll; las demás suscripciones siguen. Un JSON a medio escribir (no parsea) se saltea sin avanzar.
++- Persistencia: 02_Analisis/sources/_reactive_state.json (consumidor "default"); un consumidor de producción usa
++  _reactive_state_<consumer>.json (un dueño por archivo, doc 34).
++Solo biblioteca estándar.
++"""
++import argparse
++import hashlib
++import json
++import os
++import re
++import sys
++import time
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
++SOURCES_REL = "02_Analisis/sources"
++SCHEMA = 1
++CONSUMER_RE = re.compile(r"^[a-z0-9_]{1,32}$")
++DATA_MAX_BYTES = 5 * 1024 * 1024        # no se parsea para el evento un JSON más grande que esto
++RACY_NS = 2_000_000_000
++
++
++def state_path(root=None, consumer="default"):
++    if not CONSUMER_RE.match(consumer):
++        raise ValueError(f"consumer inválido {consumer!r}")
++    name = "_reactive_state.json" if consumer == "default" else f"_reactive_state_{consumer}.json"
++    return Path(root or ROOT) / SOURCES_REL / name
++
++
++def dig(data, dotted):
++    for part in dotted.split("."):
++        if not isinstance(data, dict):
++            return None
++        data = data.get(part)
++    return data
++
++
++class ReactiveState:
++    def __init__(self, root=None, consumer="default", now=None, write=True):
++        self.root = Path(root or ROOT)
++        self.consumer, self.write = consumer, write
++        self.path = state_path(self.root, consumer)
++        self.now = now
++        self.subs = {}
++        try:
++            prev = json.loads(self.path.read_text(encoding="utf-8"))
++        except (OSError, ValueError):
++            prev = {}
++        self.saved = (prev.get("subscriptions") or {}) if isinstance(prev, dict) else {}
++
++    # -- suscripción ------------------------------------------------------------------------------------------
++    def subscribe(self, path, callback, name=None, keys=None, fire_initial=False):
++        """`path`: archivo o glob relativo a la raíz del repo. `name` identifica la suscripción entre corridas."""
++        name = name or f"{getattr(callback, '__module__', 'cb')}.{getattr(callback, '__qualname__', 'cb')}:{path}"
++        prev = self.saved.get(name) or {}
++        same = prev.get("pattern") == path and prev.get("keys") == (list(keys) if keys else None)
++        self.subs[name] = {"pattern": path, "callback": callback, "keys": list(keys) if keys else None,
++                           "files": dict(prev.get("files") or {}) if same else {},
++                           "initialized": bool(same and prev.get("initialized")), "fire_initial": fire_initial}
++        return name
++
++    def unsubscribe(self, name):
++        self.subs.pop(name, None)
++        self.saved.pop(name, None)
++
++    # -- huellas ----------------------------------------------------------------------------------------------
++    def _matches(self, pattern):
++        p = Path(pattern)
++        if any(ch in pattern for ch in "*?["):
++            return sorted(x for x in self.root.glob(pattern) if x.is_file())
++        full = p if p.is_absolute() else self.root / p
++        return [full] if full.is_file() else []
++
++    def _rel(self, path):
++        try:
++            return path.resolve().relative_to(self.root.resolve()).as_posix()
++        except ValueError:
++            return path.as_posix()
++
++    def _fingerprint(self, path, keys, old):
++        st = path.stat()
++        if old and not old.get("racy") and old.get("size") == st.st_size and old.get("mtime_ns") == st.st_mtime_ns:
++            return dict(old), None, False                         # atajo: mismo tamaño y mtime, sin re-hashear
++        raw = path.read_bytes()
++        data = None
++        if path.suffix == ".json" and len(raw) <= DATA_MAX_BYTES:
++            try:
++                data = json.loads(raw.decode("utf-8"))
++            except ValueError:
++                return None, None, True                           # a medio escribir: se saltea sin avanzar
++        if keys:
++            if data is None:
++                return None, None, True
++            raw = json.dumps({k: dig(data, k) for k in keys}, ensure_ascii=False, sort_keys=True).encode("utf-8")
++        # "racy": escrito hace < 2 s; otra escritura del mismo tamaño en el mismo tic de reloj no movería el mtime,
++        # así que esa huella no habilita el atajo (mismo criterio que el índice de git)
++        racy = st.st_mtime_ns >= time.time_ns() - RACY_NS
++        return {"sha": hashlib.sha256(raw).hexdigest()[:16], "size": st.st_size, "mtime_ns": st.st_mtime_ns,
++                "racy": racy}, data, False
++
++    # -- ciclo ------------------------------------------------------------------------------------------------
++    def poll(self):
++        now = int(self.now if self.now is not None else time.time())
++        events = []
++        for name, sub in self.subs.items():
++            seen = set()
++            for path in self._matches(sub["pattern"]):
++                rel = self._rel(path)
++                seen.add(rel)
++                old = sub["files"].get(rel)
++                try:
++                    fp, data, skip = self._fingerprint(path, sub["keys"], old)
++                except OSError:
++                    continue
++                if skip:
++                    continue
++                if old and fp["sha"] == old["sha"]:
++                    sub["files"][rel] = dict(fp, seen_at=old.get("seen_at", now))      # mtime nuevo, mismo contenido
++                    continue
++                change = "modified" if old else "created"
++                if not old and not sub["initialized"] and not sub["fire_initial"]:
++                    sub["files"][rel] = dict(fp, seen_at=now)                     # línea de base, sin disparar
++                    continue
++                ev = {"subscriber": name, "path": rel, "change": change, "sha": fp["sha"],
++                      "prev_sha": (old or {}).get("sha"), "ts": now, "data": data}
++                if self._fire(sub, ev):
++                    sub["files"][rel] = dict(fp, seen_at=now)
++                events.append(ev)
++            for rel in sorted(set(sub["files"]) - seen):
++                ev = {"subscriber": name, "path": rel, "change": "deleted", "sha": None,
++                      "prev_sha": sub["files"][rel].get("sha"), "ts": now, "data": None}
++                if self._fire(sub, ev):
++                    del sub["files"][rel]
++                events.append(ev)
++            sub["initialized"] = True
++        if self.write:
++            self.save(now)
++        return events
++
++    @staticmethod
++    def _fire(sub, ev):
++        try:
++            sub["callback"](ev)
++            return True
++        except Exception as exc:                                  # noqa: BLE001 — un consumidor roto no frena al resto
++            ev["error"] = f"{type(exc).__name__}: {exc}"[:300]
++            return False
++
++    def save(self, now=None):
++        subs = dict(self.saved)
++        subs.update({name: {"pattern": s["pattern"], "keys": s["keys"], "files": s["files"],
++                            "initialized": s["initialized"]} for name, s in self.subs.items()})
++        doc = {"version": SCHEMA, "consumer": self.consumer, "updated_at": int(now or time.time()),
++               "subscriptions": subs}
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        tmp = Path(str(self.path) + ".tmp")
++        tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
++        tmp.replace(self.path)
++
++    def watch(self, interval_s, max_polls, sleep=time.sleep):
++        """Para un job largo (p. ej. las instancias de Telegram de 40 min): poll cada `interval_s`."""
++        out = []
++        for i in range(max_polls):
++            out += self.poll()
++            if i < max_polls - 1:
++                sleep(interval_s)
++        return out
++
++
++def main(argv=None):
++    ap = argparse.ArgumentParser(description="Estado reactivo por polling (patrón #3)")
++    ap.add_argument("pattern", nargs="?", default=f"{SOURCES_REL}/*/_state*.json")
++    ap.add_argument("--keys", nargs="*")
++    ap.add_argument("--consumer", default="default")
++    ap.add_argument("--dry-run", action="store_true", help="no guarda el estado")
++    a = ap.parse_args(argv)
++    rs = ReactiveState(consumer=a.consumer, write=not a.dry_run)
++    rs.subscribe(a.pattern, lambda ev: None, name=f"cli:{a.pattern}", keys=a.keys)
++    for ev in rs.poll():
++        print(f"{ev['change']:9s} {ev['path']}  {ev['prev_sha']} -> {ev['sha']}")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/04_Config/scripts/lib_scientific_method.py b/04_Config/scripts/lib_scientific_method.py
+new file mode 100644
+index 00000000..01642fc8
+--- /dev/null
++++ b/04_Config/scripts/lib_scientific_method.py
+@@ -0,0 +1,336 @@
++#!/usr/bin/env python3
++"""
++lib_scientific_method.py — método científico automatizado (patrón #2, doc 36 §1).
++
++Una hipótesis se preregistra ANTES de ver resultados y no se edita: una variante es un id nuevo. Se evalúa con una
++prueba explícita (sin IA) y reglas de aceptación / rechazo legibles por máquina.
++
++Registro append-only: 02_Analisis/hypotheses/_registry.jsonl. Una línea por evento:
++  {"v":1, "event":"register", "id", "ts", "statement", "prediction", "acceptance", "rejection", "group", "labels",
++   "source", "registered_at", "hash"}
++  {"v":1, "event":"evaluate", "id", "ts", "hash", "data_hash", "result", "verdict", "label"}
++
++prediction = {"test": <nombre en TESTS>, "min_n": int, ...parámetros de la prueba}
++acceptance / rejection = {"all"|"any": [[campo, op, valor], ...]} sobre el resultado de la prueba.
++  op ∈ < <= > >= == !=; un valor "$campo" compara contra otro campo del resultado.
++Veredicto: pendiente (n < min_n o prueba no válida) · aceptada · rechazada · inconclusa (ninguna regla se cumple).
++`labels` traduce el veredicto al vocabulario propio de la hipótesis (H-0: "H-0 rechazada" / "H-0 no rechazada").
++
++La H-0 (doc 32 §6, early_review.evaluate_h0) se migra como referencia con `migrate_h0`: mismos parámetros, misma
++prueba, mismo veredicto. early_review.py sigue siendo el evaluador de producción de la H-0.
++Cada evaluación persistida deja además un episodio `hipotesis_evaluada` (patrón #12, lib_episodic_memory).
++Solo biblioteca estándar.
++"""
++import argparse
++import hashlib
++import json
++import math
++import os
++import re
++import sys
++import time
++from datetime import datetime, timezone
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_episodic_memory as episodes  # noqa: E402
++
++ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
++REGISTRY_REL = "02_Analisis/hypotheses/_registry.jsonl"
++SCHEMA = 1
++ID_RE = re.compile(r"^H-[A-Za-z0-9_.-]{1,40}$")
++VERDICTS = ("pendiente", "aceptada", "rechazada", "inconclusa")
++OPS = {"<": lambda a, b: a < b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b, ">=": lambda a, b: a >= b,
++       "==": lambda a, b: a == b, "!=": lambda a, b: a != b}
++Z90 = 1.645
++
++
++def registry_path(root=None):
++    return Path(root or ROOT) / REGISTRY_REL
++
++
++def canonical(obj):
++    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
++
++
++def sha(obj):
++    return hashlib.sha256(canonical(obj).encode("utf-8")).hexdigest()[:16]
++
++
++def iso(ts):
++    return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="seconds")
++
++
++# ---------------------------------------------------------------------------
++# Estadística (misma fórmula que early_review y calibrate_threshold_v72)
++# ---------------------------------------------------------------------------
++
++def fisher_one_sided(k1, n1, k2, n2):
++    """P(X >= k1) con X hipergeométrica: ¿la tasa del grupo 1 supera a la del 2?"""
++    K, N = k1 + k2, n1 + n2
++    total = math.comb(N, K)
++    return sum(math.comb(n1, x) * math.comb(n2, K - x) for x in range(k1, min(n1, K) + 1)) / total if total else 1.0
++
++
++def wilson(k, n, z=Z90):
++    if n == 0:
++        return None
++    p = k / n
++    den = 1 + z * z / n
++    c = (p + z * z / (2 * n)) / den
++    h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / den
++    return [round(max(0.0, c - h), 4), round(min(1.0, c + h), 4)]
++
++
++def median_ci(values, conf=0.90):
++    """Mediana con IC por estadísticos de orden (binomial n, 1/2): sin supuestos de distribución ni azar."""
++    xs = sorted(values)
++    n = len(xs)
++    if not n:
++        return None, None
++    med = xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
++    tail = (1 - conf) / 2
++    cdf, j = 0.0, 0
++    for i in range(n + 1):                       # mayor j con P(B <= j-1) <= tail
++        cdf_next = cdf + math.comb(n, i) / 2 ** n
++        if cdf_next > tail:
++            j = i
++            break
++        cdf = cdf_next
++    if j < 1:
++        return med, None
++    return med, [xs[j - 1], xs[n - j]]
++
++
++# ---------------------------------------------------------------------------
++# Pruebas: cada una recibe (filas, parámetros) y devuelve el resultado con "n" y "valid"
++# ---------------------------------------------------------------------------
++
++def _resolved(rows, p):
++    field, hit, miss = p.get("outcome_field", "primary"), p.get("hit", "hit"), p.get("miss", "miss")
++    return [r for r in rows if isinstance(r, dict) and r.get(field) in (hit, miss)], field, hit
++
++
++def run_fisher_one_sided(rows, p):
++    """Grupo A vs grupo B en tasa de acierto. params: group_field, group_a, group_b, outcome_field, hit, miss."""
++    res, field, hit = _resolved(rows, p)
++    gf = p.get("group_field", "group")
++    groups = {}
++    for name in (p["group_a"], p["group_b"]):
++        g = [r for r in res if r.get(gf) == name]
++        k = sum(r[field] == hit for r in g)
++        groups[name] = {"n": len(g), "k_hit": k, "rate": round(k / len(g), 4) if g else None}
++    a, b = groups[p["group_a"]], groups[p["group_b"]]
++    out = {"n": a["n"] + b["n"], "groups": groups, "valid": bool(a["n"] and b["n"])}
++    if out["valid"]:
++        out["p_value"] = round(fisher_one_sided(a["k_hit"], a["n"], b["k_hit"], b["n"]), 4)
++        out["diff_pp"] = round(100 * (a["rate"] - b["rate"]), 2)
++    return out
++
++
++def run_rate_vs_baseline(rows, p):
++    """Tasa de acierto contra una tasa base fija. params: baseline, outcome_field, hit, miss."""
++    res, field, hit = _resolved(rows, p)
++    k = sum(r[field] == hit for r in res)
++    out = {"n": len(res), "k_hit": k, "baseline": p["baseline"], "valid": bool(res)}
++    if res:
++        lo, hi = wilson(k, len(res))
++        out.update(rate=round(k / len(res), 4), wilson_lo=lo, wilson_hi=hi,
++                   diff_pp=round(100 * (k / len(res) - p["baseline"]), 2))
++    return out
++
++
++def run_median_ci(rows, p):
++    """Mediana de un valor numérico con IC90. params: value_field."""
++    vals = [r[p["value_field"]] for r in rows if isinstance(r, dict)
++            and isinstance(r.get(p["value_field"]), (int, float)) and not isinstance(r.get(p["value_field"]), bool)]
++    med, ci = median_ci(vals)
++    out = {"n": len(vals), "valid": ci is not None}
++    if med is not None:
++        out["median"] = round(med, 6)
++    if ci:
++        out.update(ci_lo=round(ci[0], 6), ci_hi=round(ci[1], 6))
++    return out
++
++
++TESTS = {"fisher_one_sided": run_fisher_one_sided, "rate_vs_baseline": run_rate_vs_baseline,
++         "median_ci": run_median_ci}
++
++
++# ---------------------------------------------------------------------------
++# Reglas de decisión
++# ---------------------------------------------------------------------------
++
++def check_rules(spec):
++    if not isinstance(spec, dict) or len(spec) != 1 or next(iter(spec)) not in ("all", "any"):
++        raise ValueError("regla: {'all'|'any': [[campo, op, valor], ...]}")
++    conds = next(iter(spec.values()))
++    if not conds or not all(isinstance(c, (list, tuple)) and len(c) == 3 and c[1] in OPS for c in conds):
++        raise ValueError(f"condiciones inválidas: {conds!r}")
++
++
++def rule_holds(spec, result):
++    def one(cond):
++        field, op, value = cond
++        left = result.get(field)
++        right = result.get(value[1:]) if isinstance(value, str) and value.startswith("$") else value
++        if left is None or right is None:
++            return False
++        try:
++            return OPS[op](left, right)
++        except TypeError:
++            return False
++    mode, conds = next(iter(spec.items()))
++    return all(map(one, conds)) if mode == "all" else any(map(one, conds))
++
++
++def decide(reg, result):
++    if result.get("n", 0) < reg["prediction"].get("min_n", 1) or not result.get("valid"):
++        return "pendiente"
++    if rule_holds(reg["acceptance"], result):
++        return "aceptada"
++    if rule_holds(reg["rejection"], result):
++        return "rechazada"
++    return "inconclusa"
++
++
++# ---------------------------------------------------------------------------
++# Registro append-only
++# ---------------------------------------------------------------------------
++
++def read_registry(root=None):
++    out = []
++    try:
++        lines = registry_path(root).read_text(encoding="utf-8").splitlines()
++    except OSError:
++        return out
++    for line in lines:
++        try:
++            r = json.loads(line)
++        except ValueError:
++            continue
++        if isinstance(r, dict) and r.get("id"):
++            out.append(r)
++    return out
++
++
++def load_registry(root=None):
++    """{id: {"registration": línea register, "evaluations": [líneas evaluate]}}; la primera registración manda."""
++    hyps = {}
++    for r in read_registry(root):
++        h = hyps.setdefault(r["id"], {"registration": None, "evaluations": []})
++        if r.get("event") == "register" and h["registration"] is None:
++            h["registration"] = r
++        elif r.get("event") == "evaluate":
++            h["evaluations"].append(r)
++    return {k: v for k, v in hyps.items() if v["registration"]}
++
++
++def get_hypothesis(hyp_id, root=None):
++    return load_registry(root).get(hyp_id)
++
++
++def append_line(line, root=None):
++    path = registry_path(root)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with path.open("a", encoding="utf-8", newline="\n") as f:
++        f.write(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n")
++
++
++def register_hypothesis(id, statement, prediction, acceptance, rejection, group=None, labels=None, source=None,
++                        registered_at=None, root=None, now=None):
++    """Preregistra. Mismo id y mismo contenido → devuelve la existente sin escribir. Mismo id con contenido distinto
++    → ValueError (el preregistro es inmutable: una variante es una hipótesis nueva)."""
++    if not ID_RE.match(str(id)):
++        raise ValueError(f"id inválido {id!r}: se espera H-<grupo><n> (p. ej. H-0, H-a1)")
++    if not str(statement).strip():
++        raise ValueError("statement vacío")
++    if not isinstance(prediction, dict) or prediction.get("test") not in TESTS:
++        raise ValueError(f"prediction.test debe ser uno de {sorted(TESTS)}")
++    check_rules(acceptance)
++    check_rules(rejection)
++    body = {"statement": str(statement).strip(), "prediction": prediction, "acceptance": acceptance,
++            "rejection": rejection, "group": group, "labels": labels or {}}
++    digest = sha(body)
++    prev = get_hypothesis(id, root)
++    if prev:
++        if prev["registration"]["hash"] != digest:
++            raise ValueError(f"{id} ya está preregistrada con otro contenido: registrar la variante con un id nuevo")
++        return prev["registration"]
++    now = int(now if now is not None else time.time())
++    line = dict(body, v=SCHEMA, event="register", id=id, ts=now, hash=digest, source=source,
++                registered_at=registered_at or iso(now))
++    append_line(line, root)
++    return line
++
++
++def evaluate_hypothesis(id, data, root=None, now=None, persist=True):
++    """Corre la prueba preregistrada sobre `data` (lista de filas) y decide. Devuelve
++    {id, result, verdict, label, data_hash, ts}. Con persist=True agrega la evaluación al registro."""
++    h = get_hypothesis(id, root)
++    if not h:
++        raise KeyError(f"{id} no está preregistrada")
++    reg = h["registration"]
++    rows = list(data or [])
++    result = TESTS[reg["prediction"]["test"]](rows, reg["prediction"])
++    verdict = decide(reg, result)
++    now = int(now if now is not None else time.time())
++    out = {"v": SCHEMA, "event": "evaluate", "id": id, "ts": now, "hash": reg["hash"], "data_hash": sha(rows),
++           "result": result, "verdict": verdict, "label": (reg.get("labels") or {}).get(verdict, verdict)}
++    if persist:
++        append_line(out, root)
++        episodes.write_episodes([episodes.hypothesis_episode(out, reg)], root, "method")
++    return out
++
++
++# ---------------------------------------------------------------------------
++# H-0 (doc 32 §6) migrada como referencia
++# ---------------------------------------------------------------------------
++
++H0 = {
++    "id": "H-0",
++    "statement": "H-0: info_score >= 20 no supera a info_score < 20 en tasa primaria (tokens < 60 min)",
++    "prediction": {"test": "fisher_one_sided", "min_n": 40, "group_field": "h0_group", "group_a": "info_ge20",
++                   "group_b": "info_lt20", "outcome_field": "primary", "hit": "hit", "miss": "miss",
++                   "alpha": 0.10, "population": "alertas del scorer joven (scorer = young), grupo fijado al emitir",
++                   "event": "+20% antes de -30% en 48 h desde el precio de la alerta (velas 15 min GeckoTerminal)"},
++    "acceptance": {"all": [["p_value", ">=", 0.10]]},
++    "rejection": {"all": [["p_value", "<", 0.10]]},
++    "group": "a",
++    "labels": {"aceptada": "H-0 no rechazada", "rechazada": "H-0 rechazada", "pendiente": "pendiente"},
++    "source": "doc 32 §6 (D-014-R-5); evaluador de producción: early_review.evaluate_h0",
++    "registered_at": "2026-10-02",
++}
++
++
++def migrate_h0(root=None, now=None):
++    return register_hypothesis(root=root, now=now, **H0)
++
++
++def main(argv=None):
++    ap = argparse.ArgumentParser(description="Registro de hipótesis (patrón #2)")
++    ap.add_argument("--migrate-h0", action="store_true", help="preregistra la H-0 como referencia (idempotente)")
++    ap.add_argument("--list", action="store_true")
++    ap.add_argument("--evaluate", metavar="ID")
++    ap.add_argument("--data", help="JSON (lista) o JSONL con las filas a evaluar")
++    ap.add_argument("--dry-run", action="store_true", help="no escribe la evaluación")
++    a = ap.parse_args(argv)
++    if a.migrate_h0:
++        print(json.dumps(migrate_h0(), ensure_ascii=False))
++    if a.list:
++        for hid, h in sorted(load_registry().items()):
++            last = h["evaluations"][-1] if h["evaluations"] else {}
++            print(f"{hid}\t{h['registration']['registered_at']}\t{last.get('label', 'sin evaluar')}")
++    if a.evaluate:
++        text = Path(a.data).read_text(encoding="utf-8") if a.data else "[]"
++        try:
++            rows = json.loads(text)
++        except ValueError:
++            rows = [json.loads(x) for x in text.splitlines() if x.strip()]
++        print(json.dumps(evaluate_hypothesis(a.evaluate, rows, persist=not a.dry_run), ensure_ascii=False))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/04_Config/scripts/test_lib_adversarial_debate.py b/04_Config/scripts/test_lib_adversarial_debate.py
+new file mode 100644
+index 00000000..2c954cba
+--- /dev/null
++++ b/04_Config/scripts/test_lib_adversarial_debate.py
+@@ -0,0 +1,173 @@
++#!/usr/bin/env python3
++"""Tests del debate adversario (patrón #8): lib_adversarial_debate. unittest, sin red.
++
++Uso: python 04_Config/scripts/test_lib_adversarial_debate.py
++"""
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_adversarial_debate as deb  # noqa: E402
++import lib_scientific_method as sm  # noqa: E402
++
++T0 = 1791000000                    # 2026-10-03 (semana ISO 40)
++WEEK = 7 * 86400
++TWO = {"test": "fisher_one_sided", "min_n": 40, "group_field": "sig", "group_a": "si", "group_b": "no",
++       "outcome_field": "primary"}
++
++
++def cell(chain, week, group, hits, total):
++    return [{"chain": chain, "t0": T0 + week * WEEK, "sig": group, "primary": "hit" if i < hits else "miss"}
++            for i in range(total)]
++
++
++def grid(spec):
++    """spec: {(chain, week): (hits_si, n_si, hits_no, n_no)}"""
++    rows = []
++    for (chain, week), (ks, ns, kn, nn) in sorted(spec.items()):
++        rows += cell(chain, week, "si", ks, ns) + cell(chain, week, "no", kn, nn)
++    return rows
++
++
++STRONG = {(c, w): (7, 10, 3, 10) for c in ("solana", "base") for w in (0, 1)}
++FLAT = {(c, w): (4, 10, 4, 10) for c in ("solana", "base") for w in (0, 1)}
++
++
++class Base(unittest.TestCase):
++    def setUp(self):
++        self.root = Path(tempfile.mkdtemp(prefix="debate_"))
++        self.addCleanup(shutil.rmtree, self.root, True)
++        sm.register_hypothesis("H-a1", "la señal sí supera a la señal no", TWO,
++                               {"all": [["p_value", "<", 0.10], ["diff_pp", ">=", 10]]},
++                               {"all": [["p_value", ">=", 0.10]]}, group="a", root=self.root, now=T0)
++
++    def rules(self, out, role):
++        return {a["rule"] for a in out[role]}
++
++
++class Debate(Base):
++    def test_efecto_robusto_queda_sostenido(self):
++        out = deb.run_debate("H-a1", {"rows": grid(STRONG), "placebo_rows": grid(FLAT)}, self.root)
++        self.assertEqual(out["verdict"], "sostenida")
++        self.assertEqual(out["evaluation"]["verdict"], "aceptada")
++        self.assertTrue({"A1_significancia", "A2_efecto", "A4_consistencia", "A5_placebo_nulo",
++                         "A7_estabilidad"} <= self.rules(out, "advocate"))
++        self.assertFalse(any(a["fatal"] for a in out["challenger"]))
++        self.assertGreaterEqual(out["confidence"], 0.8)
++        self.assertEqual(out["reasons"][0], "el efecto es estadísticamente significativo")
++
++    def test_submuestra_que_invierte_el_signo_con_significancia_refuta(self):
++        spec = {("solana", w): (18, 20, 4, 20) for w in (0, 1)}
++        spec.update({("base", w): (1, 10, 6, 10) for w in (0, 1)})       # base: 2/20 contra 12/20
++        out = deb.run_debate("H-a1", {"rows": grid(spec), "placebo_rows": grid(FLAT)}, self.root)
++        self.assertEqual(out["evaluation"]["verdict"], "aceptada")       # la prueba sola la aceptaría
++        self.assertEqual(out["verdict"], "refutada")
++        inv = [a for a in out["challenger"] if a["rule"] == "C4_inversion"]
++        self.assertTrue(inv and inv[0]["fatal"])
++        self.assertLess(inv[0]["evidence"]["subsamples"]["chain=base"]["p_against"], deb.ALPHA)
++        self.assertEqual(out["reasons"], ["una submuestra invierte el signo con significancia"])
++
++    def test_regresion_c4_efecto_real_con_submuestra_ruidosa_no_refuta(self):
++        spec = {("solana", w): (18, 20, 4, 20) for w in (0, 1)}
++        spec.update({("base", w): (3, 10, 5, 10) for w in (0, 1)})       # base: 6/20 contra 10/20, p en contra 0,17
++        out = deb.run_debate("H-a1", {"rows": grid(spec), "placebo_rows": grid(FLAT)}, self.root)
++        self.assertEqual(out["verdict"], "sostenida")                    # antes de D-058: refutada (C4 sin control)
++        noise = [a for a in out["challenger"] if a["rule"] == "C4n_inversion_ruido"]
++        self.assertTrue(noise and noise[0]["weight"] == 0 and not noise[0]["fatal"])
++        self.assertGreaterEqual(noise[0]["evidence"]["subsamples"]["chain=base"]["p_against"], deb.ALPHA)
++
++    def test_placebo_que_rinde_igual_refuta_y_placebo_nulo_no(self):
++        rows = grid(STRONG)
++        out = deb.run_debate("H-a1", {"rows": rows, "placebo_rows": rows}, self.root)
++        self.assertEqual(out["verdict"], "refutada")
++        self.assertIn("C5_placebo", {a["rule"] for a in out["challenger"] if a["fatal"]})
++        # Regresión C5: placebo ruidoso con la mitad del efecto real (+20 pp contra +40 pp) pero NO significativo.
++        # Antes de D-058 bastaba "efecto placebo ≥ la mitad" para refutar.
++        placebo = grid({("solana", 0): (3, 5, 2, 5), ("solana", 1): (3, 5, 2, 5)})
++        ok = deb.run_debate("H-a1", {"rows": rows, "placebo_rows": placebo}, self.root)
++        self.assertFalse(ok["features"]["placebo"]["significant"])
++        self.assertEqual(ok["verdict"], "sostenida")
++        self.assertNotIn("C5_placebo", self.rules(ok, "challenger"))
++        sin_placebo = deb.run_debate("H-a1", {"rows": rows}, self.root)
++        self.assertIn("C10_sin_placebo", self.rules(sin_placebo, "challenger"))
++
++    def test_placebo_vs_real_es_exacto(self):
++        """El test hipergeométrico coincide con enumerar todas las permutaciones real/placebo por grupo."""
++        from itertools import combinations
++        real = grid({("solana", 0): (3, 4, 1, 4)})
++        plac = grid({("solana", 1): (1, 4, 2, 4)})
++        p = deb.placebo_gap_p(TWO, real, plac, seed=0)
++
++        def eff(rows):
++            a = [r["primary"] == "hit" for r in rows if r["sig"] == "si"]
++            b = [r["primary"] == "hit" for r in rows if r["sig"] == "no"]
++            return sum(a) / len(a) - sum(b) / len(b)
++        obs = eff(real) - eff(plac)
++        pools = {g: [r for r in real + plac if r["sig"] == g] for g in ("si", "no")}
++        ge = total = 0
++        for ia in combinations(range(8), 4):
++            for ib in combinations(range(8), 4):
++                r = [pools["si"][i] for i in ia] + [pools["no"][i] for i in ib]
++                q = [pools["si"][i] for i in range(8) if i not in ia] + [pools["no"][i] for i in range(8) if i not in ib]
++                total += 1
++                ge += eff(r) - eff(q) >= obs - 1e-12
++        self.assertAlmostEqual(p, round(ge / total, 4), places=4)
++        rate = {"test": "rate_vs_baseline", "baseline": 0.3, "outcome_field": "primary"}
++        self.assertEqual(deb.placebo_gap_p(rate, real, plac, 0), round(sm.fisher_one_sided(4, 8, 3, 8), 4))
++
++    def test_muestra_insuficiente_no_debate(self):
++        out = deb.run_debate("H-a1", {"rows": grid({("solana", 0): (7, 10, 3, 10)})}, self.root)
++        self.assertEqual((out["verdict"], out["evaluation"]["verdict"]), ("insuficiente", "pendiente"))
++        self.assertEqual([a["rule"] for a in out["challenger"]], ["C1_muestra"])
++        with self.assertRaises(KeyError):
++            deb.run_debate("H-zz", {"rows": []}, self.root)
++
++    def test_tasa_inestable_en_el_tiempo_y_determinismo(self):
++        sm.register_hypothesis("H-r1", "la tasa supera 30 %", {"test": "rate_vs_baseline", "min_n": 20,
++                               "baseline": 0.30}, {"all": [["wilson_lo", ">", "$baseline"]]},
++                               {"all": [["wilson_hi", "<", "$baseline"]]}, root=self.root, now=T0)
++        rows = [{"t0": T0, "primary": "hit"} for _ in range(20)] + \
++               [{"t0": T0 + WEEK, "primary": "hit" if i < 2 else "miss"} for i in range(20)]
++        out = deb.run_debate("H-r1", {"rows": rows}, self.root)
++        self.assertEqual(out["evaluation"]["verdict"], "aceptada")
++        self.assertEqual(out["verdict"], "refutada")
++        self.assertTrue({"C7_inestable", "C4_inversion"} <= self.rules(out, "challenger"))
++        again = deb.run_debate("H-r1", {"rows": rows}, self.root)
++        self.assertEqual(json.dumps(out, sort_keys=True), json.dumps(again, sort_keys=True))
++
++    def test_sin_significancia_es_inconclusa_no_refutada(self):
++        weak = {(c, w): (5, 10, 4, 10) for c in ("solana", "base") for w in (0, 1)}     # +10 pp, n = 80: p ≈ 0,32
++        out = deb.run_debate("H-a1", {"rows": grid(weak), "placebo_rows": grid(FLAT)}, self.root)
++        self.assertEqual(out["verdict"], "inconclusa")                   # falta de potencia ≠ evidencia en contra
++        self.assertFalse(any(a["fatal"] for a in out["challenger"]))
++        against = {(c, w): (2, 10, 7, 10) for c in ("solana", "base") for w in (0, 1)}  # significativo en contra
++        self.assertEqual(deb.run_debate("H-a1", {"rows": grid(against)}, self.root)["verdict"], "refutada")
++
++
++class Calibracion(unittest.TestCase):
++    """D-058: 200 escenarios con efecto real de 20–30 pp y placebo nulo + 200 nulos. Objetivo: refutar < 10 % de
++    los efectos reales y aceptar < 10 % de los nulos. Antes del fix, con los mismos escenarios: 34/200 y 67/200
++    reales refutados (n = 102 y 42 por grupo)."""
++
++    def check(self, per_cell):
++        out = deb.calibrate(200, per_cell=per_cell)
++        rates = out["rates"]
++        self.assertLess(rates["real_refutada"], 0.10, out)
++        self.assertLess(rates["null_aceptada"], 0.10, out)
++        self.assertEqual(sum(out["real"][k] for k in ("sostenida", "refutada", "inconclusa", "insuficiente")), 200)
++        return rates
++
++    def test_calibracion_n102_por_grupo(self):
++        self.assertEqual(self.check(17), {"real_refutada": 0.04, "real_no_sostenida": 0.075, "null_aceptada": 0.07})
++
++    def test_calibracion_n42_por_grupo(self):
++        self.assertEqual(self.check(7), {"real_refutada": 0.06, "real_no_sostenida": 0.245, "null_aceptada": 0.055})
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_lib_episodic_memory.py b/04_Config/scripts/test_lib_episodic_memory.py
+new file mode 100644
+index 00000000..99f57468
+--- /dev/null
++++ b/04_Config/scripts/test_lib_episodic_memory.py
+@@ -0,0 +1,112 @@
++#!/usr/bin/env python3
++"""Tests de la memoria episódica (patrón #12): lib_episodic_memory y su cableado en bot_self_repair y
++lib_scientific_method. unittest, sin red.
++
++Uso: python 04_Config/scripts/test_lib_episodic_memory.py
++"""
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import bot_self_repair as sr  # noqa: E402
++import lib_episodic_memory as em  # noqa: E402
++import lib_scientific_method as sm  # noqa: E402
++
++T0 = 1791000000
++MINT = "6BfTBNYJcZW9AnxRQ7aAx4Luf2K4BpmWpR7FWTPZpump"
++EVM = "0xAbC0000000000000000000000000000000000dEf"
++
++
++class Base(unittest.TestCase):
++    def setUp(self):
++        self.root = Path(tempfile.mkdtemp(prefix="episodes_"))
++        self.addCleanup(shutil.rmtree, self.root, True)
++        self.src = self.root / "02_Analisis" / "sources"
++
++
++class Memoria(Base):
++    def test_escribe_consulta_y_no_duplica(self):
++        e = em.write_episode("alerta_emitida", MINT, {"score": 72}, "emitida", ["Solana", "young"], T0, self.root)
++        self.assertEqual((e["tipo"], e["entidad"], e["tags"], e["timestamp"]),
++                         ("alerta_emitida", MINT, ["solana", "young"], "2026-10-03T04:00:00+00:00"))
++        self.assertIsNone(em.write_episode("alerta_emitida", MINT, {"score": 72}, "emitida", ["solana"], T0,
++                                           self.root))                  # mismo hecho: no se duplica
++        em.write_episode("feed_caido", "rss/messari", {"evidence": "404 x3"}, "auto_off", ["rss"], T0 + 60, self.root)
++        em.write_episode("alerta_emitida", EVM, {"score": 55}, "emitida", ["base"], T0 + 120, self.root)
++        self.assertEqual(len(em.query_episodes(root=self.root)), 3)
++        self.assertEqual([x["entidad"] for x in em.query_episodes({"tipo": "alerta_emitida"}, self.root)],
++                         [MINT, EVM.lower()])                           # entidad canónica (EVM en minúsculas)
++        self.assertEqual(len(em.query_episodes({"entidad": EVM.upper().replace("0X", "0x")}, self.root)), 1)
++        self.assertEqual(len(em.query_episodes({"tags": ["SOLANA"]}, self.root)), 1)
++        self.assertEqual(len(em.query_episodes({"desde": T0 + 60, "hasta": "2026-10-03T04:01:00Z"}, self.root)), 1)
++        self.assertEqual(len(em.query_episodes(lambda x: x["contexto"].get("score", 0) > 60, self.root)), 1)
++        with self.assertRaises(ValueError):
++            em.write_episode("rumor", MINT, root=self.root)
++        with self.assertRaises(ValueError):
++            em.write_episode("feed_caido", "  ", root=self.root)
++
++    def test_fragmentos_por_escritor_y_lectura_unificada(self):
++        em.write_episode("bot_reparado", "rss", resultado="rerun", now=T0 + 10, root=self.root, writer="self_repair")
++        em.write_episode("hipotesis_evaluada", "H-0", resultado="pendiente", now=T0, root=self.root, writer="method")
++        em.write_episode("alerta_emitida", MINT, resultado="emitida", now=T0 + 20, root=self.root)
++        self.assertEqual(sorted(p.name for p in self.src.glob("_episodes*.jsonl")),
++                         ["_episodes.jsonl", "_episodes_method.jsonl", "_episodes_self_repair.jsonl"])
++        eps = em.query_episodes(root=self.root)
++        self.assertEqual([x["tipo"] for x in eps], ["hipotesis_evaluada", "bot_reparado", "alerta_emitida"])
++        self.assertEqual([x["writer"] for x in em.query_episodes({"writer": "method"}, self.root)], ["method"])
++        self.assertEqual([x["tipo"] for x in em.query_episodes(root=self.root, limit=1)], ["alerta_emitida"])
++        with self.assertRaises(ValueError):
++            em.episodes_path(self.root, "../fuera")
++        (self.src / "_episodes.jsonl").open("a", encoding="utf-8").write('{"tipo": "alerta_emi')   # push a medias
++        self.assertEqual(len(em.query_episodes(root=self.root)), 3)
++
++
++class Cableado(Base):
++    def test_self_repair_registra_caida_y_arreglo_solo_en_transiciones(self):
++        (self.src / "rss").mkdir(parents=True)
++        (self.root / "_servicios_open_source").mkdir()
++        (self.root / "_servicios_open_source" / "_INSTALADOS.md").write_text("# I\n", encoding="utf-8")
++        state = self.src / "rss" / "_state.json"
++        state.write_text(json.dumps({"last_run": T0, "feeds": {"muerta": {"status": 404, "fails": 3}}}),
++                         encoding="utf-8")
++        (self.src / "_health.json").write_text(json.dumps({"bots": {"rss": {
++            "status": "ok", "last_run": T0, "last_output": 5, "sources_ok": 1, "sources_total": 2}}}), encoding="utf-8")
++        bots = {"rss": {"workflow": "sources_rss.yml", "every_min": 20, "stale_min": 60, "enabled": True}}
++        gh = type("GH", (), {"enabled": False, "workflows": lambda s: [], "runs": lambda s, w: None})()
++        sr.Repair(self.root, bots, gh, now=T0).run()
++        sr.Repair(self.root, bots, gh, now=T0 + 1800).run()             # sigue apagada: no es episodio nuevo
++        caidas = em.query_episodes({"tipo": "feed_caido"}, self.root)
++        self.assertEqual([(x["entidad"], x["resultado"], x["writer"]) for x in caidas],
++                         [("rss/muerta", "auto_off", "self_repair")])
++        state.write_text(json.dumps({"last_run": T0, "feeds": {"muerta": {"status": 200, "fails": 0}}}),
++                         encoding="utf-8")
++        sr.Repair(self.root, bots, gh, now=T0 + 3600).run()             # se recuperó: auto_on
++        self.assertEqual([x["resultado"] for x in em.query_episodes({"tipo": "bot_reparado"}, self.root)],
++                         ["auto_on"])
++        self.assertTrue((self.src / "_episodes_self_repair.jsonl").exists())
++
++    def test_hipotesis_evaluada_y_alerta(self):
++        sm.migrate_h0(root=self.root, now=T0)
++        rows = [{"h0_group": "info_ge20", "primary": "hit"}] * 18 + [{"h0_group": "info_ge20", "primary": "miss"}] * 7 \
++            + [{"h0_group": "info_lt20", "primary": "hit"}] * 5 + [{"h0_group": "info_lt20", "primary": "miss"}] * 15
++        sm.evaluate_hypothesis("H-0", rows, root=self.root, now=T0 + 60, persist=False)
++        self.assertEqual(em.query_episodes(root=self.root), [])          # sin persistir no hay episodio
++        sm.evaluate_hypothesis("H-0", rows, root=self.root, now=T0 + 60)
++        (ep,) = em.query_episodes({"tipo": "hipotesis_evaluada", "entidad": "H-0"}, self.root)
++        self.assertEqual((ep["resultado"], ep["tags"], ep["contexto"]["n"], ep["contexto"]["test"]),
++                         ("H-0 rechazada", ["a", "rechazada"], 45, "fisher_one_sided"))
++        self.assertEqual(ep["contexto"]["data_hash"], sm.sha(rows))
++        alert = {"mint": MINT, "symbol": "PEPE", "chain": "solana", "scorer": "young", "score": 64,
++                 "timestamp": "2026-10-03_040000"}
++        a = em.alert_episode(alert)
++        self.assertEqual((a["tipo"], a["entidad"], a["ts"], a["resultado"], a["contexto"]["score"]),
++                         ("alerta_emitida", MINT, T0, "emitida", 64))
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_lib_reactive_state.py b/04_Config/scripts/test_lib_reactive_state.py
+new file mode 100644
+index 00000000..ec08678f
+--- /dev/null
++++ b/04_Config/scripts/test_lib_reactive_state.py
+@@ -0,0 +1,118 @@
++#!/usr/bin/env python3
++"""Tests del estado reactivo por polling (patrón #3): lib_reactive_state. unittest, sin red.
++
++Uso: python 04_Config/scripts/test_lib_reactive_state.py
++"""
++import json
++import os
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_reactive_state as rsl  # noqa: E402
++
++T0 = 1791000000
++STATE = "02_Analisis/sources/rss/_state.json"
++
++
++class Base(unittest.TestCase):
++    def setUp(self):
++        self.root = Path(tempfile.mkdtemp(prefix="reactive_"))
++        self.addCleanup(shutil.rmtree, self.root, True)
++        self.got = []
++
++    def put(self, rel, obj):
++        p = self.root / rel
++        p.parent.mkdir(parents=True, exist_ok=True)
++        p.write_text(json.dumps(obj), encoding="utf-8")
++        return p
++
++    def rs(self, now=T0, **kw):
++        return rsl.ReactiveState(self.root, now=now, **kw)
++
++    def cb(self, ev):
++        self.got.append((ev["change"], ev["path"]))
++
++
++class Reactivo(Base):
++    def test_linea_de_base_cambio_y_persistencia(self):
++        self.put(STATE, {"last_run": T0, "feeds": {"a": {"status": 200}}})
++        rs = self.rs()
++        rs.subscribe(STATE, self.cb, name="rss")
++        self.assertEqual(rs.poll(), [])                                  # primera vez: línea de base, sin disparar
++        self.put(STATE, {"last_run": T0 + 1200, "feeds": {"a": {"status": 404}}})
++        ev = rs.poll()
++        self.assertEqual([(e["change"], e["path"]) for e in ev], [("modified", STATE)])
++        self.assertTrue(ev[0]["prev_sha"] and ev[0]["sha"] != ev[0]["prev_sha"])
++        self.assertEqual(ev[0]["data"]["feeds"]["a"]["status"], 404)
++        self.assertEqual(rs.poll(), [])                                  # sin cambios: nada
++        p, before = self.root / STATE, (self.root / STATE).stat()
++        self.put(STATE, {"last_run": T0 + 2400, "feeds": {"a": {"status": 503}}})    # mismo tamaño...
++        os.utime(p, ns=(before.st_atime_ns, before.st_mtime_ns))                     # ...y mismo mtime (mismo tic)
++        self.assertEqual([e["change"] for e in rs.poll()], ["modified"])  # huella "racy": se re-hashea igual
++        saved = json.loads(rsl.state_path(self.root).read_text(encoding="utf-8"))
++        self.assertIn(STATE, saved["subscriptions"]["rss"]["files"])
++        again = self.rs(now=T0 + 60)                                     # otra corrida: carga la huella y no re-dispara
++        again.subscribe(STATE, self.cb, name="rss")
++        self.assertEqual(again.poll(), [])
++
++    def test_glob_multi_instancia_creado_y_borrado(self):
++        self.put("02_Analisis/sources/telegram/_state_a.json", {"last_run": T0})
++        rs = self.rs()
++        rs.subscribe("02_Analisis/sources/*/_state*.json", self.cb, name="estados")
++        rs.poll()
++        self.put("02_Analisis/sources/telegram/_state_b.json", {"last_run": T0})
++        (self.root / "02_Analisis/sources/telegram/_state_a.json").unlink()
++        rs.poll()
++        self.assertEqual(self.got, [("created", "02_Analisis/sources/telegram/_state_b.json"),
++                                    ("deleted", "02_Analisis/sources/telegram/_state_a.json")])
++        fresh = rsl.ReactiveState(self.root, consumer="orchestrator", now=T0)
++        fresh.subscribe("02_Analisis/sources/*/_state*.json", self.cb, name="todo", fire_initial=True)
++        self.assertEqual([e["change"] for e in fresh.poll()], ["created"])
++        self.assertTrue((self.root / "02_Analisis/sources/_reactive_state_orchestrator.json").exists())
++        with self.assertRaises(ValueError):
++            rsl.state_path(self.root, "../x")
++
++    def test_keys_solo_dispara_si_cambia_lo_que_importa(self):
++        self.put(STATE, {"last_run": T0, "feeds": {"a": {"status": 200, "checked_at": T0}}})
++        rs = self.rs()
++        rs.subscribe(STATE, self.cb, name="estado_fuentes", keys=["feeds.a.status"])
++        rs.poll()
++        self.put(STATE, {"last_run": T0 + 1200, "feeds": {"a": {"status": 200, "checked_at": T0 + 1200}}})
++        self.assertEqual(rs.poll(), [])                                  # solo cambió el reloj
++        self.put(STATE, {"last_run": T0 + 2400, "feeds": {"a": {"status": 503, "checked_at": T0 + 2400}}})
++        self.assertEqual([e["change"] for e in rs.poll()], ["modified"])
++        (self.root / STATE).write_text('{"last_run": 1, "feeds": {"a"', encoding="utf-8")   # push a medias
++        self.assertEqual(rs.poll(), [])
++        self.assertEqual(self.got, [("modified", STATE)])
++
++    def test_callback_roto_repite_y_no_frena_a_los_demas(self):
++        p = self.put(STATE, {"v": 1})
++        calls = {"n": 0}
++
++        def roto(ev):
++            calls["n"] += 1
++            if calls["n"] == 1:
++                raise RuntimeError("consumidor caído")
++        rs = self.rs()
++        rs.subscribe(STATE, roto, name="roto")
++        rs.subscribe(STATE, self.cb, name="sano")
++        rs.poll()
++        self.put(STATE, {"v": 2})
++        first = rs.poll()
++        self.assertEqual(sorted((e["subscriber"], "error" in e) for e in first), [("roto", True), ("sano", False)])
++        second = rs.poll()                                               # al menos una vez: se repite solo el roto
++        self.assertEqual([(e["subscriber"], e["change"], "error" in e) for e in second], [("roto", "modified", False)])
++        self.assertEqual(rs.poll(), [])
++        st = p.stat()
++        os.utime(p, ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))  # mtime nuevo, mismo contenido (checkout)
++        self.assertEqual(rs.poll(), [])
++        self.assertEqual(self.got, [("modified", STATE)])
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_lib_scientific_method.py b/04_Config/scripts/test_lib_scientific_method.py
+new file mode 100644
+index 00000000..1c2f791d
+--- /dev/null
++++ b/04_Config/scripts/test_lib_scientific_method.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""Tests del método científico automatizado (patrón #2): lib_scientific_method. unittest, sin red.
++
++Uso: python 04_Config/scripts/test_lib_scientific_method.py
++"""
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import early_review  # noqa: E402
++import lib_scientific_method as sm  # noqa: E402
++
++NOW = 1791000000
++RATE = {"test": "rate_vs_baseline", "min_n": 10, "baseline": 0.30}
++RATE_ACC = {"all": [["wilson_lo", ">", "$baseline"]]}
++RATE_REJ = {"all": [["wilson_hi", "<", "$baseline"]]}
++
++
++def rows_h0(k_ge, n_ge, k_lt, n_lt):
++    def grp(name, k, n):
++        return [{"h0_group": name, "primary": "hit" if i < k else "miss"} for i in range(n)]
++    return grp("info_ge20", k_ge, n_ge) + grp("info_lt20", k_lt, n_lt) + [{"h0_group": "info_ge20",
++                                                                           "primary": "sin_datos"}]
++
++
++def rows_rate(k, n):
++    return [{"primary": "hit" if i < k else "miss"} for i in range(n)]
++
++
++class Base(unittest.TestCase):
++    def setUp(self):
++        self.root = Path(tempfile.mkdtemp(prefix="sm_"))
++        self.addCleanup(shutil.rmtree, self.root, True)
++
++    def lines(self):
++        return [json.loads(x) for x in sm.registry_path(self.root).read_text(encoding="utf-8").splitlines()]
++
++    def reg(self, hid="H-t1", **kw):
++        args = dict(statement="la tasa supera 30 %", prediction=dict(RATE), acceptance=RATE_ACC,
++                    rejection=RATE_REJ, root=self.root, now=NOW)
++        args.update(kw)
++        return sm.register_hypothesis(hid, **args)
++
++
++class Registro(Base):
++    def test_preregistro_persiste_y_es_idempotente(self):
++        line = self.reg()
++        self.assertEqual((line["event"], line["id"], line["ts"]), ("register", "H-t1", NOW))
++        self.assertEqual(self.reg()["hash"], line["hash"])            # mismo contenido: no escribe otra línea
++        self.assertEqual(len(self.lines()), 1)
++        self.assertEqual(sm.get_hypothesis("H-t1", self.root)["registration"]["statement"], "la tasa supera 30 %")
++
++    def test_preregistro_inmutable_y_validaciones(self):
++        self.reg()
++        with self.assertRaises(ValueError):                             # variante con el mismo id
++            self.reg(prediction=dict(RATE, baseline=0.25))
++        with self.assertRaises(ValueError):
++            self.reg(hid="hipotesis 1")
++        with self.assertRaises(ValueError):
++            self.reg(hid="H-t2", prediction={"test": "llm_judge"})
++        with self.assertRaises(ValueError):
++            self.reg(hid="H-t3", acceptance={"all": [["p_value", "~", 1]]})
++        self.assertEqual(len(self.lines()), 1)
++
++
++class Evaluacion(Base):
++    def test_h0_migrada_reproduce_early_review(self):
++        sm.migrate_h0(root=self.root, now=NOW)
++        reg = sm.get_hypothesis("H-0", self.root)["registration"]
++        self.assertEqual((reg["registered_at"], reg["prediction"]["min_n"], reg["prediction"]["alpha"]),
++                         ("2026-10-02", early_review.H0_MIN_N, early_review.H0_ALPHA))
++        for case in ((18, 25, 5, 20), (10, 22, 9, 20), (3, 10, 2, 10)):
++            rows = rows_h0(*case)
++            old = early_review.evaluate_h0(rows)
++            new = sm.evaluate_hypothesis("H-0", rows, root=self.root, now=NOW, persist=False)
++            self.assertEqual(new["label"], old["verdict"], case)
++            self.assertEqual(new["result"]["n"], old["n_resolved"])
++            self.assertEqual(new["result"]["groups"], old["groups"])
++            if "p_value" in old:
++                self.assertEqual(new["result"]["p_value"], old["p_value"])
++        self.assertEqual(sm.fisher_one_sided(7, 12, 2, 11), early_review.fisher_one_sided(7, 12, 2, 11))
++
++    def test_tasa_contra_baseline_tres_veredictos(self):
++        self.reg()
++        v = {k: sm.evaluate_hypothesis("H-t1", rows_rate(k, 40), root=self.root, now=NOW, persist=False)["verdict"]
++             for k in (24, 4, 13)}
++        self.assertEqual(v, {24: "aceptada", 4: "rechazada", 13: "inconclusa"})
++        self.assertEqual(sm.evaluate_hypothesis("H-t1", rows_rate(9, 9), root=self.root, persist=False)["verdict"],
++                         "pendiente")                                    # n < min_n
++
++    def test_mediana_con_ic_por_estadisticos_de_orden(self):
++        med, ci = sm.median_ci([5, 1, 4, 2, 3])
++        self.assertEqual((med, ci), (3, [1, 5]))                         # n=5: P(B<=0)=1/32 <= 0,05
++        self.assertEqual(sm.median_ci([7]), (7, None))
++        self.reg(hid="H-b1", statement="rendimiento 24 h del listing > 0",
++                 prediction={"test": "median_ci", "min_n": 5, "value_field": "ret_24h"},
++                 acceptance={"all": [["ci_lo", ">", 0]]}, rejection={"all": [["ci_hi", "<", 0]]})
++        good = [{"ret_24h": x} for x in (0.05, 0.12, 0.3, 0.08, 0.2, 0.15, 0.02)]
++        mixed = [{"ret_24h": x} for x in (-0.2, 0.1, -0.05, 0.3, 0.0, -0.1, 0.2)]
++        self.assertEqual(sm.evaluate_hypothesis("H-b1", good, root=self.root, persist=False)["verdict"], "aceptada")
++        self.assertEqual(sm.evaluate_hypothesis("H-b1", mixed, root=self.root, persist=False)["verdict"],
++                         "inconclusa")
++
++    def test_evaluacion_append_only_con_hash_de_datos(self):
++        first = self.reg()
++        rows = rows_rate(24, 40)
++        out = sm.evaluate_hypothesis("H-t1", rows, root=self.root, now=NOW + 60)
++        sm.evaluate_hypothesis("H-t1", rows_rate(4, 40), root=self.root, now=NOW + 120)
++        lines = self.lines()
++        self.assertEqual([x["event"] for x in lines], ["register", "evaluate", "evaluate"])
++        self.assertEqual(lines[0], first)                                # la registración no se reescribe
++        self.assertEqual((lines[1]["data_hash"], lines[1]["hash"]), (sm.sha(rows), first["hash"]))
++        self.assertEqual(out["verdict"], "aceptada")
++        self.assertEqual([e["verdict"] for e in sm.get_hypothesis("H-t1", self.root)["evaluations"]],
++                         ["aceptada", "rechazada"])
++        with self.assertRaises(KeyError):
++            sm.evaluate_hypothesis("H-nada", rows, root=self.root)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/El cerebro de dios/22_MEMORIA_CLAUDE.md b/El cerebro de dios/22_MEMORIA_CLAUDE.md
+index d51c0d9a..08ebdc88 100644
+--- a/El cerebro de dios/22_MEMORIA_CLAUDE.md	
++++ b/El cerebro de dios/22_MEMORIA_CLAUDE.md	
+@@ -285,6 +285,7 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90,
+ | 2026-10-01 (noche, Fase 8) | Inventario + activación de grupos | Doc 28 (91 servicios, 68 con endpoint, 9/9 grupos) + `probe_inventario.yml` (manual) · trust loop CEX (`active_tracking_cex`: Binance → Coinbase → Kraken) · `script_114` v0.4: Snapshot, fees por protocolo, todos los perps de Hyperliquid con historial de OI, Aevo pre-mercado · lib 0.2: c con fees + Snapshot, e con ingresos de red, g con yield, d emite con funding/OI/basis, b registra · grupo i en el flujo Solana (`script_82.apply_group_i`: par > 180 días → registro; arc → 0) · `main` todavía sin la Fase 7 (YIN) |
+ | 2026-10-01 (noche, cont.) | Fase 7: cobertura multi-chain | Workflows verificados en Actions (colector 2/2 success, scanner disparado: success) · `lib_scoring_multichain` (19 tests) · `script_114` v0.3 · emisión multi-chain en `script_97` (9 tests, mutación 7/7) · humo con el scan real: 273 activos, 13 emitibles · 302/302 tests |
+ | 2026-10-03 (D-041) | Enjambre: normalización, reparador, grafo, auditoría, Telegram, método por grupo | T1 `lib_normalize` (#19; en escritura y fusión; 208/731 ítems cambiarían) · T2 `bot_self_repair` + `sources_self_repair.yml` (#20; auto_off 6 h, 1 rerun solo en bots de fuentes, 1 dispatch, escalado en AUTO:repair) · Messari eliminado (404) · T3 `lib_knowledge_graph` → `_graph.json` vía orquestador (#7) · T4 `lib_audit` (#15; `_audit.jsonl` + `_metrics.json` en rss y orquestador) · T5 `bot_telegram_public` (15 canales [V], 2 instancias de 40 min, bs4 con hash; corrida real 15/15, 267 ítems) · T6/T7 doc 36 (método por grupo a–i + Dossier v2, diseño) · bug corregido: `--once` (loop 0) caía en 40 min · batería 470/470 (con PYTHONUTF8=1, como Linux) · rama `claude/d041-enjambre`, sin push |
++| 2026-10-03 (D-055) | Ola 2 del enjambre + investigación de servicios | T1: 11 fichas en `_servicios_open_source/` 03–06 con endpoints probados en vivo (GoPlus y DexPaprika sin key; `pump.fun /coins` sin key; `/replies` y KOTH → 404; Solscan 401/404; Birdeye 401; DEXTools web = SPA; VADER cubre 3/19 términos cripto) + descartes con motivo en `_PENDIENTES` · T2 `lib_scientific_method` (#2; registro append-only `02_Analisis/hypotheses/_registry.jsonl`; H-0 migrada como referencia y reproduce `early_review.evaluate_h0`) · T3 `lib_episodic_memory` (#12; `_episodes.jsonl` + fragmento por escritor; cableado en `bot_self_repair` y `evaluate_hypothesis`; `alerta_emitida` sin cablear en script_97, que es producción) · T4 `lib_adversarial_debate` (#8; advocate/challenger con reglas; doc 36 §4.1) · T5 `lib_reactive_state` (#3; polling por sha256 con protección "racy") · 490/490 · rama `claude/ola2-enjambre`, sin push (lo hace YIN) |
+ | 2026-10-03 (cierre) | D-035: orquestador, query(), traspaso | `bot_orchestrator` + `sources_orchestrator.yml` (merge, health, poda, bloque AUTO de `_INSTALADOS.md`) · `query()` conectada en script_116 (menciones del scorer joven) y script_97 (`sources_mentions_*`, informativo hasta v7.2.2) · 8 tests (5 + 3) · 437/437 · doc 34 v0.2 (§11 `bot_self_repair`, §12 coparticipación + `backup` en `_bots.yaml`) · **doc 35 traspaso con SHA-256 por archivo** |
+ | 2026-10-03 | D-033: sistema multi-bot | Doc 34 v0.1: diseño completo de 7 bots + `lib_sources_store`, con esquema src-1, YAML por bot, storage, dependencias y plan de tests · 7 imposibilidades técnicas documentadas (el `GITHUB_TOKEN` no puede escribir workflows; 4plebs no archiva /biz/; DEXTools/Solscan necesitan JS) · implementados `lib_sources_store`, `bot_rss_news` (12 feeds), `sources_rss.yml` y 9 tests · rama sincronizada con main (fast-forward) |
+ | 2026-10-01 (noche) | Fase 6: guías multi-chain + grupo i + incidente | Guías de compra Arbitrum / Optimism / Blast (Monad sin DEX, no emite) con `guide_for` como regla única para alerta y dossier; bloque 🛒 con 1 wallet; 6 tests nuevos + mutación 5/5 · doc 27 v0.2 (grupo i: > 180 días, registro sin emisión) · §1.2 incidente supergrupo · rama `claude/zealous-tesla-3ua19i` (merge de `origin/main` sin force) |
+diff --git a/El cerebro de dios/35_TRASPASO_CLAUDE.md b/El cerebro de dios/35_TRASPASO_CLAUDE.md
+index 7cb77e50..ab4f900a 100644
+--- a/El cerebro de dios/35_TRASPASO_CLAUDE.md	
++++ b/El cerebro de dios/35_TRASPASO_CLAUDE.md	
+@@ -93,7 +93,7 @@ Estados:
+ | `04_Config/sources/_bots.yaml` | Registro de bots: workflow, cadencia, stale, respaldo | rama | `f69def01a846d6387fa35771b61b1bfc42de95bbe994d70d1d6e6ab497a74607` |
+ | `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `95c914b62e86f4c275c07a4d164666db03ea407f04415e0228bdbbeeb1ea6409` |
+ | `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `e5a9dbbb3a7e1496e5aaee7b0310d78b2a091d895087547830d57b0392c977bb` |
+-| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `6030217bdffa1c9b4820e9c3e1c794276b19be9dc1660ff9de9d77f5d2c3def5` |
++| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `a3c48e948fdd288bf4ef4f532d3396c3d154703efc6eb918218a0f8c5279e5e5` |
+ | `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `7857695a74fc43688ec02ad8b30efe0ac95639516a960d47e3a4f724e7d46a20` |
+ | `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `66f443238fcdf1092464a670c86c8da7f474f87007ca7b73900a61b96831c938` |
+ | `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `7c6d3648d1affae0e8d2a15c5ee46ae2a91c31f79ba666efe991944d81c6b116` |
+diff --git a/El cerebro de dios/36_METODO_POR_GRUPO.md b/El cerebro de dios/36_METODO_POR_GRUPO.md
+index b741380a..00ba908c 100644
+--- a/El cerebro de dios/36_METODO_POR_GRUPO.md	
++++ b/El cerebro de dios/36_METODO_POR_GRUPO.md	
+@@ -1,8 +1,8 @@
+ ---
+ owner: Claude Code (implementador) — pendiente auditoría YANG
+-status: DISEÑO (sin implementar) — D-041 T6 y T7
++status: DISEÑO + implementación parcial — D-041 T6/T7; D-055 (#2 registro, #8 debate, #12 episodios)
+ last_updated: 2026-10-03
+-version: 0.1
++version: 0.2
+ complementa: doc 27 (fórmulas y eventos por grupo), doc 32 (scorer joven), doc 34 (fuentes)
+ ---
+ 
+@@ -29,14 +29,14 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
+ 
+ | Paso | Qué se hace | Dónde vive |
+ |---|---|---|
+-| 1. Preregistro | La hipótesis se escribe **antes** de mirar los resultados: enunciado, evento, métrica, n mínimo, α y criterio. No se edita después; una variante es una hipótesis nueva. | `02_Analisis/methods/<grupo>/H-<grupo><n>.json` [P] |
++| 1. Preregistro | La hipótesis se escribe **antes** de mirar los resultados: enunciado, evento, métrica, n mínimo, α y criterio. No se edita después; una variante es una hipótesis nueva. | `02_Analisis/hypotheses/_registry.jsonl` (append-only, `lib_scientific_method`, D-055) [V] |
+ | 2. Evento | El evento del grupo (doc 27 §3.1): ventana de 48 h, orden intra-vela conservador (open → low → high → close). | `lib_scoring_multichain.EVENTS` [V] |
+ | 3. Baseline | Tasa del evento en **todo** el universo del grupo, no solo en lo alertado. Sin baseline, una tasa alta no significa nada. | por grupo [P] |
+ | 4. Métrica | Tasa del evento con IC90 de Wilson. Para hipótesis comparativas (señal sí / no), Fisher exacto unilateral con α = 0,10, como H-0 (doc 32). | `calibrate_threshold_v72.wilson` [V] |
+ | 5. Controles | **Placebo:** fechas desplazadas ±6–24 h; la señal no debe rendir igual. **Walk-forward** semanal con purga de 48 h. **Contrafactual:** los +20% no alertados y qué señales tenían (doc 35 §6.5). | [P] |
+-| 6. Refutación (#8, debate adversario) | Antes de aceptar, un segundo evaluador automático intenta romper el resultado: placebo, permutación de etiquetas, submuestras por chain y por semana. Si una submuestra invierte el signo, no se acepta. | [P] |
++| 6. Refutación (#8, debate adversario) | Antes de aceptar, un segundo evaluador automático intenta romper el resultado: placebo contra real (test formal), submuestras por chain y por semana, estabilidad temporal. Si una submuestra invierte el signo **con significancia**, no se acepta; una inversión sin significancia es ruido (D-058). | `lib_adversarial_debate` (§4.1, D-055) [V] |
+ | 7. Decisión | **Acepta:** la señal pasa a pesar en el score con su LLR estimado (doc 27 §4.1). **Rechaza:** sale (#18, poda cognitiva; P-13). **Inconcluso:** sigue midiendo hasta el n máximo y después se rechaza. | memoria episódica (#12) |
+-| 8. Episodio (#12) | Cada hipótesis cerrada deja un episodio con hipótesis, datos usados (hash), resultado, decisión y fecha. Es la memoria que impide re-probar lo ya descartado. | `02_Analisis/methods/_episodes.jsonl` [P] |
++| 8. Episodio (#12) | Cada hipótesis cerrada deja un episodio con hipótesis, datos usados (hash), resultado, decisión y fecha. Es la memoria que impide re-probar lo ya descartado. | `02_Analisis/sources/_episodes.jsonl` + `_episodes_<writer>.jsonl` (`lib_episodic_memory`, D-055) [V] |
+ 
+ **Pizarra compartida (#5).** Ninguna hipótesis consulta fuentes por su cuenta. Lee lo que ya escriben los bots:
+ - `_merged.jsonl` y `_index.json` (menciones normalizadas, #19);
+@@ -119,16 +119,99 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
+ | #2 Método científico automatizado | Protocolo §1: preregistro → evento → baseline → métrica → controles → decisión |
+ | #5 Blackboard | Las hipótesis leen la pizarra (`_merged`, `_index`, `_graph`, `_health`, `multichain/`); no consultan fuentes |
+ | #7 Knowledge Graph | H-a2 (cluster de co-mención) y el contexto del dossier |
+-| #8 Debate adversario | Refutador automático: placebo, permutación y submuestras antes de aceptar |
+-| #12 Memoria episódica | `_episodes.jsonl`: cada hipótesis cerrada con su resultado y su decisión |
++| #8 Debate adversario | advocate contra challenger con reglas explícitas y control de error: placebo contra real, submuestras y estabilidad, cada regla que refuta con su test formal (§4.1) [V]; pesos y cortes [H] |
++| #12 Memoria episódica | `_episodes.jsonl` + fragmentos por escritor. Tipos: `hipotesis_evaluada` (cada evaluación persistida), `feed_caido` y `bot_reparado` (bot_self_repair, solo transiciones), `alerta_emitida` (constructor listo; falta cablearlo en el emisor, que es producción) [V] |
++| #3 Estado reactivo | `lib_reactive_state`: `subscribe(path, callback)` + `poll()` sobre la pizarra, sin webhooks. Un consumidor reacciona cuando cambia el contenido (sha256, no mtime) de un `_state*.json`, o solo de algunas claves (`keys=["feeds"]`). Al menos una vez; estado en `_reactive_state[_<consumer>].json` (D-055) [V] |
+ | #18 Poda cognitiva | Una señal rechazada o inconclusa al n máximo se retira del score (P-13) |
+ | #19 Normalización | Todas las comparaciones usan la forma canónica de `lib_normalize` |
+ 
+-**Implementación propuesta [P]**
+-- `method_runner.py`: diario; lee los preregistros, mide y escribe episodios.
+-- `method_refuter.py`: corre los controles del paso 6.
++**Implementado (D-055) [V]: `lib_scientific_method.py`**
++- `register_hypothesis(id, statement, prediction, acceptance, rejection)`: preregistro inmutable. El mismo id con otro contenido da error, porque una variante es un id nuevo.
++- `evaluate_hypothesis(id, data)`: corre la prueba preregistrada (`fisher_one_sided`, `rate_vs_baseline` o `median_ci`) y decide con reglas explícitas `{all|any: [[campo, op, valor]]}`. Veredicto: pendiente (n < mín.) · aceptada · rechazada · inconclusa. Guarda `data_hash`.
++- La H-0 está migrada como referencia (registrada el 2026-10-02; mismos parámetros). Reproduce el veredicto y el p-valor de `early_review.evaluate_h0`, que sigue siendo su evaluador de producción.
++
++**Implementación pendiente [P]**
++- `method_runner.py`: diario. Lee los preregistros, arma las filas y las filas placebo desde la pizarra, llama a `evaluate_hypothesis` y después a `run_debate` (§4.1), y escribe episodios.
++- ~~`method_refuter.py`~~: lo reemplaza `lib_adversarial_debate` (§4.1).
+ - Ninguno toca el score directamente: la promoción de una señal al score la decide Dirección a partir de los episodios.
+ 
++### 4.1 Debate formalizado (patrón #8, D-055; control de error D-058) [V] — pesos y cortes [H]
++
++**Qué es.** Es el paso 6 del protocolo hecho código (`lib_adversarial_debate.run_debate(hypothesis_id, evidence_set)`). Dos roles discuten sobre **la misma evidencia**. Cada argumento sale de una regla explícita con su peso: sin LLM, determinista.
++
++**Afirmación en debate:** "el efecto que predice la hipótesis es real":
++- `fisher_one_sided`: tasa A − tasa B > 0;
++- `rate_vs_baseline`: tasa − baseline > 0;
++- `median_ci`: mediana > 0.
++
++Para la H-0, que es una nula, "sostenida" equivale a "H-0 rechazada con robustez".
++
++**Evidencia:** `{"rows": [...], "placebo_rows": [...], "subsample_fields": ["chain", "week"]}`.
++- Las filas son las mismas de `evaluate_hypothesis`.
++- Las filas placebo son las mismas alertas medidas con fechas desplazadas ±6–24 h; las arma quien tiene las velas, no el debate.
++- `week` se deriva de `t0`, `ts` o `alert_ts`.
++- Un campo con una sola submuestra evaluable no vota. Una submuestra necesita ≥ 10 filas resueltas.
++
++**Pesos y cortes: [H] hasta calibrar con datos reales.** Los pesos de la tabla, α = 0,10, el mínimo de 10 filas por submuestra, el 75 % de consistencia, los 10 / 5 pp y el 30 % de faltantes son hipótesis de diseño. La única calibración es sintética (abajo). Se recalibran con `calibrate()` cuando haya hipótesis resueltas con datos propios.
++
++**Control de error (D-058, auditoría Claude1) [V].** La versión D-055 refutaba efectos reales con reglas que no tenían un test detrás: una submuestra con el signo cambiado por ruido o un placebo con la mitad del efecto por azar alcanzaban para refutar. Ahora toda regla del challenger que refuta tiene un test formal:
++- **C4 y C7:** la submuestra o la mitad invertida tiene que ser significativa **en contra**, con el mismo test invertido (Fisher a una cola de B > A; Wilson IC90 bajo el baseline; IC90 de la mediana < 0). Si no lo es, queda registrada como ruido (C4n, peso 0).
++- **C5:** placebo contra real con un test de permutación de la pertenencia real/placebo, estratificado por grupo. Con resultados binarios es exacto (hipergeométrico; validado contra enumeración completa en los tests). Refuta solo si el placebo es significativo por sí mismo **y** el real no lo supera con significancia.
++- **C9:** exige que el efecto restante se invierta. Perder significancia al sacar un tercio de la muestra es pérdida de potencia, no evidencia en contra.
++- **A6/C6 eliminadas:** la permutación de etiquetas de grupo con resultados binarios y márgenes fijos **es** el test exacto de Fisher, así que contaban dos veces la evidencia de A1/C2.
++- **Nuevo veredicto *inconclusa*:** sin significancia en el total y sin fatales. Coincide con el paso 7 ("sigue midiendo hasta el n máximo"): la falta de potencia no se informa como refutación.
++
++| Rol | Regla | Argumento | Peso [H] |
++|---|---|---|---|
++| advocate | A1 | efecto significativo (p < 0,10; Wilson IC90 sobre el baseline; IC90 de la mediana > 0) | 2 |
++| advocate | A2 | efecto ≥ 10 pp (criterio de §2) | 1 |
++| advocate | A3 | n ≥ 2 × mínimo preregistrado | 1 |
++| advocate | A4 | el signo se repite en ≥ 75 % de las submuestras | 1 |
++| advocate | A5 | placebo no significativo **y** el real lo supera con significancia (test placebo vs real, p < 0,10) | 1 |
++| advocate | A7 | las dos mitades del periodo tienen el signo predicho | 1 |
++| challenger | C1 | n < mínimo → **insuficiente** (no hay debate) | fatal |
++| challenger | C2 | no significativo | 2 |
++| challenger | C3 / C3b | efecto < 5 pp / efecto en la dirección contraria sin significancia | 1 / 2 |
++| challenger | C3s | **el efecto total va significativamente en contra** | fatal |
++| challenger | C4 | **una submuestra invierte el signo con significancia** (p en contra < 0,10) | fatal |
++| challenger | C4n | una submuestra invierte el signo sin significancia (ruido; queda registrada) | 0 |
++| challenger | C5 | **el placebo es significativo y el real no lo supera** (p placebo vs real ≥ 0,10) | fatal |
++| challenger | C5n | el real no se separa con claridad del placebo (sin llegar a C5) | 1 |
++| challenger | C7 | una mitad del periodo va en contra con significancia | 2 |
++| challenger | C8 | faltan resultados en más del 30 % de las filas (sesgo de selección) | 1 |
++| challenger | C9 | sin la submuestra más grande el efecto se invierte o desaparece | 2 |
++| challenger | C10 | no hay control placebo | 1 |
++
++**Veredicto y confianza**
++- **insuficiente:** C1.
++- **refutada:** algún argumento fatal, o hay significancia pero el peso del challenger es ≥ al del advocate.
++- **inconclusa:** sin significancia y sin fatales (se sigue midiendo; al n máximo se rechaza, paso 7).
++- **sostenida:** significancia, sin fatales y el advocate pesa más.
++- Confianza = peso del lado ganador / peso total.
++- Las razones listan los argumentos fatales o, si no hay, los del lado ganador ordenados por peso.
++
++**Calibración sintética (D-058) [V].** `calibrate()` es un test permanente (`test_lib_adversarial_debate.Calibracion`). Diseño de cada corrida:
++- 200 escenarios con efecto real y 200 nulos;
++- tasa base U(0,25; 0,40) y efecto U(20; 30) pp;
++- 3 chains × 2 semanas, con placebo nulo;
++- semilla fija 20261003.
++
++Antes y después del fix se midieron sobre los mismos escenarios:
++
++| n por grupo | Reales refutados, antes → después | Reales no sostenidos, después | Nulos aceptados, antes → después |
++|---|---|---|---|
++| 102 | 34/200 (17 %) → **8/200 (4 %)** | 15/200 (7,5 %) | 10/200 (5 %) → **14/200 (7 %)** |
++| 42 | 67/200 (33,5 %) → **12/200 (6 %)** | 49/200 (24,5 %) | 8/200 (4 %) → **11/200 (5,5 %)** |
++
++- Los dos objetivos (< 10 % de reales refutados y < 10 % de nulos aceptados) se cumplen con los dos tamaños.
++- Las refutaciones de reales que quedan son todas C5: el placebo da significativo por azar (≈ α) y el real no lo supera.
++- Con 42 filas por grupo, el 24,5 % de reales no sostenidos es sobre todo *inconclusa*. Es la potencia de Fisher a ese n, no el debate.
++- La aceptación de nulos está acotada por α = 0,10, que es [H].
++
++**Regla de decisión con el paso 7.** Una hipótesis cuya aceptación implica un efecto se acepta solo si `evaluate_hypothesis` dice *aceptada* **y** el debate dice *sostenida*.
++- Ejemplo de refutación verificado en los tests: el total pasa Fisher (p < 0,001, +30 pp; solana +70 pp), pero `chain=base` va en contra con significancia (−50 pp, p en contra 0,001). Resultado: *refutada*.
++- Contraejemplo de regresión: una `chain=base` con −20 pp y p en contra 0,17 es ruido y no refuta. Resultado: *sostenida*.
++
+ ---
+ 
+ ## 5. Dossier v2 — "obra informativa" (D-041 T7)
+diff --git a/_servicios_open_source/03_data_blockchain/dexpaprika.md b/_servicios_open_source/03_data_blockchain/dexpaprika.md
+new file mode 100644
+index 00000000..dc0a71a3
+--- /dev/null
++++ b/_servicios_open_source/03_data_blockchain/dexpaprika.md
+@@ -0,0 +1,15 @@
++# DexPaprika (CoinPaprika) — API DEX multichain
++
++**Repo:** https://github.com/coinpaprika/dexpaprika-sdk-python (SDK oficial)
++**Licencia:** MIT [V] (GitHub, push 2026-09-29)
++**Gratis:** sí, sin key [V]. `GET https://api.dexpaprika.com/networks` y `/networks/solana/pools/search` respondieron 200 sin credenciales (2026-10-03).
++**Requisitos:** `requests` (ya instalado). El SDK (`dexpaprika-sdk` 0.12.2) agrega `pydantic>=2` [V] → no hace falta para GET simples.
++**Qué hace:** pools, tokens, precios y volumen de DEX en decenas de redes (Solana, Ethereum, BSC, Base, Robinhood Chain, Katana…) [V].
++- `/networks/{red}/pools/search?order_by=created_at&sort=desc` devuelve los pools recién creados con `dex_id` (p. ej. `pumpfun`), `created_at`, `volume_usd_24h`, `transactions_24h` [V].
++- Ojo: `/networks/{red}/pools?order_by=created_at` devuelve **410 endpoint_removed**; el reemplazo es `/pools/search` [V].
++**Por qué sirve al proyecto:**
++- Tercera fuente independiente de pools nuevos (además de DexScreener y GeckoTerminal) para el early watch: si una falla o se atrasa, hay respaldo. [I]
++- Cubre redes que GeckoTerminal indexa tarde (Robinhood Chain, Katana) [V en `/networks`; cobertura comparada I].
++- Señal de "nacimiento" por red y por DEX: conteo de pools nuevos por hora → baseline Poisson (doc 26) por cadena. [H]
++**Riesgos técnicos:** no publica un límite de requests claro; usar ≤1 req/s y backoff ante 429. [I] El endpoint cambió en 2026 (410): fijar la ruta en un solo módulo. [V]
++**Recomendación:** integrar como fuente de respaldo del early watch (pools nuevos por red) en un bot de fuentes nuevo `bot_dex_pools` con salida src-1. Prioridad P1. Sin SDK.
+diff --git a/_servicios_open_source/03_data_blockchain/goplus_security.md b/_servicios_open_source/03_data_blockchain/goplus_security.md
+new file mode 100644
+index 00000000..bbcf2666
+--- /dev/null
++++ b/_servicios_open_source/03_data_blockchain/goplus_security.md
+@@ -0,0 +1,15 @@
++# GoPlus Security API
++
++**Repo:** https://github.com/GoPlusSecurity/goplus-sdk-python (SDK oficial; la API se usa también con `requests` directo)
++**Licencia:** Apache-2.0 [V] (GitHub, 2026-10-03)
++**Gratis:** sí. Sin key para uso básico: `GET /api/v1/solana/token_security` y `/api/v1/token_security/{chain_id}` respondieron 200 `code=1` sin credenciales [V] (2026-10-03). Límite publicado: 30 llamadas/min [V] (docs.gopluslabs.io/reference/support).
++**Requisitos:** `requests` (ya instalado). El SDK (`goplus` 0.2.6, 2026-08-21) arrastra `six`, `urllib3`, `python_dateutil`, `certifi` [V] → no hace falta: la API es un GET.
++**Qué hace:** chequeo de seguridad de token por contrato, en Solana (SPL/SPL-2022) y EVM (ETH, BSC=56, Base=8453, Arbitrum, etc.).
++- Solana [V]: `mintable`, `freezable`, `closable`, `transfer_fee`, `transfer_hook`, `metadata_mutable`, `holders`, `lp_holders`, `holder_count`, `dex`, `trusted_token`.
++- EVM [V]: `is_honeypot`, `cannot_buy`, `transfer_tax`, `is_mintable`, `hidden_owner`, `can_take_back_ownership`, `owner_percent`, `creator_percent`, `is_in_cex`, `honeypot_with_same_creator`.
++**Por qué sirve al proyecto:**
++- RugCheck solo cubre Solana [V] (doc 34). GoPlus da la misma clase de verificación para los grupos EVM (b, c, e…) con una sola API y sin key. [I]
++- `honeypot_with_same_creator` y `creator_percent` son features de autor que hoy no tenemos fuera de Solana. [V]
++- Encaja como chequeo de "adquisición" (¿se puede comprar y vender?) antes del dossier. [I]
++**Riesgos técnicos:** 30 req/min alcanza para validar candidatos, no para barrer todos los pools. [V] Respuesta en strings (`"0"`/`"1"`): hay que normalizar. [V]
++**Recomendación:** integrar como enriquecedor de candidatos EVM en la ruta del dossier (`script_113`), con caché de 6 h por contrato y presupuesto ≤20 req/min. Prioridad P1. Sin SDK: `requests` + normalización propia.
+diff --git a/_servicios_open_source/03_data_blockchain/helius_free.md b/_servicios_open_source/03_data_blockchain/helius_free.md
+new file mode 100644
+index 00000000..2919f78d
+--- /dev/null
++++ b/_servicios_open_source/03_data_blockchain/helius_free.md
+@@ -0,0 +1,16 @@
++# Helius (Solana) — plan Free
++
++**Repo:** https://github.com/helius-labs/helius-sdk (TypeScript; no hay SDK Python oficial) · cliente Python genérico: https://github.com/michaelhly/solana-py
++**Licencia:** helius-sdk MIT [V]; solana-py MIT [V] (GitHub, 2026-10-03)
++**Gratis:** sí, con **key gratuita** (cuenta sin tarjeta). Free: 1M créditos/mes, RPC 10 req/s, DAS/Enhanced 2 req/s [I] (helius.dev/docs/billing/plans, consultado 2026-10-03).
++**Requisitos:** key en secret (`HELIUS_API_KEY`), creada por Dirección. `requests` alcanza (JSON-RPC por POST). `solana` 0.40.3 trae `solders`, `httpx2`, `pydantic`, `websockets` [V] → no instalar si basta con JSON-RPC.
++**Qué hace:** RPC de Solana con APIs propias:
++- DAS (`getAsset`, `getTokenAccounts`) → holders y metadata de cualquier mint;
++- transacciones parseadas (swaps, mints, transfers) por dirección;
++- webhooks por dirección (en el free, limitados).
++**Por qué sirve al proyecto:**
++- Reemplaza a Solscan, que exige key Pro paga: `pro-api.solscan.io/v2.0` responde 401 "Token is missing" y `public-api.solscan.io` responde 404 [V] (2026-10-03).
++- Permite medir concentración de holders y actividad del deployer sin depender solo de RugCheck. [I]
++- El RPC público `api.mainnet-beta.solana.com` existe pero tiene límites agresivos y no ofrece DAS. [I]
++**Riesgos técnicos:** 1M créditos/mes ≈ 33k/día; `getProgramAccounts` y DAS consumen más créditos por llamada → presupuesto diario obligatorio. [I]
++**Recomendación:** P2. Integrar solo si Dirección crea la key gratuita. Uso acotado: holders/deployer de los candidatos que ya pasaron el scorer (no barrido). Si no hay key: seguir con RugCheck + GoPlus (sin key).
+diff --git a/_servicios_open_source/04_scrapers/bitcointalk_ann.md b/_servicios_open_source/04_scrapers/bitcointalk_ann.md
+new file mode 100644
+index 00000000..fd5d4611
+--- /dev/null
++++ b/_servicios_open_source/04_scrapers/bitcointalk_ann.md
+@@ -0,0 +1,15 @@
++# Bitcointalk — tablero de anuncios de altcoins (ANN)
++
++**Repo de referencia:** https://github.com/financiallyruined/BitcoinTalk-ANN-Thread-Notifier. Sin licencia y sin commits desde 2024-10 [V]: sirve como referencia y **no se copia**. https://github.com/gogogoutham/bitcointalk-scraper (crawler de mensajes, antiguo). Lo práctico es un parser propio de ~80 líneas.
++**Licencia:** parser propio (repo del proyecto). bs4 MIT [V], ya fijado con hashes en `04_Config/requirements/sources_telegram.txt`.
++**Gratis:** sí, HTML público sin login [V]. `GET https://bitcointalk.org/index.php?board=159.0` → 200, 115 KB (2026-10-03). `robots.txt` solo declara el sitemap [V].
++**Requisitos:** `requests` + `beautifulsoup4` (los dos ya están en el proyecto).
++**Qué hace:** el tablero 159 (Announcements, Altcoins) es donde los proyectos nuevos publican su hilo [ANN].
++- Selector [V]: `span[id^=msg_] a` devuelve 40 hilos por página (los primeros son fijos de reglas: se filtran por id de tema o por posición).
++- Paginación: `board=159.40`, `159.80`…
++- Por hilo: título, `topic=<id>`, respuestas y vistas (columnas de la tabla).
++**Por qué sirve al proyecto:**
++- Fuente de "nacimiento declarado" para proyectos fuera de los launchpads de memecoins (grupos de infraestructura o PoW), con la ticker en el título (`[ANN] … $XYZ`). [I]
++- Aceleración de respuestas o vistas por hilo = atención temprana medible, con el mismo baseline Poisson del doc 26. [H]
++**Riesgos técnicos:** el foro limita a los clientes agresivos: 1 request cada ≥2 s y 1 página por corrida alcanzan (el ritmo de hilos nuevos es bajo). [I] El HTML de SMF es antiguo pero estable. [I]
++**Recomendación:** P2. Implementarlo como fuente `forums` (hoy en "diseño" en `_bots.yaml`): `bot_forums` con Bitcointalk ANN, cada 60 min, salida src-1 con `kind="thread"` y cashtag extraído del título con `lib_normalize.cashtag`. No guardar el cuerpo del post.
+diff --git a/_servicios_open_source/04_scrapers/dextools_api.md b/_servicios_open_source/04_scrapers/dextools_api.md
+new file mode 100644
+index 00000000..7ab6aeab
+--- /dev/null
++++ b/_servicios_open_source/04_scrapers/dextools_api.md
+@@ -0,0 +1,13 @@
++# DEXTools — API v2 plan Free (en lugar de scraper)
++
++**Repo:** https://github.com/alb2001/dextools-python (wrapper Python de la API v1/v2)
++**Licencia:** MIT [V]. Último push 2025-01, última versión en PyPI 0.3.2 (2024-11-22) [V] → **fuera del criterio de actividad** (<6 meses).
++**Gratis:** con **key gratuita**. Plan Free: 50k créditos/mes, 40 req/min [I] (descripción del wrapper y de la web de DEXTools). Sin key, `public-api.dextools.io/free/v2/...` → 403 Forbidden [V] (2026-10-03).
++**Requisitos:** key en secret (Dirección). `requests`. El wrapper agrega `aiohttp` [V] → no hace falta: son GET con header `X-API-Key`.
++**Qué hace:** token, pool, precio, liquidez, "hot pools" y ranking por red (80+ redes) [I].
++**Scraping del sitio: no viable.**
++- `www.dextools.io/app/...` devuelve 200 con 9 KB que solo contienen `<app-root>` (SPA de Angular), sin datos en el HTML [V].
++- Hacer scraping exige un navegador headless (Playwright) en cada corrida y está detrás de Cloudflare [V redirect cloudflare]. Es caro en minutos de Actions y frágil.
++**Por qué sirve al proyecto:** el ranking "hot pairs" de DEXTools es una señal de atención de traders minoristas que DexScreener no expone igual. [H] Con 40 req/min alcanza para 1 consulta por red cada 10 min. [I]
++**Alternativa sin key:** DexScreener + GeckoTerminal + DexPaprika (ficha en 03) ya cubren pools, precio y volumen sin key [V]. Lo único exclusivo de DEXTools es su ranking propio. [I]
++**Recomendación:** P3. No implementar scraper. Usar la API Free solo si Dirección crea la key y el método por grupo (doc 36) muestra que el ranking hot de DEXTools agrega señal sobre DexScreener (test placebo previo). No usar el wrapper (inactivo): bastan 30 líneas con `requests`.
+diff --git a/_servicios_open_source/04_scrapers/pumpfun_datos.md b/_servicios_open_source/04_scrapers/pumpfun_datos.md
+new file mode 100644
+index 00000000..4a4b6f3f
+--- /dev/null
++++ b/_servicios_open_source/04_scrapers/pumpfun_datos.md
+@@ -0,0 +1,21 @@
++# Pump.fun — API del frontend + PumpPortal (stream)
++
++**Repo:** no hay repo oficial abierto: son APIs públicas. Referencia de uso: https://pumpportal.fun/data-api/real-time/
++**Licencia:** n/a (servicio). Uso de datos públicos.
++**Gratis:** sí.
++- `frontend-api-v3.pump.fun`: sin key, 200 [V] (2026-10-03).
++- PumpPortal `wss://pumpportal.fun/api/data`: `subscribeNewToken` y `subscribeMigration` son gratis [V]. `subscribeTokenTrade` y `subscribeAccountTrade` cuestan 0,01 SOL cada 10k mensajes [V] → **no usar**.
++**Requisitos:** `requests` para REST; `websockets` 17.1 (BSD-3, sin dependencias) [V] solo si se usa el stream.
++**Qué hace:**
++- REST [V]: `GET /coins?offset=0&limit=N&sort=created_timestamp&order=DESC&includeNsfw=false` lista los tokens recién creados con `mint`, `creator`, `created_timestamp`, `market_cap_usd`, `ath_market_cap`, `reply_count`, `complete` (graduado), `twitter`, `website`, `is_currently_live`. `GET /coins/currently-live` lista los tokens con stream activo.
++- Rutas que NO existen hoy [V]: `/replies/{mint}` → 404 y `/coins/king-of-the-hill` → 404. Los comentarios ya no salen por esta API: solo queda el conteo `reply_count`.
++- Stream [V]: un evento por token nuevo y uno por migración (graduación a PumpSwap). Regla publicada: "una sola conexión websocket a la vez"; abrir muchas causa ban de 1 h.
++**Por qué sirve al proyecto:**
++- Es la fuente más temprana posible para el grupo de memecoins de Solana: el nacimiento del token, antes de que DexScreener o GeckoTerminal lo indexen. [I]
++- `reply_count`, `is_currently_live`, `twitter` y `website` son features sociales tempranas para el scorer joven (`script_116`). [H]
++- Las migraciones marcan el paso de bonding curve a DEX, un evento natural para el método por grupo (doc 36). [I]
++**Riesgos técnicos:** API no documentada: puede cambiar sin aviso (ya cambiaron replies y KOTH) [V]. El stream exige un proceso persistente: en Actions, un job de ≤50 min como el bot de Telegram. [I]
++**Recomendación:** P1.
++- Bot `bot_pumpfun` en REST: poll cada 2–4 min de `/coins` ordenado por creación; salida src-1 con `kind="token_launch"` y `author=creator`; sin guardar `description`, solo `reply_count` en `m`.
++- Stream PumpPortal: solo si el poll REST pierde lanzamientos (medir primero).
++- No usar los métodos de trades: son pagos.
+diff --git a/_servicios_open_source/05_analisis_sentiment/cryptobert.md b/_servicios_open_source/05_analisis_sentiment/cryptobert.md
+new file mode 100644
+index 00000000..a2f92140
+--- /dev/null
++++ b/_servicios_open_source/05_analisis_sentiment/cryptobert.md
+@@ -0,0 +1,15 @@
++# CryptoBERT (ElKulako/cryptobert)
++
++**Repo/modelo:** https://huggingface.co/ElKulako/cryptobert
++**Licencia:** MIT [V] (tarjeta del modelo, 2026-10-03)
++**Gratis:** sí. Modelo local, sin API ni key.
++**Requisitos:** `transformers` + `torch` (CPU). Modelo de ~0,1B parámetros (base `vinai/bertweet-base`) [V]. Instalar torch en CPU suma cientos de MB por corrida en Actions [I] → necesita caché de pip y del modelo (`actions/cache`).
++**Qué hace:** clasificador (no generativo) de sentiment cripto en 3 clases, Bearish/Neutral/Bullish [V]. Entrenado con 3,2M posts cripto (StockTwits 1,875M, Telegram 664k, Twitter 496k, Reddit 172k); la cabeza se ajustó con 2M posts etiquetados de StockTwits [V]. Largo recomendado ≤128 tokens [V].
++**Por qué sirve al proyecto:**
++- A diferencia de VADER, ya conoce la jerga cripto por entrenamiento: no hay que mantener un léxico. [I]
++- Es un clasificador discriminativo, no un LLM generativo. [V] Igual corresponde que Dirección valide que entra en la regla "cero IA generativa" (doc 34). [P]
++**Riesgos técnicos:**
++- Corre en CPU: unos 20–50 ms por mensaje corto [I]. Con unos 300 ítems por hora es viable; con miles no, en runners gratuitos.
++- Las etiquetas de StockTwits son autodeclaradas (ruidosas). [I]
++- Sesgo temporal: entrenado antes del ciclo 2025–2026. [I]
++**Recomendación:** P3. Evaluarlo solo si VADER más el léxico propio (ficha hermana) no pasa el test del doc 36. Si se evalúa: batch offline sobre los ítems de Telegram del día y comparación de señal contra VADER. No integrarlo en producción sin ese resultado.
+diff --git a/_servicios_open_source/05_analisis_sentiment/vader_lexico_cripto.md b/_servicios_open_source/05_analisis_sentiment/vader_lexico_cripto.md
+new file mode 100644
+index 00000000..22eee1c4
+--- /dev/null
++++ b/_servicios_open_source/05_analisis_sentiment/vader_lexico_cripto.md
+@@ -0,0 +1,14 @@
++# VADER + léxico cripto propio
++
++**Repo:** https://github.com/cjhutto/vaderSentiment
++**Licencia:** MIT [V] (GitHub; último push 2026-03)
++**Gratis:** sí, local, sin red.
++**Requisitos:** `vaderSentiment` 3.3.2 (PyPI, 2020-05-22), **cero dependencias** [V]. Es el mejor caso posible de supply chain: un .py más un léxico de texto plano. Instalación con `--require-hashes --no-deps`.
++**Qué hace:** sentiment por reglas (léxico de 7.520 entradas con valencia de −4 a +4, más reglas de negación, intensificadores, mayúsculas y emojis), afinado para redes sociales. Devuelve `compound` en [−1, 1]. Sin IA generativa y determinista.
++**Cobertura cripto medida [V]** (`vader_lexicon.txt`, 2026-10-03): de 19 términos clave solo 3 están (`fud` −1.1, `dump` −1.6, `scam` −2.7). Faltan `moon`, `mooning`, `rug`, `rugged`, `rekt`, `hodl`, `pump`, `bullish`, `bearish`, `wagmi`, `ngmi`, `lambo`, `shill`, `dip`, `ath`, `bag`. **Sin extensión, VADER no lee la jerga cripto.**
++**Por qué sirve al proyecto:**
++- La única opción de sentiment compatible con "cero IA generativa en producción" (doc 34) y con runners de Actions sin GPU. [V]
++- El léxico se extiende con `analyzer.lexicon.update({...})` [V API]: un archivo `04_Config/sources/crypto_lexicon.yaml`, propiedad del proyecto, con ~60 términos y valencia explícita (p. ej. `moon:+2.5`, `rug:-3.0`, `rekt:-2.5`, `ngmi:-1.5`, `wagmi:+1.5`). Auditable y versionado. [P]
++- Como los bots de fuentes no guardan el cuerpo del texto (src-1), el sentiment se calcula **al leer** y se guarda solo el número en `m.sent`. [I]
++**Riesgos técnicos:** el sarcasmo y la ironía de la jerga degen invierten la polaridad: hay que validarlo contra el método del doc 36 antes de usarlo como feature. [H] Solo inglés. [V]
++**Recomendación:** P2. Instalar en una rama de investigación y crear `crypto_lexicon.yaml`. Medir si `m.sent` agregado por token agrega señal sobre el conteo de menciones (Fisher con placebo, doc 36 §1). Si no agrega: eliminarlo.
+diff --git a/_servicios_open_source/06_utilidades/healthchecks_io.md b/_servicios_open_source/06_utilidades/healthchecks_io.md
+new file mode 100644
+index 00000000..f03a6f0f
+--- /dev/null
++++ b/_servicios_open_source/06_utilidades/healthchecks_io.md
+@@ -0,0 +1,14 @@
++# Healthchecks.io — vigilancia externa de crons (dead man's switch)
++
++**Repo:** https://github.com/healthchecks/healthchecks
++**Licencia:** BSD-3-Clause [V] (GitHub, push 2026-10-02). Se puede autohospedar con Django.
++**Gratis:** sí. Plan hospedado Hobbyist: 20 checks y 100 entradas de log por check [I] (healthchecks.io y comparativas, 2026-10-03). Integraciones de alerta gratuitas: email, Telegram, Discord, Slack y otras [I].
++**Requisitos:** cuenta gratuita y una URL de ping por check (la URL es un secreto → secret `HC_PING_<WF>`, creado por Dirección). Desde el workflow: `curl -fsS -m 10 --retry 3 "$HC_PING_URL"` al final del job, más `/fail` si falla.
++**Qué hace:** cada check espera un ping cada N minutos. Si no llega en el periodo más el margen, alerta. Detecta crons que dejaron de correr, que es el fallo silencioso que nadie reporta.
++**Por qué sirve al proyecto:**
++- `bot_self_repair` corre en GitHub Actions, igual que todo lo que vigila [V]. Si Actions deja de disparar crons (repo inactivo 60 días, incidente de GitHub, cuota), el reparador también se detiene y nadie avisa: **quién vigila al vigilante**. [I]
++- Un vigilante externo y gratuito cierra ese hueco con 1 línea por workflow. [I]
++- 20 checks alcanzan para los workflows críticos: pipeline_t0, early_watch a/b, sources_orchestrator, sources_self_repair, sources_rss, telegram a/b. [V conteo]
++- Alerta directa al chat de OPS (`TELEGRAM_OPS_CHAT_ID`) desde la integración de Telegram de Healthchecks, sin tocar el bot emisor. [I]
++**Riesgos técnicos:** el ping agrega 1 request saliente por corrida. Si healthchecks.io cae, no bloquea nada (`|| true`). [I]
++**Recomendación:** P1, por su mayor relación impacto/costo de esta tanda. Requiere que Dirección cree la cuenta y los secrets (yo no toco credenciales). Hay que modificar workflows en producción, así que se consulta antes. Propuesta: empezar por `sources_self_repair.yml` y `early_watch.yml`.
+diff --git a/_servicios_open_source/06_utilidades/pyrate_limiter.md b/_servicios_open_source/06_utilidades/pyrate_limiter.md
+new file mode 100644
+index 00000000..55c74ee8
+--- /dev/null
++++ b/_servicios_open_source/06_utilidades/pyrate_limiter.md
+@@ -0,0 +1,13 @@
++# PyrateLimiter — rate limiter (familia leaky bucket)
++
++**Repo:** https://github.com/vutran1710/PyrateLimiter
++**Licencia:** MIT [V] (GitHub, push 2026-09-23)
++**Gratis:** sí, local.
++**Requisitos:** `pyrate-limiter` 4.5.0 (PyPI, 2026-08-30). Sin dependencias obligatorias: `redis`, `postgres` y `filelock` son extras opcionales [V].
++**Qué hace:** limita llamadas por ventana (p. ej. 30/min y 2/s a la vez) con varios buckets. Backends en memoria, SQLite, Redis o Postgres. Funciona como decorador o con `try_acquire()` bloqueante.
++**Por qué sirve al proyecto:**
++- Cada API nueva trae su propio límite: GoPlus 30/min [V], KyberSwap 3 rps [I], DEXTools Free 40/min [I], Helius DAS 2 rps [I]. Hoy cada bot implementa sus propias pausas (`pause_s` en `telegram.yaml`, sleeps en `bot_rss_news`) [V].
++- Un limitador común, configurado desde YAML por fuente, evita bans y unifica la política. Los 429 se reflejarían en `_health.json` en vez de repararse a ciegas. [I]
++- El backend SQLite permite que los procesos de un mismo job compartan el presupuesto. [I]
++**Alternativa sin dependencia:** un token bucket propio de unas 40 líneas en `lib_rate_limit.py` (figura como pendiente en `_PENDIENTES.md`). Para bots de un solo proceso con 1–3 límites, alcanza. [I]
++**Recomendación:** P2. Empezar con el `lib_rate_limit.py` propio, sin dependencia: cumple "lo que no sirve se elimina" y evita supply chain. Pasar a PyrateLimiter solo si hacen falta límites compuestos entre procesos (instalación pineada con hashes).
+diff --git a/_servicios_open_source/06_utilidades/requests_cache.md b/_servicios_open_source/06_utilidades/requests_cache.md
+new file mode 100644
+index 00000000..4ec34b6a
+--- /dev/null
++++ b/_servicios_open_source/06_utilidades/requests_cache.md
+@@ -0,0 +1,13 @@
++# requests-cache — caché HTTP persistente
++
++**Repo:** https://github.com/requests-cache/requests-cache
++**Licencia:** BSD-2-Clause [V] (GitHub, push 2026-10-02)
++**Gratis:** sí, local.
++**Requisitos:** `requests-cache` 1.3.3 (PyPI, 2026-07-03). Depende de `attrs`, `cattrs`, `platformdirs`, `url-normalize` y `urllib3` [V]: 5 dependencias transitivas, a pinear con hashes.
++**Qué hace:** reemplaza `requests.Session` por `CachedSession`. Guarda las respuestas en SQLite, filesystem o Redis, con expiración por URL o patrón, respeta `Cache-Control` y `ETag` y permite modo `stale_if_error` (sirve lo cacheado si la API falla).
++**Por qué sirve al proyecto:**
++- Varias rutas consultan el mismo contrato muchas veces por hora (RugCheck, GoPlus, DexScreener por token). Con caché de 5–30 min se recortan los requests sin perder frescura útil. [I]
++- `stale_if_error` es tolerancia a fallos (patrón #20): si una API da 5xx, el bot sigue con el último dato y lo marca en `_health.json`. [I]
++- Con `actions/cache` la base SQLite sobrevive entre corridas del mismo workflow. [I]
++**Riesgos técnicos:** cachear lo que debe ser fresco (precio del early watch) rompe la detección. Hay que cachear por patrón de URL y nunca las rutas de velas o precio. [I]
++**Recomendación:** P2. Integrarlo primero en el enriquecimiento de candidatos (seguridad del contrato y metadata), que cambia lento, con TTL de 6 h. No usarlo en el scorer ni en velas.
+diff --git a/_servicios_open_source/README.md b/_servicios_open_source/README.md
+index 42be817b..3e25d5f5 100644
+--- a/_servicios_open_source/README.md
++++ b/_servicios_open_source/README.md
+@@ -13,6 +13,25 @@ Estructura de investigación de servicios open source gratuitos para el pipeline
+ | 05 | `05_analisis_sentiment/` | NLP, sentiment, topic modeling, embeddings | P2 |
+ | 06 | `06_utilidades/` | Herramientas auxiliares (caché, rate limit, dedup) | P2 |
+ 
++## Fichas
++
++| Cat | Ficha | Key | Prioridad |
++|-----|-------|-----|-----------|
++| 01 | `cryptopanic.md`, `coindesk_rss_aggregator.md`, `cryptocontrol.md` | — | — |
++| 03 | `goplus_security.md` | no | P1 |
++| 03 | `dexpaprika.md` | no | P1 |
++| 03 | `helius_free.md` | gratuita | P2 |
++| 04 | `pumpfun_datos.md` | no | P1 |
++| 04 | `bitcointalk_ann.md` | no | P2 |
++| 04 | `dextools_api.md` | gratuita | P3 |
++| 05 | `vader_lexico_cripto.md` | no | P2 |
++| 05 | `cryptobert.md` | no | P3 |
++| 06 | `healthchecks_io.md` | cuenta gratuita | P1 |
++| 06 | `requests_cache.md` | no | P2 |
++| 06 | `pyrate_limiter.md` | no | P2 |
++
++Fichas de D-055: endpoints probados en vivo el 2026-10-03 (rótulo [V]). Estado y descartes en `_PENDIENTES.md`.
++
+ ## Protocolo
+ 
+ 1. **YIN investiga** → crea `.md` en la carpeta correspondiente
+diff --git a/_servicios_open_source/_PENDIENTES.md b/_servicios_open_source/_PENDIENTES.md
+index 50bc8852..3de913fa 100644
+--- a/_servicios_open_source/_PENDIENTES.md
++++ b/_servicios_open_source/_PENDIENTES.md
+@@ -28,13 +28,17 @@ Estado: `pendiente` | `en_curso` | `hecho` | `descartado`
+ 
+ | Servicio | Estado | Notas |
+ |----------|--------|-------|
+-| Helius (Solana) | `pendiente` | Key requerida, free tier |
+-| Birdeye | `pendiente` | Key requerida, 401 actual |
++| Helius (Solana) | `hecho` | Ficha `helius_free.md`: key gratuita (1M créditos/mes), reemplazo de Solscan. P2, requiere key de Dirección |
++| Birdeye | `descartado` | Sin key → 401 [V 2026-10-03]. Free "Standard": 30k CU/mes a 1 rps [I]. DexPaprika + GeckoTerminal cubren lo mismo sin key |
+ | DexScreener | `hecho` | Sin key, rate limit OK |
+ | GeckoTerminal | `hecho` | Sin key, velas 1m/15m |
+-| Solscan | `pendiente` | Key Pro requerida |
++| Solscan | `descartado` | `pro-api` v2 → 401 "Token is missing"; `public-api` → 404 [V 2026-10-03]. Alternativa: Helius free |
+ | MadeOnSol | `pendiente` | Key en secret, endpoints no verificados |
+ | RugCheck | `hecho` | Sin key, holders/insiders |
++| GoPlus Security | `hecho` | Ficha `goplus_security.md`: sin key [V], Solana + EVM, 30 req/min. P1 |
++| DexPaprika | `hecho` | Ficha `dexpaprika.md`: sin key [V], pools nuevos por red (`/pools/search`). P1 |
++| DefiLlama | `pendiente` | Sin key [V]: `/v2/chains`, `/protocols` (8.476, con categoría), `coins.llama.fi`. `/categories` → 402 (pago). Contexto narrativo por categoría/cadena |
++| KyberSwap aggregator | `descartado` | Sin key 200 [V], 3 rps. Cotiza rutas: no aporta a la anticipación. Ningún otro agregador aporta más |
+ 
+ ## 04_scrapers (P1)
+ 
+@@ -44,15 +48,20 @@ Estado: `pendiente` | `en_curso` | `hecho` | `descartado`
+ | Playwright | `pendiente` | Headless browser, recurso intensivo |
+ | Selenium | `pendiente` | Legacy, más lento |
+ | Firecrawl | `pendiente` | API key requerida, 403 en search |
++| Pump.fun (frontend API + PumpPortal) | `hecho` | Ficha `pumpfun_datos.md`: `/coins` sin key [V]; `/replies` y KOTH → 404 [V]; stream de lanzamientos gratis. P1 |
++| Bitcointalk ANN | `hecho` | Ficha `bitcointalk_ann.md`: HTML público, 40 hilos/página con bs4 [V]. Parser propio. P2 |
++| DEXTools | `hecho` | Ficha `dextools_api.md`: web = SPA `<app-root>` (scraping no viable) [V]; API Free con key. P3 |
++| Scrapling | `pendiente` | BSD-3, muy activo [V]. Solo si hace falta un fetcher genérico; hoy bs4 alcanza |
+ 
+ ## 05_analisis_sentiment (P2)
+ 
+ | Servicio | Estado | Notas |
+ |----------|--------|-------|
+-| VADER/NLTK | `pendiente` | Python, rule-based |
+-| FinBERT | `pendiente` | HuggingFace, financiero |
+-| TextBlob | `pendiente` | Simple, rápido |
+-| Custom embeddings | `pendiente` | Requiere GPU/entrenamiento |
++| VADER/NLTK | `hecho` | Ficha `vader_lexico_cripto.md`: 0 dependencias; cubre 3/19 términos cripto [V] → léxico propio. P2 |
++| CryptoBERT | `hecho` | Ficha `cryptobert.md`: MIT, clasificador de 3 clases, torch CPU. P3, solo si VADER falla |
++| FinBERT | `descartado` | Entrenado con prensa financiera, no con jerga cripto; CryptoBERT lo reemplaza |
++| TextBlob | `descartado` | Su léxico viene de reseñas de productos; VADER (social) es mejor base y no tiene dependencias |
++| Custom embeddings | `descartado` | Requiere GPU/entrenamiento; fuera de "100% gratis" en Actions |
+ 
+ ## 06_utilidades (P2)
+ 
+@@ -61,4 +70,7 @@ Estado: `pendiente` | `en_curso` | `hecho` | `descartado`
+ | Redis | `hecho` | Cache, rate limit, colas |
+ | SQLite | `hecho` | Persistencia local |
+ | deduplicación custom | `hecho` | En script_97, lib_repetition |
+-| Rate limiter token bucket | `pendiente` | Implementar genérico |
+\ No newline at end of file
++| Rate limiter token bucket | `pendiente` | Ficha `pyrate_limiter.md`: empezar con `lib_rate_limit.py` propio (sin dependencias) |
++| requests-cache | `hecho` | Ficha `requests_cache.md`: caché SQLite + `stale_if_error`. Solo metadata y seguridad, nunca velas. P2 |
++| Healthchecks.io | `hecho` | Ficha `healthchecks_io.md`: vigilante externo de crons (quién vigila al reparador). P1, requiere cuenta + secrets |
++| Proxies públicos | `descartado` | Inestables, lentos y con riesgo de inyección (MITM) en datos de precio. Alternativa: respetar los límites con rate limiter + caché |
+\ No newline at end of file
