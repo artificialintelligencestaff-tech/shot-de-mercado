@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO COMPLETO (D-033) — implementado: lib_sources_store + bot_rss_news + workflow sources_rss.yml
+status: DISEÑO COMPLETO (D-033, D-035) — implementado: lib_sources_store, bot_rss_news, bot_orchestrator, 2 workflows, query() en script_116/script_97
 last_updated: 2026-10-03
-version: 0.1
+version: 0.2
 reemplaza: doc 33 §2–§5 (el doc 33 queda como investigación de fuentes)
 ---
 
@@ -66,7 +66,7 @@ sources/rss/  sources/telegram/ sources/web/  sources/github/ sources/x/   sourc
 | `bot_github_trending` | `github.com/trending` (HTML) + Search API por topic: crypto, solana, defi, memecoin, depin, rwa | 6 h (`17 */6 * * *`) | `sources/github/<fecha>.jsonl` | red; `GITHUB_TOKEN` (30 req/min en búsqueda) | `sources_github.yml` |
 | `bot_x_nitter` | Pool de instancias de Nitter elegido desde `status.d420.de`; cuentas en YAML | 20 min (`9,29,49 * * * *`) | `sources/x/<fecha>.jsonl` | red; health check | `sources_x.yml` |
 | `bot_forum_scraper` | API oficial de 4chan /biz/; Reddit: PullPush → Arctic Shift → RSSHub | 1 h (`25 * * * *`) | `sources/forums/<fecha>.jsonl` | red | `sources_forums.yml` |
-| `bot_orchestrator` | Lee `_bots.yaml`, el `_state.json` de cada bot y las corridas de Actions | 5 min (`*/5 * * * *`) | `sources/_merged.jsonl`, `_index.json`, `_health.json`, bloque en `_INSTALADOS.md` | **todos los bots** + `lib_sources_store` | `sources_orchestrator.yml` |
+| `bot_orchestrator` | Lee `_bots.yaml`, el `_state.json` de cada bot y las corridas de Actions | 10 min (`*/10 * * * *`, real ~15; D-035) | `sources/_merged.jsonl`, `_index.json`, `_health.json`, bloque en `_INSTALADOS.md` | **todos los bots** + `lib_sources_store` | `sources_orchestrator.yml` **[implementado]** |
 | `lib_sources_store` (librería) | Todos los `sources/*/<fecha>*.jsonl` | la llama el orquestador; consulta bajo demanda | `_merged.jsonl`, `_index.json` | outputs de los bots | — **[implementado]** |
 
 Minutos de cron elegidos para no coincidir con el pipeline ni con early watch (`:07/:37`, `:22/:52`), ni con
@@ -215,7 +215,7 @@ Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `
   - `vacío`: corrió sin ítems 3 veces seguidas;
   - `atrasado`: no corre desde hace más de `stale_min`;
   - `caído`: 3 fallas seguidas.
-- **Recuperación ante `atrasado`:** una sola corrida por `workflow_dispatch`, con `actions: write`.
+- **Recuperación ante `atrasado`** (no está en orch-0.1; la hace `bot_self_repair` §11): una sola corrida por `workflow_dispatch`, con `actions: write`.
   - El intento queda registrado en `_health.json`.
   - No reintenta en loop: un segundo atraso solo se reporta.
 - **`_INSTALADOS.md`:** el orquestador reescribe solo el bloque entre `<!-- AUTO:sources -->` y
@@ -240,13 +240,84 @@ Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `
 ## 10. Orden de implementación
 
 1. `lib_sources_store` + `bot_rss_news` + `sources_rss.yml` **[hecho en D-033]**.
-2. `bot_orchestrator`: sin él, `_merged.jsonl` no se escribe. `query()` igual responde reconstruyendo en
-   memoria.
+2. `bot_orchestrator` **[hecho en D-035]**.
 3. `bot_forum_scraper` y `bot_telegram_public`: reutilizan los parsers de `lib_repetition`, con poco código nuevo.
 4. `bot_github_trending`, `bot_web_scraper`, `bot_x_nitter`: este último es el más frágil.
-5. Conectar `query()` en `script_116` (las señales `mentions` y `narrative_wave`) y en v7.2.2.
+5. `query()` en `script_116` (`mentions`) y en `script_97` (campos informativos `sources_mentions_*` para tokens ≥ 60 min) **[hecho en D-035]**. Falta que el bono de v7.2.2 los use.
+6. `bot_self_repair` (§11).
 
-## 11. Pendientes [P] para YIN
+## 11. bot_self_repair (D-035, diseño; sin implementar)
+
+**Qué hace.** Corre cada 30 min (`19,49 * * * *`). Lee `_health.json`, el `_state.json` de cada bot y las
+últimas corridas de cada workflow (API de Actions, `GITHUB_TOKEN` con `actions: write`). Solo aplica reglas
+explícitas: **cero IA generativa en producción**. Lo que no está en la tabla no lo toca: lo escala.
+
+| Detección | Señal | Fix conocido | Límite |
+|---|---|---|---|
+| Feed o fuente caída | `status != 200` en 3 corridas seguidas | `enabled: auto_off` en `_state.json`; el bot la salta 6 h y después reintenta una vez. **No edita el YAML**: el YAML es de Claude y YIN. | Si 24 h después sigue caída: escala [P] (P-13: reemplazarla) |
+| Workflow fallido recurrente | ≥2 fallas seguidas (`conclusion: failure`) | 1 re-run del job fallido (`POST /actions/runs/{id}/rerun-failed-jobs`) | 1 re-run por falla; la 2.ª falla se escala con el log del paso |
+| Bot atrasado | `atrasado` en `_health.json` | 1 `workflow_dispatch` | 1 por atraso; un atraso repetido en 24 h se escala |
+| Archivo corrupto | `_state.json` o `_health.json` que no parsea; JSONL con líneas que no parsean | `_state.json`: se renombra a `.corrupt-<ts>` y el bot arranca con estado vacío (solo pierde el dedup de 72 h). JSONL: se reescribe sin las líneas rotas, y las rotas se guardan en `.rejected`. | Más de 1 por día en el mismo archivo: escala |
+| Output vacío anómalo | `vacío` con fuentes OK: los feeds responden 200 pero el parser da 0 ítems en 3 corridas (cambió el formato) | Ninguno: un parser roto no se repara con reglas | Escala de inmediato |
+| Caché o estado inflado | `seen` con más de 50.000 claves, o `_state.json` de más de 5 MB | Recorta `seen` a la ventana `dedup_hours` | — |
+
+**Escalado.** Una fila en el bloque `<!-- AUTO:repair -->` de `_INSTALADOS.md` con el formato
+`[P] <fecha> <bot> <detección> <evidencia>`. Una fila por problema abierto: si el problema persiste, no se
+duplica; cuando se resuelve, se borra sola. Su propia bitácora va a `02_Analisis/sources/_repair_log.jsonl`
+(rodante, 7 días).
+
+**Por qué no repara más.** Los fixes son idempotentes y se pueden revertir (renombrar, re-run, dispatch, recortar).
+Ninguno toca código, YAML de configuración, score ni emisión.
+
+## 12. Coparticipación entre bots (D-035)
+
+Detecta, repara y reporta son roles distintos, y cada uno lo hace un solo bot:
+
+```
+bots de captura ──escriben──► _state.json ──lee──► bot_orchestrator (DETECTA: _health.json)
+                                                        │
+                                                        ▼ lee
+                                                  bot_self_repair (REPARA reglas §11 / ESCALA)
+                                                        │ escribe
+                                                        ▼
+                                       _INSTALADOS.md (REPORTA: AUTO:sources y AUTO:repair) ──► YIN / Dirección
+```
+
+**Sin ciclos:**
+- los datos fluyen de captura a orquestador, de orquestador a reparador y de reparador al reporte;
+- el reparador **no** escribe nada que lea el orquestador para decidir un estado, salvo el `_state.json` de un
+  bot: ese es un input de captura, y el bot lo reescribe en su corrida siguiente;
+- el orquestador no lee nada del reparador.
+
+**Bot de respaldo** (`backup` en `_bots.yaml`, implementado como campo).
+- **Cuándo se activa.** Cuando un bot está `caído` o `atrasado` más de `stale_min`.
+- **Qué hace el bot de respaldo.** En su próxima corrida suma las fuentes equivalentes que declara
+  `fallback_sources` en su propio YAML. Por ejemplo, si cae `telegram`, `rss` suma los feeds de Cointelegraph
+  y Whale Alert.
+- **Qué no hace.** No copia código del bot caído.
+
+El mapa no tiene ciclos de respaldo activos al mismo tiempo: si el respaldo también está caído, no se encadena,
+se escala.
+
+| Bot | Respaldo | Por qué |
+|---|---|---|
+| rss | forums | Si caen los feeds de noticias, los foros dan menciones del mismo evento |
+| telegram | rss | Los canales de noticias (cointelegraph, whale_alert) tienen feed RSS |
+| web | forums | Bitcointalk y 4chan cubren el mismo tipo de hilo |
+| github | rss | Los anuncios de repos salen en los medios |
+| x | telegram | Las cuentas de X de los proyectos espejan en sus canales |
+| forums | rss | — |
+
+```yaml
+# 04_Config/sources/_bots.yaml (implementado; backup ya declarado)
+rss: {workflow: sources_rss.yml, every_min: 20, stale_min: 60, backup: forums, enabled: true}
+# 04_Config/sources/rss.yaml (diseño): fuentes que rss suma cuando respalda a telegram
+fallback_sources:
+  telegram:
+    - {name: whale_alert_rss, url: "https://whale-alert.io/feed"}   # [P] URL a verificar
+```
+
+## 13. Pendientes [P] para YIN
 
 - Verificar desde Actions los 12 feeds RSS (la primera corrida de `sources_rss.yml` deja la salud de cada feed en
   `sources/rss/_state.json`).
