@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO (sin implementar) — D-041 T6 y T7
+status: DISEÑO + implementación parcial — D-041 T6/T7; D-055 (#2 registro, #8 debate, #12 episodios)
 last_updated: 2026-10-03
-version: 0.1
+version: 0.2
 complementa: doc 27 (fórmulas y eventos por grupo), doc 32 (scorer joven), doc 34 (fuentes)
 ---
 
@@ -34,7 +34,7 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 | 3. Baseline | Tasa del evento en **todo** el universo del grupo, no solo en lo alertado. Sin baseline, una tasa alta no significa nada. | por grupo [P] |
 | 4. Métrica | Tasa del evento con IC90 de Wilson. Para hipótesis comparativas (señal sí / no), Fisher exacto unilateral con α = 0,10, como H-0 (doc 32). | `calibrate_threshold_v72.wilson` [V] |
 | 5. Controles | **Placebo:** fechas desplazadas ±6–24 h; la señal no debe rendir igual. **Walk-forward** semanal con purga de 48 h. **Contrafactual:** los +20% no alertados y qué señales tenían (doc 35 §6.5). | [P] |
-| 6. Refutación (#8, debate adversario) | Antes de aceptar, un segundo evaluador automático intenta romper el resultado: placebo, permutación de etiquetas, submuestras por chain y por semana. Si una submuestra invierte el signo, no se acepta. | [P] |
+| 6. Refutación (#8, debate adversario) | Antes de aceptar, un segundo evaluador automático intenta romper el resultado: placebo, permutación de etiquetas, submuestras por chain y por semana. Si una submuestra invierte el signo, no se acepta. | `lib_adversarial_debate` (§4.1, D-055) [V] |
 | 7. Decisión | **Acepta:** la señal pasa a pesar en el score con su LLR estimado (doc 27 §4.1). **Rechaza:** sale (#18, poda cognitiva; P-13). **Inconcluso:** sigue midiendo hasta el n máximo y después se rechaza. | memoria episódica (#12) |
 | 8. Episodio (#12) | Cada hipótesis cerrada deja un episodio con hipótesis, datos usados (hash), resultado, decisión y fecha. Es la memoria que impide re-probar lo ya descartado. | `02_Analisis/sources/_episodes.jsonl` + `_episodes_<writer>.jsonl` (`lib_episodic_memory`, D-055) [V] |
 
@@ -119,7 +119,7 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 | #2 Método científico automatizado | Protocolo §1: preregistro → evento → baseline → métrica → controles → decisión |
 | #5 Blackboard | Las hipótesis leen la pizarra (`_merged`, `_index`, `_graph`, `_health`, `multichain/`); no consultan fuentes |
 | #7 Knowledge Graph | H-a2 (cluster de co-mención) y el contexto del dossier |
-| #8 Debate adversario | Refutador automático: placebo, permutación y submuestras antes de aceptar |
+| #8 Debate adversario | advocate contra challenger con reglas explícitas: placebo, permutación, submuestras y estabilidad antes de aceptar (§4.1) [V] |
 | #12 Memoria episódica | `_episodes.jsonl` + fragmentos por escritor. Tipos: `hipotesis_evaluada` (cada evaluación persistida), `feed_caido` y `bot_reparado` (bot_self_repair, solo transiciones), `alerta_emitida` (constructor listo; falta cablearlo en el emisor, que es producción) [V] |
 | #18 Poda cognitiva | Una señal rechazada o inconclusa al n máximo se retira del score (P-13) |
 | #19 Normalización | Todas las comparaciones usan la forma canónica de `lib_normalize` |
@@ -130,9 +130,55 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 - La H-0 está migrada como referencia (registrada el 2026-10-02; mismos parámetros). Reproduce el veredicto y el p-valor de `early_review.evaluate_h0`, que sigue siendo su evaluador de producción.
 
 **Implementación pendiente [P]**
-- `method_runner.py`: diario; lee los preregistros, arma las filas desde la pizarra, llama a `evaluate_hypothesis` y escribe episodios.
-- `method_refuter.py`: corre los controles del paso 6.
+- `method_runner.py`: diario. Lee los preregistros, arma las filas y las filas placebo desde la pizarra, llama a `evaluate_hypothesis` y después a `run_debate` (§4.1), y escribe episodios.
+- ~~`method_refuter.py`~~: lo reemplaza `lib_adversarial_debate` (§4.1).
 - Ninguno toca el score directamente: la promoción de una señal al score la decide Dirección a partir de los episodios.
+
+### 4.1 Debate formalizado (patrón #8, D-055) [V]
+
+**Qué es.** Es el paso 6 del protocolo hecho código (`lib_adversarial_debate.run_debate(hypothesis_id, evidence_set)`). Dos roles discuten sobre **la misma evidencia**. Cada argumento sale de una regla explícita con su peso: sin LLM, determinista.
+
+**Afirmación en debate:** "el efecto que predice la hipótesis es real":
+- `fisher_one_sided`: tasa A − tasa B > 0;
+- `rate_vs_baseline`: tasa − baseline > 0;
+- `median_ci`: mediana > 0.
+
+Para la H-0, que es una nula, "sostenida" equivale a "H-0 rechazada con robustez".
+
+**Evidencia:** `{"rows": [...], "placebo_rows": [...], "subsample_fields": ["chain", "week"]}`.
+- Las filas son las mismas de `evaluate_hypothesis`.
+- Las filas placebo son las mismas alertas medidas con fechas desplazadas ±6–24 h; las arma quien tiene las velas, no el debate.
+- `week` se deriva de `t0`, `ts` o `alert_ts`.
+- Un campo con una sola submuestra evaluable no vota. Una submuestra necesita ≥ 10 filas resueltas.
+
+| Rol | Regla | Argumento | Peso |
+|---|---|---|---|
+| advocate | A1 | efecto significativo (p < 0,10; Wilson IC90 sobre el baseline; IC90 de la mediana > 0) | 2 |
+| advocate | A2 | efecto ≥ 10 pp (criterio de §2) | 1 |
+| advocate | A3 | n ≥ 2 × mínimo preregistrado | 1 |
+| advocate | A4 | el signo se repite en ≥ 75 % de las submuestras | 1 |
+| advocate | A5 | placebo no significativo y con menos de la mitad del efecto | 1 |
+| advocate | A6 | permutación de etiquetas (500, semilla = hash de los datos) con p < 0,10; solo dos grupos | 1 |
+| advocate | A7 | las dos mitades del periodo tienen el signo predicho | 1 |
+| challenger | C1 | n < mínimo → **insuficiente** (no hay debate) | fatal |
+| challenger | C2 | no significativo | 2 |
+| challenger | C3 / C3b | efecto < 5 pp / efecto en la dirección contraria | 1 / 2 |
+| challenger | C4 | **una submuestra invierte el signo** | fatal |
+| challenger | C5 | **el placebo rinde parecido** (significativo o ≥ la mitad del efecto) | fatal |
+| challenger | C6 | la permutación da efectos parecidos (p ≥ 0,10) | 1 |
+| challenger | C7 | el signo cambia entre la primera y la segunda mitad | 2 |
+| challenger | C8 | faltan resultados en más del 30 % de las filas (sesgo de selección) | 1 |
+| challenger | C9 | sin la submuestra más grande el efecto no se sostiene | 2 |
+| challenger | C10 | no hay control placebo | 1 |
+
+**Veredicto y confianza**
+- **insuficiente:** C1.
+- **refutada:** algún argumento fatal, o peso del challenger ≥ peso del advocate, o falta significancia.
+- **sostenida:** en cualquier otro caso.
+- Confianza = peso del lado ganador / peso total.
+- Las razones listan los argumentos fatales o, si no hay, los del lado ganador ordenados por peso.
+
+**Regla de decisión con el paso 7.** Una hipótesis cuya aceptación implica un efecto se acepta solo si `evaluate_hypothesis` dice *aceptada* **y** el debate dice *sostenida*. Ejemplo verificado en los tests: el total pasa Fisher (p < 0,001, +40 pp: solana +70 pp), pero la submuestra `chain=base` invierte el signo (−20 pp), así que el resultado queda *refutada* y no se acepta.
 
 ---
 
