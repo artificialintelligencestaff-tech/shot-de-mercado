@@ -13,8 +13,9 @@
 |---|---|---|---|
 | `forums` | diseño | — | —/— |
 | `github` | diseño | — | —/— |
-| `rss` | ok | 14 | 11/12 |
-| `telegram` | diseño | — | —/— |
+| `rss` | ok | 5 | 11/11 |
+| `telegram` | sin_datos | — | —/— |
+| `telegram_b` | sin_datos | — | —/— |
 | `web` | diseño | — | —/— |
 | `x` | diseño | — | —/— |
 <!-- /AUTO:sources -->
