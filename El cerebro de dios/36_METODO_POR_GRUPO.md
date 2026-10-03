@@ -121,6 +121,7 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 | #7 Knowledge Graph | H-a2 (cluster de co-mención) y el contexto del dossier |
 | #8 Debate adversario | advocate contra challenger con reglas explícitas: placebo, permutación, submuestras y estabilidad antes de aceptar (§4.1) [V] |
 | #12 Memoria episódica | `_episodes.jsonl` + fragmentos por escritor. Tipos: `hipotesis_evaluada` (cada evaluación persistida), `feed_caido` y `bot_reparado` (bot_self_repair, solo transiciones), `alerta_emitida` (constructor listo; falta cablearlo en el emisor, que es producción) [V] |
+| #3 Estado reactivo | `lib_reactive_state`: `subscribe(path, callback)` + `poll()` sobre la pizarra, sin webhooks. Un consumidor reacciona cuando cambia el contenido (sha256, no mtime) de un `_state*.json`, o solo de algunas claves (`keys=["feeds"]`). Al menos una vez; estado en `_reactive_state[_<consumer>].json` (D-055) [V] |
 | #18 Poda cognitiva | Una señal rechazada o inconclusa al n máximo se retira del score (P-13) |
 | #19 Normalización | Todas las comparaciones usan la forma canónica de `lib_normalize` |
 
