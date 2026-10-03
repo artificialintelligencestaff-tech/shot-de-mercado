@@ -29,7 +29,7 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 
 | Paso | Qué se hace | Dónde vive |
 |---|---|---|
-| 1. Preregistro | La hipótesis se escribe **antes** de mirar los resultados: enunciado, evento, métrica, n mínimo, α y criterio. No se edita después; una variante es una hipótesis nueva. | `02_Analisis/methods/<grupo>/H-<grupo><n>.json` [P] |
+| 1. Preregistro | La hipótesis se escribe **antes** de mirar los resultados: enunciado, evento, métrica, n mínimo, α y criterio. No se edita después; una variante es una hipótesis nueva. | `02_Analisis/hypotheses/_registry.jsonl` (append-only, `lib_scientific_method`, D-055) [V] |
 | 2. Evento | El evento del grupo (doc 27 §3.1): ventana de 48 h, orden intra-vela conservador (open → low → high → close). | `lib_scoring_multichain.EVENTS` [V] |
 | 3. Baseline | Tasa del evento en **todo** el universo del grupo, no solo en lo alertado. Sin baseline, una tasa alta no significa nada. | por grupo [P] |
 | 4. Métrica | Tasa del evento con IC90 de Wilson. Para hipótesis comparativas (señal sí / no), Fisher exacto unilateral con α = 0,10, como H-0 (doc 32). | `calibrate_threshold_v72.wilson` [V] |
@@ -124,8 +124,13 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 | #18 Poda cognitiva | Una señal rechazada o inconclusa al n máximo se retira del score (P-13) |
 | #19 Normalización | Todas las comparaciones usan la forma canónica de `lib_normalize` |
 
-**Implementación propuesta [P]**
-- `method_runner.py`: diario; lee los preregistros, mide y escribe episodios.
+**Implementado (D-055) [V]: `lib_scientific_method.py`**
+- `register_hypothesis(id, statement, prediction, acceptance, rejection)`: preregistro inmutable. El mismo id con otro contenido da error, porque una variante es un id nuevo.
+- `evaluate_hypothesis(id, data)`: corre la prueba preregistrada (`fisher_one_sided`, `rate_vs_baseline` o `median_ci`) y decide con reglas explícitas `{all|any: [[campo, op, valor]]}`. Veredicto: pendiente (n < mín.) · aceptada · rechazada · inconclusa. Guarda `data_hash`.
+- La H-0 está migrada como referencia (registrada el 2026-10-02; mismos parámetros). Reproduce el veredicto y el p-valor de `early_review.evaluate_h0`, que sigue siendo su evaluador de producción.
+
+**Implementación pendiente [P]**
+- `method_runner.py`: diario; lee los preregistros, arma las filas desde la pizarra, llama a `evaluate_hypothesis` y escribe episodios.
 - `method_refuter.py`: corre los controles del paso 6.
 - Ninguno toca el score directamente: la promoción de una señal al score la decide Dirección a partir de los episodios.
 
