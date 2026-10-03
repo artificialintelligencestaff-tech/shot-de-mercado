@@ -1,14 +1,14 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: v0.4 (D-023-R3) — integrado en la rama, sin merge
+status: v0.5 (D-027-R) — integrado en la rama, sin merge
 last_updated: 2026-10-02
-version: 0.4
+version: 0.5
 ---
 
 # 32 — Scorer de tokens jóvenes (< 60 min), v0.4: pesos continuos por edad
 
 Rótulos: [V] verificado · [I] inferido · [H] hipótesis · [P] pendiente. Versiones anteriores: v0.1 en
-`32_SCORER_JOVENES.md.bak1`, v0.2 en `.bak2`, v0.3 en `.bak3`.
+`32_SCORER_JOVENES.md.bak1`, v0.2 en `.bak2`, v0.3 en `.bak3`, v0.4 en `.bak4`.
 
 Decisiones de Dirección que rigen esta versión:
 - Para tokens de < 60 min, la fuente primaria es la narrativa informacional.
@@ -208,7 +208,7 @@ Registrada **antes** de ver cualquier resultado del scorer joven.
 - **Riesgo conocido:** el umbral de emisión (40) y el mínimo informacional (10) seleccionan qué tokens llegan a
   ser alertas. La comparación es entre alertas, no entre toda la población.
 
-## 7. v7.2.2 propuesto (no implementado): bono informacional para ≥ 60 min
+## 7. v7.2.2 — APROBADO (D-027-R): bono informacional para ≥ 60 min
 
 Por la corrección de marco 3, lo informacional también anticipa en activos maduros. Propuesta:
 - **v7.2.2 = v7.2.1 + bono informacional de hasta +10** para tokens de ≥ 60 min.
@@ -218,4 +218,40 @@ Por la corrección de marco 3, lo informacional también anticipa en activos mad
 - **Alternativa equivalente:** extender `weights_for_age` (filas de 60 min a 24 h) como scorer único para todas las
   edades, en lugar de un bono sobre v7.2.1. Eso reemplazaría v7.2.1 para maduros, y la decisión es de YANG /
   Dirección.
-- Estado: diseño. Nada cambia hoy para ≥ 60 min.
+- **Decisión de Dirección (D-027-R): v7.2.2 SÍ; el scorer único extendido, NO.** Fundamento: v7.2.1 se calibró
+  con n = 35, y reemplazarlo antes de calibrar el scorer joven sería un retroceso. Las filas de ≥ 60 min de
+  `weights_for_age` quedan definidas pero no se usan.
+- Estado: **aprobado, pendiente de implementación** (bono informacional de hasta +10 sobre v7.2.1 en script_116
+  para ≥ 60 min). Nada cambia hoy para ≥ 60 min hasta que se implemente.
+
+## 8. Arquitectura de trabajo Yin → Claude → Dirección (D-027-R)
+
+| Rol | Hace | No hace |
+|---|---|---|
+| **YIN** | Investiga servicios open source y los documenta en `_servicios_open_source/` (fichas por categoría, por ejemplo `01_news_mcp/`). Ejecuta lo que necesita red (sondas, verificaciones [P]). Integra a main. | — |
+| **Claude** (rama `claude/zealous-tesla-3ua19i`) | Integra en el código lo que YIN investigó: scorers, señales, bots, tests, docs técnicos. Pushea solo a su rama. | No crea archivos en `_servicios_open_source/` (los crea YIN). No pushea a main. |
+| **Dirección** | Decide objetivos, umbrales y aprobaciones (por ejemplo, v7.2.2). | No participa técnicamente. |
+
+Flujo: ficha de YIN en `_servicios_open_source/` → Claude la toma, integra y testea en su rama → YIN integra a
+main tras la auditoría de YANG.
+
+## 9. Bloqueante P0: bug #148
+
+Reportado por Dirección (D-027-R): YIN creó `_servicios_open_source/` y 3 fichas en `01_news_mcp/`
+(`cryptopanic.md`, `coindesk_rss_aggregator.md`, `cryptocontrol.md`) en su main local, pero **no puede pushear por
+el bug #148**.
+
+- Verificado del lado de Claude el 03/10: `origin/main` no tiene `_servicios_open_source/` [V].
+- Mientras siga así:
+  - el flujo Yin → Claude está cortado: Claude no ve las fichas y no integra nada de ellas;
+  - las ramas de Claude siguen sin integrarse a main (la rama va 15 commits adelante).
+- Claude no tiene el detalle técnico del bug #148 [P: lo documenta YIN]. Hasta que se resuelva, Claude espera las
+  fichas y no las recrea.
+
+## 10. Verificaciones de cierre (D-027-R, Tarea 3) [V, 03/10]
+
+| Punto | Estado | Evidencia |
+|---|---|---|
+| `weights_for_age` con los cortes al **inicio** del tramo | Se mantiene | `AGE_ANCHORS` = (0, 10, 30, 60, 360, 1440 min); test `test_cortes_de_la_tabla` |
+| `tradability` en todas las rutas | Sí | Early watch, scorer joven (`evaluate_young`) y v7.2.1 (`evaluate`); script_97 ruta Solana (`alert_record`) y multi-chain on-chain y CEX (`tradability_flags`). Tests `test_joven_usa_trades_y_lleva_tradability`, `test_alerta_v721_tambien_lleva_tradability`, `test_tradability_en_alertas_solana_y_cex` |
+| Liquidez inicial = flag informativo, no suma | Sí | `initial_liquidity_usd` va en `flags`, fuera de `STRUCT_WEIGHTS`. Test `test_liquidez_cero_y_flag_informativo`: mismo score con y sin flag |
