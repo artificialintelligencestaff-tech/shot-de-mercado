@@ -221,3 +221,28 @@ def to_items_store(records):
     """Forma de _items.json de script_115: lib_info_signals.mentions la lee sin cambios."""
     return [{"ts": _when(r), "a": r.get("a") or [], "c": r.get("c") or [], "f": f"{r.get('bot')}:{r.get('src')}"}
             for r in records]
+
+
+def index(records=None, now=None, root=None):
+    """Índice (a / c / k) sobre los registros dados o sobre el almacén cargado."""
+    return build_index(records if records is not None else load(now, root))
+
+
+def safe_load(now=None, root=None):
+    """load() sin dependencia dura: sin almacén o con error devuelve [] (el scorer sigue con 0 de este aporte)."""
+    try:
+        return load(now, root)
+    except Exception:
+        return []
+
+
+def mention_items(mint, symbol, records):
+    """query(mint) + query($symbol) sobre `records`, sin repetir, en la forma de _items.json."""
+    hits, seen = [], set()
+    for q in [mint] + ([f"${symbol}"] if symbol else []):
+        for r in query(q, records=records):
+            k = dedup_key(r)
+            if k not in seen:
+                seen.add(k)
+                hits.append(r)
+    return to_items_store(hits)

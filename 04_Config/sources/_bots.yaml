@@ -1,0 +1,10 @@
+# Registro de bots de fuentes (doc 34 §5/§12). Lo leen bot_orchestrator y (diseño) bot_self_repair.
+# every_min: cadencia nominal · stale_min: sin corrida en ese lapso = atrasado · backup: bot de respaldo (§12)
+# enabled: false = diseñado, sin implementar (no cuenta como caído).
+bots:
+  rss:      {workflow: sources_rss.yml,        every_min: 20,  stale_min: 60,   backup: forums,   enabled: true}
+  telegram: {workflow: sources_telegram_a.yml, every_min: 30,  stale_min: 90,   backup: rss,      enabled: false}
+  web:      {workflow: sources_web.yml,        every_min: 30,  stale_min: 120,  backup: forums,   enabled: false}
+  github:   {workflow: sources_github.yml,     every_min: 360, stale_min: 780,  backup: rss,      enabled: false}
+  x:        {workflow: sources_x.yml,          every_min: 20,  stale_min: 1440, backup: telegram, enabled: false}
+  forums:   {workflow: sources_forums.yml,     every_min: 60,  stale_min: 180,  backup: rss,      enabled: false}

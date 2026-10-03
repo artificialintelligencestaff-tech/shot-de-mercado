@@ -1,0 +1,60 @@
+name: sources_orchestrator
+
+# bot_orchestrator (doc 34 §8) — cada 10 min (real ~15 min por el desfase del cron). Fusiona los diarios de los bots
+# (lib_sources_store.merge), escribe _health.json, poda diarios > 7 días y el bloque AUTO de _INSTALADOS.md.
+# Dueño único de _merged.jsonl, _index.json y _health.json. Sin secretos ni envíos.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sources-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Merge + health
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python 04_Config/scripts/bot_orchestrator.py
+
+      - name: Commit sources (merged, index, health)
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          git add -- 02_Analisis/sources _servicios_open_source/_INSTALADOS.md
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "sources_orchestrator: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear el estado del orquestador tras 4 intentos"
+          exit 1
