@@ -93,7 +93,7 @@ Estados:
 | `04_Config/sources/_bots.yaml` | Registro de bots: workflow, cadencia, stale, respaldo | rama | `f69def01a846d6387fa35771b61b1bfc42de95bbe994d70d1d6e6ab497a74607` |
 | `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `95c914b62e86f4c275c07a4d164666db03ea407f04415e0228bdbbeeb1ea6409` |
 | `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `e5a9dbbb3a7e1496e5aaee7b0310d78b2a091d895087547830d57b0392c977bb` |
-| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `6030217bdffa1c9b4820e9c3e1c794276b19be9dc1660ff9de9d77f5d2c3def5` |
+| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `a3c48e948fdd288bf4ef4f532d3396c3d154703efc6eb918218a0f8c5279e5e5` |
 | `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `7857695a74fc43688ec02ad8b30efe0ac95639516a960d47e3a4f724e7d46a20` |
 | `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `66f443238fcdf1092464a670c86c8da7f474f87007ca7b73900a61b96831c938` |
 | `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `7c6d3648d1affae0e8d2a15c5ee46ae2a91c31f79ba666efe991944d81c6b116` |
