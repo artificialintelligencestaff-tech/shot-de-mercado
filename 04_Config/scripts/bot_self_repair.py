@@ -68,7 +68,7 @@ class GitHub:
         return r.status_code, (r.json() if r.content and r.status_code < 300 else None)
 
     def runs(self, workflow, per_page=10):
-        """Corridas terminadas, de la más nueva a la más vieja: [{id, conclusion, html_url, created_at}]."""
+        """Corridas terminadas, de la más nueva a la más vieja: [{id, conclusion, html_url, created_at}]. """
         status, data = self._req("GET", f"/actions/workflows/{workflow}/runs?per_page={per_page}&status=completed")
         return [{k: r.get(k) for k in ("id", "conclusion", "html_url", "created_at")}
                 for r in (data or {}).get("workflow_runs") or []] if status == 200 else None
@@ -189,8 +189,23 @@ class Repair:
                 offs[name] = {"first_seen": int(self.now), "until": int(self.now + AUTO_OFF_S)}
                 self.act(bot, "fuente caída", "auto_off", f"{name}: {row.get('status')} x{fails}")
             elif self.now >= off["until"]:
-                off["until"] = int(self.now + AUTO_OFF_S)
-                self.act(bot, "fuente sigue caída", "auto_off", f"{name}: {row.get('status')} x{fails}")
+                # Fix: solo renovar si el bot consultó la fuente DESPUÉS de que venció el apagado anterior.
+                # last_run del bot (si existe) > off["until"] = el bot corrió después del vencimiento y falló.
+                # Si no corrió, NO renovar: dejar que el bot intente en su próxima corrida.
+                bot_last_run = 0
+                for path in (self.base / bot).glob("_state*.json"):
+                    if ".corrupt-" in path.name:
+                        continue
+                    state, status = read_json(path)
+                    if status == "ok" and isinstance(state.get("last_run"), (int, float)):
+                        bot_last_run = max(bot_last_run, state["last_run"])
+                if bot_last_run > off["until"]:
+                    off["until"] = int(self.now + AUTO_OFF_S)
+                    self.act(bot, "fuente sigue caída", "auto_off", f"{name}: {row.get('status')} x{fails}")
+                else:
+                    # bot no corrió tras el vencimiento: no renovar, que intente en su próxima corrida
+                    self.act(bot, "fuente sigue caída", "auto_off_sin_renovar",
+                             f"{name}: bot no corrió tras vencimiento, reintenta en próxima")
             if offs.get(name) and self.now - offs[name]["first_seen"] >= SOURCE_ESCALATE_S:
                 self.escalate(key, bot, "fuente caída 24 h (P-13: reemplazar)", f"{name}: {row.get('status')} x{fails}")
         for name in list(offs):

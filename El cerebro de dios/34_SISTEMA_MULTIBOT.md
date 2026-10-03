@@ -257,14 +257,14 @@ Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `
 últimas corridas de cada workflow (API de Actions, `GITHUB_TOKEN` con `actions: write`). Solo aplica reglas
 explícitas: **cero IA generativa en producción**. Lo que no está en la tabla no lo toca: lo escala.
 
-| Detección | Señal | Fix conocido | Límite |
-|---|---|---|---|
-| Feed o fuente caída | `status != 200` en 3 corridas seguidas | `enabled: auto_off` en `_state.json`; el bot la salta 6 h y después reintenta una vez. **No edita el YAML**: el YAML es de Claude y YIN. | Si 24 h después sigue caída: escala [P] (P-13: reemplazarla) |
-| Workflow fallido recurrente | ≥2 fallas seguidas (`conclusion: failure`) | 1 re-run del job fallido (`POST /actions/runs/{id}/rerun-failed-jobs`) | 1 re-run por falla; la 2.ª falla se escala con el log del paso |
-| Bot atrasado | `atrasado` en `_health.json` | 1 `workflow_dispatch` | 1 por atraso; un atraso repetido en 24 h se escala |
-| Archivo corrupto | `_state.json` o `_health.json` que no parsea; JSONL con líneas que no parsean | `_state.json`: se renombra a `.corrupt-<ts>` y el bot arranca con estado vacío (solo pierde el dedup de 72 h). JSONL: se reescribe sin las líneas rotas, y las rotas se guardan en `.rejected`. | Más de 1 por día en el mismo archivo: escala |
-| Output vacío anómalo | `vacío` con fuentes OK: los feeds responden 200 pero el parser da 0 ítems en 3 corridas (cambió el formato) | Ninguno: un parser roto no se repara con reglas | Escala de inmediato |
-| Caché o estado inflado | `seen` con más de 50.000 claves, o `_state.json` de más de 5 MB | Recorta `seen` a la ventana `dedup_hours` | — |
+|| Detección | Señal | Fix conocido | Límite |
+||---|---|---|---|
+|| Feed o fuente caída | `status != 200` en 3 corridas seguidas [H] | `enabled: auto_off` en `_state.json`; el bot la salta 6 h [H] y después reintenta una vez. **No edita el YAML**: el YAML es de Claude y YIN. | Si 24 h [H] después sigue caída: escala [P] (P-13: reemplazarla) |
+|| Workflow fallido recurrente | ≥2 fallas seguidas (`conclusion: failure`) | 1 re-run del job fallido (`POST /actions/runs/{id}/rerun-failed-jobs`) | 1 re-run por falla; la 2.ª falla se escala con el log del paso |
+|| Bot atrasado | `atrasado` en `_health.json` | 1 `workflow_dispatch` | 1 por atraso; un atraso repetido en 24 h [H] se escala |
+|| Archivo corrupto | `_state.json` o `_health.json` que no parsea; JSONL con líneas que no parsean | `_state.json`: se renombra a `.corrupt-<ts>` y el bot arranca con estado vacío (solo pierde el dedup de 72 h). JSONL: se reescribe sin las líneas rotas, y las rotas se guardan en `.rejected`. | Más de 1 por día en el mismo archivo: escala |
+|| Output vacío anómalo | `vacío` con fuentes OK: los feeds responden 200 pero el parser da 0 ítems en 3 corridas [H] (cambió el formato) | Ninguno: un parser roto no se repara con reglas | Escala de inmediato |
+|| Caché o estado inflado | `seen` con más de 50.000 [H] claves, o `_state.json` de más de 5 MB [H] | Recorta `seen` a la ventana `dedup_hours` | — |
 
 **Escalado.** Una fila en el bloque `<!-- AUTO:repair -->` de `_INSTALADOS.md` con el formato
 `[P] <fecha> <bot> <detección> <evidencia>`. Una fila por problema abierto: si el problema persiste, no se
