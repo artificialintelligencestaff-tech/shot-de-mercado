@@ -1,0 +1,62 @@
+name: sources_genesis
+
+# Bot padre (Ola 3, D-067): una vez por día genera recetas desde las fichas con bloque `recipe:`, las valida
+# (esquema, secret, dominio no duplicado, fetch en seco, >= 5 ítems) y habilita o pone en probation en
+# 04_Config/recipes/_recipes_state.json. No escribe código ni workflows. Commitea solo 04_Config/recipes/.
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sources-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  genesis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+          pip install --require-hashes --no-deps -r 04_Config/requirements/sources_telegram.txt
+
+      - name: Genesis
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          python 04_Config/scripts/bot_genesis.py
+
+      - name: Commit recipes
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          git add -A -- 04_Config/recipes
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "sources_genesis: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear 04_Config/recipes tras 4 intentos"
+          exit 1
