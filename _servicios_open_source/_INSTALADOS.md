@@ -13,8 +13,8 @@
 |---|---|---|---|
 | `forums` | diseño | — | —/— |
 | `github` | diseño | — | —/— |
-| `rss` | ok | 2 | 11/11 |
-| `telegram` | ok | 0 | 15/15 |
+| `rss` | ok | 10 | 11/11 |
+| `telegram` | vacío | 0 | 15/15 |
 | `telegram_b` | sin_datos | — | —/— |
 | `web` | diseño | — | —/— |
 | `x` | diseño | — | —/— |
