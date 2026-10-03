@@ -13,6 +13,25 @@ Estructura de investigación de servicios open source gratuitos para el pipeline
 | 05 | `05_analisis_sentiment/` | NLP, sentiment, topic modeling, embeddings | P2 |
 | 06 | `06_utilidades/` | Herramientas auxiliares (caché, rate limit, dedup) | P2 |
 
+## Fichas
+
+| Cat | Ficha | Key | Prioridad |
+|-----|-------|-----|-----------|
+| 01 | `cryptopanic.md`, `coindesk_rss_aggregator.md`, `cryptocontrol.md` | — | — |
+| 03 | `goplus_security.md` | no | P1 |
+| 03 | `dexpaprika.md` | no | P1 |
+| 03 | `helius_free.md` | gratuita | P2 |
+| 04 | `pumpfun_datos.md` | no | P1 |
+| 04 | `bitcointalk_ann.md` | no | P2 |
+| 04 | `dextools_api.md` | gratuita | P3 |
+| 05 | `vader_lexico_cripto.md` | no | P2 |
+| 05 | `cryptobert.md` | no | P3 |
+| 06 | `healthchecks_io.md` | cuenta gratuita | P1 |
+| 06 | `requests_cache.md` | no | P2 |
+| 06 | `pyrate_limiter.md` | no | P2 |
+
+Fichas de D-055: endpoints probados en vivo el 2026-10-03 (rótulo [V]). Estado y descartes en `_PENDIENTES.md`.
+
 ## Protocolo
 
 1. **YIN investiga** → crea `.md` en la carpeta correspondiente
