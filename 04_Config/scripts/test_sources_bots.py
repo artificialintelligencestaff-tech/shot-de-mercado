@@ -57,7 +57,8 @@ class Store(Tmp):
         self.assertEqual(r["v"], "src-1")
         self.assertEqual(r["a"], sorted([MINT, EVM.lower()]))
         self.assertEqual((r["c"], r["k"]), (["WIF"], ["memecoin"]))
-        self.assertEqual(len(r["title"]), store.TITLE_MAX)
+        self.assertLessEqual(len(r["title"]), store.TITLE_MAX)                 # cortado y sin espacio final
+        self.assertEqual(r["title"], r["title"].strip())
         self.assertNotIn("cuerpo", json.dumps(r))
         self.assertEqual((len(r["h"]), len(r["au"])), (16, 12))
         self.assertIsNone(store.make_record("telegram", "c", "message", "hola", title="hola")["title"])
