@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO COMPLETO (D-033, D-035) — implementado: lib_sources_store, bot_rss_news, bot_orchestrator, 2 workflows, query() en script_116/script_97
+status: DISEÑO COMPLETO (D-033, D-035) — implementado: lib_sources_store, bot_rss_news, bot_orchestrator, query() en script_116/script_97; D-041: lib_normalize, bot_self_repair, lib_knowledge_graph, auditoría por bot, bot_telegram_public
 last_updated: 2026-10-03
-version: 0.2
+version: 0.3
 reemplaza: doc 33 §2–§5 (el doc 33 queda como investigación de fuentes)
 ---
 
@@ -131,8 +131,11 @@ feeds:
 bot: telegram
 loop_minutes: 40
 poll_minutes: 4
-channels: [whale_alert_io, cointelegraph, WatcherGuru, pumpfun, SolanaNews, DexToolsAlerts, BinanceKillers,
-           CryptoCom, memecoins, PepeWorld, coin_alert]   # + 2 que verifica YIN; solana/dexscreener fuera (§1 #6)
+channels: [whale_alert_io, cointelegraph, WatcherGuru, pumpfun, BinanceKillers, crypto, binance_announcements,
+           CoinDeskGlobal, BitcoinNews, dexscreener_trending, Cryptoquant_official, unfolded, DegenerateNews,
+           CoinMarketCapAnnouncements, OKXAnnouncements]
+# D-041: 15 con vista previa verificada el 03/10 [V]. Fuera (redirigen): SolanaNews, DexToolsAlerts, CryptoCom,
+# PepeWorld, coin_alert. 'memecoins' es alias de 'crypto'. Archivo real: 04_Config/sources/telegram.yaml
 
 # web.yaml — la plantilla clave: sumar fuente = sumar un bloque
 bot: web
@@ -246,7 +249,9 @@ Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `
 5. `query()` en `script_116` (`mentions`) y en `script_97` (campos informativos `sources_mentions_*` para tokens ≥ 60 min) **[hecho en D-035]**. Falta que el bono de v7.2.2 los use.
 6. `bot_self_repair` (§11).
 
-## 11. bot_self_repair (D-035, diseño; sin implementar)
+## 11. bot_self_repair (D-035 diseño; **implementado en D-041**: `bot_self_repair.py` + `sources_self_repair.yml`)
+
+> D-041: el auto_off vive en `_repair_state.json` (dueño: el reparador) y los bots lo leen; el reparador no edita el `_state.json` de un bot salvo para renombrarlo si está corrupto o recortar `seen`. Reruns solo en workflows de bots de fuentes; producción solo se escala.
 
 **Qué hace.** Corre cada 30 min (`19,49 * * * *`). Lee `_health.json`, el `_state.json` de cada bot y las
 últimas corridas de cada workflow (API de Actions, `GITHUB_TOKEN` con `actions: write`). Solo aplica reglas
