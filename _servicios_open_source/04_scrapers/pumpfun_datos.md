@@ -19,3 +19,31 @@
 - Bot `bot_pumpfun` en REST: poll cada 2–4 min de `/coins` ordenado por creación; salida src-1 con `kind="token_launch"` y `author=creator`; sin guardar `description`, solo `reply_count` en `m`.
 - Stream PumpPortal: solo si el poll REST pierde lanzamientos (medir primero).
 - No usar los métodos de trades: son pagos.
+
+## Receta (bot_genesis, D-067)
+
+Lanzamientos de pump.fun por orden de creación, sin key [V 2026-10-03: 50 ítems con `mint`, `symbol`,
+`created_timestamp` en ms, `usd_market_cap`, `reply_count`, `complete`, `creator`]. No guarda `description` (src-1).
+
+```yaml
+recipe:
+  kind: json_api
+  url_base: https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=created_timestamp&order=DESC&includeNsfw=false
+  cadencia_min: 10
+  src_kind: token
+  grupo: a
+  limite: 50
+  extractores:
+    - items: "$[*]"
+    - id: "$.mint"
+    - title: "$.name"
+    - ts: "$.created_timestamp"
+    - author: "$.creator"
+    - text: "$.mint"
+    - meta.symbol: "$.symbol"
+    - meta.usd_market_cap: "$.usd_market_cap"
+    - meta.reply_count: "$.reply_count"
+    - meta.complete: "$.complete"
+    - meta.is_currently_live: "$.is_currently_live"
+    - meta.twitter: "$.twitter"
+```

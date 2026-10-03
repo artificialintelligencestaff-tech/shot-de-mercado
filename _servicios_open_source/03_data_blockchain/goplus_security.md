@@ -13,3 +13,41 @@
 - Encaja como chequeo de "adquisición" (¿se puede comprar y vender?) antes del dossier. [I]
 **Riesgos técnicos:** 30 req/min alcanza para validar candidatos, no para barrer todos los pools. [V] Respuesta en strings (`"0"`/`"1"`): hay que normalizar. [V]
 **Recomendación:** integrar como enriquecedor de candidatos EVM en la ruta del dossier (`script_113`), con caché de 6 h por contrato y presupuesto ≤20 req/min. Prioridad P1. Sin SDK: `requests` + normalización propia.
+
+## Receta (bot_genesis, D-067)
+
+Enriquecimiento, no descubrimiento: chequea la seguridad de los tokens que el sistema ya marcó como
+`pump_naciente` (lib_events). El endpoint Solana devuelve **un** resultado por llamada aunque reciba varias direcciones
+[V 2026-10-03], así que va `{subject}` (una llamada por token, ≤ 20 por corrida: dentro de 30/min). `prueba` son 5 mints
+conocidos para que bot_genesis valide sin depender de que haya eventos. Mientras ningún bot emita `pump_naciente`
+(el emisor es script_116, producción) la receta corre y termina en `sin_sujetos`.
+
+```yaml
+recipe:
+  kind: json_api
+  url_base: https://api.gopluslabs.io/api/v1/solana/token_security?contract_addresses={subject}
+  cadencia_min: 30
+  src_kind: token
+  grupo: a
+  limite: 20
+  sujetos:
+    tipo: pump_naciente
+    max: 20
+    prueba:
+      - DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+      - EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm
+      - JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN
+      - 7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr
+      - HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3
+  extractores:
+    - items: "$.result.*"
+    - id: "$._key"
+    - title: "$.metadata.name"
+    - text: "$._key"
+    - meta.mintable: "$.mintable.status"
+    - meta.freezable: "$.freezable.status"
+    - meta.closable: "$.closable.status"
+    - meta.metadata_mutable: "$.metadata_mutable.status"
+    - meta.holder_count: "$.holder_count"
+    - meta.trusted_token: "$.trusted_token"
+```

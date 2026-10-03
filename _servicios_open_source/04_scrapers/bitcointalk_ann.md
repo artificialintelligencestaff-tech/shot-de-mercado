@@ -13,3 +13,24 @@
 - Aceleración de respuestas o vistas por hilo = atención temprana medible, con el mismo baseline Poisson del doc 26. [H]
 **Riesgos técnicos:** el foro limita a los clientes agresivos: 1 request cada ≥2 s y 1 página por corrida alcanzan (el ritmo de hilos nuevos es bajo). [I] El HTML de SMF es antiguo pero estable. [I]
 **Recomendación:** P2. Implementarlo como fuente `forums` (hoy en "diseño" en `_bots.yaml`): `bot_forums` con Bitcointalk ANN, cada 60 min, salida src-1 con `kind="thread"` y cashtag extraído del título con `lib_normalize.cashtag`. No guardar el cuerpo del post.
+
+## Receta (bot_genesis, D-067)
+
+Tablero 159 (Announcements, Altcoins) con selectores CSS [V 2026-10-03: 40 hilos por página]. Los hilos fijos
+de reglas entran la primera vez y después los frena el dedup (`dedup_h` de 90 días, para que no vuelvan cada semana).
+
+```yaml
+recipe:
+  kind: html_list
+  url_base: https://bitcointalk.org/index.php?board=159.0
+  cadencia_min: 60
+  src_kind: post
+  grupo: f
+  limite: 40
+  dedup_h: 2160
+  extractores:
+    - items: "span[id^=msg_] > a"
+    - id: "@href"
+    - url: "@href"
+    - title: "."
+```

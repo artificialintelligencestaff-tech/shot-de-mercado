@@ -167,8 +167,8 @@ class Runner(Base):
                           "extractores": {"items": "$.result.*", "id": "$._key", "title": "$.metadata.name",
                                           "text": "$._key", "meta.mintable": "$.mintable.status",
                                           "meta.freezable": "$.freezable.status"}})
-        self.assertEqual(br.run_recipe(gp, now=T0, fetch=FakeHTTP({}), root=self.root)["state"]["status"],
-                         "sin_sujetos")
+        idle = br.run_recipe(gp, now=T0, fetch=FakeHTTP({}), root=self.root)["state"]
+        self.assertEqual((idle["status"], idle["fails"]), ("sin_sujetos", 0))          # sin sujetos no es falla
         events.write_event("pump_naciente", MINT_A, 2, writer="early_watch_a", now=T0 + 60, root=self.root)
         events.write_event("pump_naciente", MINT_B, 2, writer="early_watch_b", now=T0 + 90, root=self.root)
         body = {"code": 1, "result": {MINT_A: {"mintable": {"status": "0"}, "freezable": {"status": "1"},

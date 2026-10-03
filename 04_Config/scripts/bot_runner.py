@@ -368,7 +368,7 @@ def run_recipe(recipe, now=None, fetch=http_fetch, root=None, write=True):
         records.append(store.make_record(name, name, recipe["src_kind"], it.get("text") or "", id=str(it["id"]),
                                          url=it.get("url"), ts=norm.timestamp(it.get("ts")), seen=now,
                                          title=it.get("title"), author=it.get("author"), meta=meta))
-    ok = info["status"] == 200 and not info["error"]
+    ok = info["status"] in (200, "sin_sujetos") and not info["error"]       # sin sujetos: nada que hacer, no es falla
     if len(seen) > SEEN_MAX:
         seen = dict(sorted(seen.items(), key=lambda kv: kv[1])[-SEEN_MAX:])
     new_state = {"version": VERSION, "recipe": name, "kind": recipe["kind"], "last_run": int(now),
