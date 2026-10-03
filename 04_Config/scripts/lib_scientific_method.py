@@ -18,6 +18,7 @@ Veredicto: pendiente (n < min_n o prueba no válida) · aceptada · rechazada ·
 
 La H-0 (doc 32 §6, early_review.evaluate_h0) se migra como referencia con `migrate_h0`: mismos parámetros, misma
 prueba, mismo veredicto. early_review.py sigue siendo el evaluador de producción de la H-0.
+Cada evaluación persistida deja además un episodio `hipotesis_evaluada` (patrón #12, lib_episodic_memory).
 Solo biblioteca estándar.
 """
 import argparse
@@ -32,6 +33,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS))
+import lib_episodic_memory as episodes  # noqa: E402
+
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
 REGISTRY_REL = "02_Analisis/hypotheses/_registry.jsonl"
 SCHEMA = 1
@@ -276,6 +280,7 @@ def evaluate_hypothesis(id, data, root=None, now=None, persist=True):
            "result": result, "verdict": verdict, "label": (reg.get("labels") or {}).get(verdict, verdict)}
     if persist:
         append_line(out, root)
+        episodes.write_episodes([episodes.hypothesis_episode(out, reg)], root, "method")
     return out
 
 

@@ -36,7 +36,7 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 | 5. Controles | **Placebo:** fechas desplazadas ±6–24 h; la señal no debe rendir igual. **Walk-forward** semanal con purga de 48 h. **Contrafactual:** los +20% no alertados y qué señales tenían (doc 35 §6.5). | [P] |
 | 6. Refutación (#8, debate adversario) | Antes de aceptar, un segundo evaluador automático intenta romper el resultado: placebo, permutación de etiquetas, submuestras por chain y por semana. Si una submuestra invierte el signo, no se acepta. | [P] |
 | 7. Decisión | **Acepta:** la señal pasa a pesar en el score con su LLR estimado (doc 27 §4.1). **Rechaza:** sale (#18, poda cognitiva; P-13). **Inconcluso:** sigue midiendo hasta el n máximo y después se rechaza. | memoria episódica (#12) |
-| 8. Episodio (#12) | Cada hipótesis cerrada deja un episodio con hipótesis, datos usados (hash), resultado, decisión y fecha. Es la memoria que impide re-probar lo ya descartado. | `02_Analisis/methods/_episodes.jsonl` [P] |
+| 8. Episodio (#12) | Cada hipótesis cerrada deja un episodio con hipótesis, datos usados (hash), resultado, decisión y fecha. Es la memoria que impide re-probar lo ya descartado. | `02_Analisis/sources/_episodes.jsonl` + `_episodes_<writer>.jsonl` (`lib_episodic_memory`, D-055) [V] |
 
 **Pizarra compartida (#5).** Ninguna hipótesis consulta fuentes por su cuenta. Lee lo que ya escriben los bots:
 - `_merged.jsonl` y `_index.json` (menciones normalizadas, #19);
@@ -120,7 +120,7 @@ Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su h
 | #5 Blackboard | Las hipótesis leen la pizarra (`_merged`, `_index`, `_graph`, `_health`, `multichain/`); no consultan fuentes |
 | #7 Knowledge Graph | H-a2 (cluster de co-mención) y el contexto del dossier |
 | #8 Debate adversario | Refutador automático: placebo, permutación y submuestras antes de aceptar |
-| #12 Memoria episódica | `_episodes.jsonl`: cada hipótesis cerrada con su resultado y su decisión |
+| #12 Memoria episódica | `_episodes.jsonl` + fragmentos por escritor. Tipos: `hipotesis_evaluada` (cada evaluación persistida), `feed_caido` y `bot_reparado` (bot_self_repair, solo transiciones), `alerta_emitida` (constructor listo; falta cablearlo en el emisor, que es producción) [V] |
 | #18 Poda cognitiva | Una señal rechazada o inconclusa al n máximo se retira del score (P-13) |
 | #19 Normalización | Todas las comparaciones usan la forma canónica de `lib_normalize` |
 
