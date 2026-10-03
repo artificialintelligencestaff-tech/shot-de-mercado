@@ -38,71 +38,71 @@ Estados:
 
 | Ruta | Propósito | Estado | SHA-256 |
 |---|---|---|---|
-| `.github/workflows/datasets_build.yml` | Construye el dataset histórico de alertas (lib_persist) | producción | `4101b68889d2d437473edcc216098c5cc52aee77c68ef332ecf59b55d279d336` |
-| `.github/workflows/early_review.yml` | Revisión diaria del early watch: gate de edad 10→15 y H-0 | producción | `7d11d2b84034ed45cfdce5adf43ec537251a4f2e892282f88eade1a3f8b26613` |
-| `.github/workflows/early_watch.yml` | Instancia a del early watch (:07/:37, loop de 40 min) | producción | `6bef65848aa3322768aa3e5b2e64e8a5e4374b741b6a2c242db64e0bacb4a970` |
-| `.github/workflows/early_watch_b.yml` | Instancia b del early watch (:22/:52) | producción | `4b4f037ce80cdbe76411154bb4ecd885cdb071cba4d6faa73bd9063c52752e4a` |
-| `.github/workflows/latency_analysis.yml` | Mide el desfase de cron y la latencia de detección | producción | `3b71037ac5793ef7f4a73d5a735642537fbd3a1025a3dc4a8d61e5e5b7c37d20` |
-| `.github/workflows/multichain_scanner.yml` | Corre script_114 (scanner multi-chain) | producción | `60647848c621fcf5bacca471ec975f118dee1734efd9bd7381573db47f7e006d` |
-| `.github/workflows/narrative_collector.yml` | Corre script_115 cada 20 min | producción | `09f0bbf4122036a11ea9d9e860925dcef47cece641338ac5eee177c24940d06c` |
-| `.github/workflows/pipeline_t0.yml` | Pipeline principal (82 → 97 → 98); hand-off con early watch | producción | `45cf37f7d450b15793ab80b0a37708a4acb23a86cc888709304377dc8174de95` |
-| `.github/workflows/probe_inventario.yml` | Sonda del inventario de fuentes | producción | `0196271d691cef0112f5a416a0879d4f0d2b29f58557c650bb967f07702b71fe` |
-| `.github/workflows/sources_orchestrator.yml` | Workflow del orquestador de fuentes, cada 10 min | rama | `81604b28e19ae1dc7dcfdbc73442bd86e045f00f692ff2f87c26601e81fe497e` |
-| `.github/workflows/sources_rss.yml` | Workflow de bot_rss_news, cada 20 min (plantilla de bots) | rama | `d125d234f755fdf7389b8cc6944fc98288ea13de6d4e798d50bb41c7a925b894` |
-| `04_Config/inventario.json` | Inventario de fuentes y estado de cada una | producción | `0d823075337132638ab6e8787759e36d862b2d21c6929c6d5cdeb79f862bb1b0` |
-| `04_Config/scripts/bot_orchestrator.py` | Fusiona los diarios de bots, salud, poda y bloque AUTO de _INSTALADOS | rama | `4578df72b1d30e81a9a2abb83b6c1e5900a323afd659a73bb67c492827b71421` |
-| `04_Config/scripts/bot_rss_news.py` | Bot RSS: 12 feeds → esquema src-1 | rama | `dbce1ab52913c1d423f9abf5aa3f3535912c115f5bc741ea1c9a69f8968a2180` |
-| `04_Config/scripts/dataset_builder.py` | Dataset histórico de alertas con resultado | producción | `e406e35486178078194a6d714f7f18a6f3638780850bdbb5e2114b6251f3db78` |
-| `04_Config/scripts/early_review.py` | Evaluación del early watch: primary rate, gate de edad, H-0 (Fisher) | producción | `c11852a02463a10bdb0d3bf38fa373331b3b49fa7ff5e99e12d20b517097cc01` |
-| `04_Config/scripts/latency_analysis.py` | Análisis de latencia y desfase de cron | producción | `aac96406c6367c2d919c2624513761fe9d3304e58284e1165a080fb33c9f1f08` |
-| `04_Config/scripts/lib_early_signals.py` | 5 señales de precio/volumen de anticipación | producción | `298ee897a84958ce447c23a4031a3dc34b99acc281001fb601a41f1f817067c6` |
-| `04_Config/scripts/lib_info_signals.py` | Señales informacionales y estructurales + tradability | producción | `f06fa94d98f8cdd01c00e0578465e418b59f8ad8992c32a2a0060e4b4ac74f6f` |
-| `04_Config/scripts/lib_persist.py` | Persistencia: dataset propio y bitácora de operaciones | producción | `cea9a34e13391b95af5591d6ee0120a00839f5ff86faffc9654d5b7d27f4cc4a` |
-| `04_Config/scripts/lib_scoring_multichain.py` | Scoring por tipo de activo (grupos b–i) | producción | `f216f81bb76e99adb7454b4b07afca4c74aa7ef076b66c09392ff4fed99098a3` |
-| `04_Config/scripts/lib_scoring_young.py` | Scorer joven young-0.4 (<60 min): pesos continuos por edad | producción | `e74f08934d1f0d2532447504b5dadfb92e0399c37bf881f73ff046cc943696b0` |
-| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `c170d941c80546f6755fd4ba1a0c87dc82369a15b23a5f2d23ef58fcc9a72d8e` |
-| `04_Config/scripts/probe_inventario.py` | Sonda de disponibilidad de fuentes | producción | `c0446affa69deaa34c6d8a9cdcddbaba711ae82b66bf716114d68003397961bf` |
-| `04_Config/scripts/script_113_dossier_builder.py` | Dossier por activo (ruta de compra primero) | producción | `e2a6e6c8cb3c07ba7b0a5635876d0c677a38c6a06ab8cdf49449dec4d4fe1e4a` |
-| `04_Config/scripts/script_114_multichain_scanner.py` | Scanner multi-chain v0.2 | producción | `08cd30be1827abfac97333ac770fd05e25c4c42a010c5d5967cd254ca10eb54c` |
-| `04_Config/scripts/script_115_narrative_collector.py` | Colector de menciones (solo identificadores) | producción | `59658a198fbb809e8317db022a9e6d12241f56a500135608dbb0ee0707d6a072` |
-| `04_Config/scripts/script_116_early_watch.py` | Early watch: PumpPortal WS + scorer joven + claims por mint; usa query() | producción (cambio D-035 en rama) | `d68dd0efce72b3e8cc57bb44adfb05bfce0d15a10b881022bde275096b45c7d0` |
-| `04_Config/scripts/script_82_final_detection.py` | Detección final v7.2.1 (grupo i incluido) | producción | `b35c7d14fd2f37889c19e6a557a72e3af7186a5bf9e0158760fc37675e41c5ab` |
-| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `9cd3e8607931f5f0531b604207dce15e0b5eb9bfce79bbb877e6d14d31db88a2` |
-| `04_Config/scripts/script_98_trust_scheduler.py` | Seguimiento de alertas (trust updates) | producción | `74288d4eb3ced1588ef0af4bb2a87e3ffaa3965455d22a54c032ccc20158f309` |
-| `04_Config/scripts/test_datasets_persist.py` | Tests de datasets_persist | test | `d957c7f249d3651defae3aa474be1c848d60ae12f7720e25c741638a77986512` |
-| `04_Config/scripts/test_early_review.py` | Tests de early_review | test | `0c304d3895d4230956e669e03720aeca931753afbfcf8c6427b329f7d2b04d53` |
-| `04_Config/scripts/test_latency_analysis.py` | Tests de latency_analysis | test | `9c7243ed56294316ba3f97edc7c610118f9ef27b3d8349b3a54404bb1506568b` |
-| `04_Config/scripts/test_lib_early_signals.py` | Tests de lib_early_signals | test | `e19c09a7a7943d84831cb660825ed91e84b1dc8467f8f7737f87bccab2d52573` |
-| `04_Config/scripts/test_lib_info_signals.py` | Tests de lib_info_signals | test | `702923af39ace81f3975a7b1ad0220aab7f8c8f6c31026ea71991e618fc682b7` |
-| `04_Config/scripts/test_lib_scoring_multichain.py` | Tests de lib_scoring_multichain | test | `c8cc6a682a5c22b2319f8db3af49ed8d85072298312badbf100f9850d7e784af` |
-| `04_Config/scripts/test_lib_scoring_young.py` | Tests de lib_scoring_young | test | `dba368fc6b13e7f371ce2d99ed2f22987304d356c30394edb45832b3c3638403` |
-| `04_Config/scripts/test_probe_inventario.py` | Tests de probe_inventario | test | `5567f6e384ada8f7869c53963a72267ce510c330b6c2af2bd0b82e8ae3927850` |
-| `04_Config/scripts/test_script_114_scanner.py` | Tests de script_114_scanner | test | `af914c0b9e117db219408d208d0d59e51b00b9376f6d6651a96c189161b090d4` |
-| `04_Config/scripts/test_script_115_collector.py` | Tests de script_115_collector | test | `b031bd6055e5dea9b8b9d59f64e125a40d0c581db5bbb2c4b5439bcdbe97d27b` |
-| `04_Config/scripts/test_script_116_early_watch.py` | Tests de script_116_early_watch | test | `43283ce722628e7ea645813cc9cd0c093363197cd42b06be56217040bfcdd096` |
-| `04_Config/scripts/test_script_82_group_i.py` | Tests de script_82_group_i | test | `e514536690d59371eab7b650c1d085defe0872b27e4bde59f537d1397d2b241f` |
-| `04_Config/scripts/test_script_97_early.py` | Tests de script_97_early | test | `91a73103cf3313b9cd8f8dcb579cbfab8cdcc4afb0c39ea9a6d7a00e04c75070` |
-| `04_Config/scripts/test_script_97_guias.py` | Tests de script_97_guias | test | `c7cd77257737243118508681fd0fe29269a00f82cca1b7602f25ddec0aeffa9e` |
-| `04_Config/scripts/test_script_97_multichain.py` | Tests de script_97_multichain | test | `69da53a2f341dd157e51d3dd7a5d58e54268fd7545e6d0b0d6887ed2b6136d37` |
-| `04_Config/scripts/test_script_98_shadow.py` | Tests de script_98_shadow | test | `a784b25a6dfa76dc7fc9debb8ee5c752d6d933887a1fb7b0167e324d204fb939` |
-| `04_Config/scripts/test_sources_bots.py` | Tests de sources_bots | test | `a36cf586939b4d7ea6774ef3340a5987565d343c4d7902fb69b5ff87c3faec25` |
-| `04_Config/scripts/test_sources_orchestrator.py` | Tests de sources_orchestrator | test | `0576b027198e16c293e456717b932d8296994ef8ee0152d6106fcbdc4fdf4228` |
-| `04_Config/scripts/test_telegram_template.py` | Tests de telegram_template | test | `86b3e576e89fe4a83f06d170f332bfd63b99004330b9d91dd41bf1f93d94d10e` |
-| `04_Config/scripts/test_young_watch_analysis.py` | Tests de young_watch_analysis | test | `21aff87d75859c913b1cb15090b0c714d19bcbfa37502004fd5d79afd2443f68` |
-| `04_Config/scripts/young_watch_analysis.py` | Análisis de los logs JSONL del scorer joven | producción | `e7677e13d1dcadcdaedb5ef0e9bdb8cf0d44cc9046264fe3c099ec368ceb11ba` |
-| `04_Config/sources/_bots.yaml` | Registro de bots: workflow, cadencia, stale, respaldo | rama | `9524f71e394e4976c70e73c88ade949c61e08b0102767f719c44ea409719b671` |
-| `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `37ba02cf8f82cbacce9bf6701a7a82cfa3192174abd46e0f6cf51c1e1d3d8e6f` |
-| `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `f96569544270b8ac871fdc06b3a4f3d237322d1c22623664a90e113642e0d5d7` |
-| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `ce45961d739c1c41f3a0666a9ea81b2cb404f137fbf2cd9a0322f2ed19279f71` |
-| `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `db128d3ad8b27469ce0a16232f2f94c41cb4af6acb8026c3ae89f13cf87e4c21` |
-| `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `b55d49cef4bcccf1b53ea0e8989621b303dc4574e8ae455436a5de20e45218b2` |
-| `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `3816a9a8cadc8e6ed102570fcefe9552e403138b00c486cd2c51ecfcd2cefc23` |
-| `El cerebro de dios/28_INVENTARIO_COMPLETO.md` | Inventario completo de fuentes | doc | `088cf61c8365121545e6683cf98cff6a6cbb0f3f7103c0098f20d61c701f8979` |
+| `.github/workflows/datasets_build.yml` | Construye el dataset histórico de alertas (lib_persist) | producción | `f3d5da654599e21162728dce3e8922da86985272751657d5dbf5431c0949827e` |
+| `.github/workflows/early_review.yml` | Revisión diaria del early watch: gate de edad 10→15 y H-0 | producción | `866ad220e9ac6e01f8f232b5f71e824d14a4789f6efbaab005613f2cd69e5268` |
+| `.github/workflows/early_watch.yml` | Instancia a del early watch (:07/:37, loop de 40 min) | producción | `991ee94f1a0c5fce20c6ccf353a94fb7cf354714ea50441c07f8169e7bfdcd76` |
+| `.github/workflows/early_watch_b.yml` | Instancia b del early watch (:22/:52) | producción | `8ca276cc88939b3838f3e59857eadece8d4e2a7728a12d50b3fe5e2cffc3c2fd` |
+| `.github/workflows/latency_analysis.yml` | Mide el desfase de cron y la latencia de detección | producción | `3fc665fcd06afbd9272be188cb51ee51bae26e77cde2c7d94e4c3e08b6deda29` |
+| `.github/workflows/multichain_scanner.yml` | Corre script_114 (scanner multi-chain) | producción | `45d3c98449df1d6134778dee1411012f9a01e7030c5829730734180912ee06cd` |
+| `.github/workflows/narrative_collector.yml` | Corre script_115 cada 20 min | producción | `f61ae51350ee615cf76ee94b94ee2300b556d22ecba976f5ddae7519570a11b2` |
+| `.github/workflows/pipeline_t0.yml` | Pipeline principal (82 → 97 → 98); hand-off con early watch | producción | `9388533c944dc2adb8153dc1395dd19f693caf530aab0e19a662ee028b208412` |
+| `.github/workflows/probe_inventario.yml` | Sonda del inventario de fuentes | producción | `ca721858989e13563bd6337bbcd675987a33bd478986ab6aa241686fe774bc4e` |
+| `.github/workflows/sources_orchestrator.yml` | Workflow del orquestador de fuentes, cada 10 min | rama | `adec6c3829edc98a7dc6634acf39054b57cde3360f1b063e3f7526e1ec7e097d` |
+| `.github/workflows/sources_rss.yml` | Workflow de bot_rss_news, cada 20 min (plantilla de bots) | rama | `8733f22376a05fa79600a54b078ef75944388a4ced532c441bec1557797137e8` |
+| `04_Config/inventario.json` | Inventario de fuentes y estado de cada una | producción | `22e4d70357fa281a756168aea483a331f8b1569a740946afad2c9f355ad7c87a` |
+| `04_Config/scripts/bot_orchestrator.py` | Fusiona los diarios de bots, salud, poda y bloque AUTO de _INSTALADOS | rama | `b30c7edaa06ada84417559aabc735b187f3ba240bae426e9b4c695fe2ed9c895` |
+| `04_Config/scripts/bot_rss_news.py` | Bot RSS: 12 feeds → esquema src-1 | rama | `8758f82be8057b6097e53e4e2c11cea0438b9492c6724ee9f882187f86032a6e` |
+| `04_Config/scripts/dataset_builder.py` | Dataset histórico de alertas con resultado | producción | `4ff46283688d21762834652335f4b78206c9b611f84fac20c6a92fc2c783aa97` |
+| `04_Config/scripts/early_review.py` | Evaluación del early watch: primary rate, gate de edad, H-0 (Fisher) | producción | `7a86ad79467ca09e57a3bf64d37ef166f84d12350b51bcdd5bf8c5ae0be2bc87` |
+| `04_Config/scripts/latency_analysis.py` | Análisis de latencia y desfase de cron | producción | `522901f043297edba421f20e60ae5792f2207f65fa4c40bb27ea5cb667a95e7d` |
+| `04_Config/scripts/lib_early_signals.py` | 5 señales de precio/volumen de anticipación | producción | `d62093a707a1c8d36ec9f85a5633ea1b27f389867ba2c0223ad9d8919d7c9a5e` |
+| `04_Config/scripts/lib_info_signals.py` | Señales informacionales y estructurales + tradability | producción | `1501b1ef9ed94961edd11caedd0f9f1bc7e421076de46360818db6cf9cc962c6` |
+| `04_Config/scripts/lib_persist.py` | Persistencia: dataset propio y bitácora de operaciones | producción | `ceb3c18fce11e8ed9d18bd76313f60b7ee67f68559975a3f13178eb37ce12f9c` |
+| `04_Config/scripts/lib_scoring_multichain.py` | Scoring por tipo de activo (grupos b–i) | producción | `40411722bc7bfb742b4d1c8ee6763ebe88ba9f402679753aed675b7de0cd2010` |
+| `04_Config/scripts/lib_scoring_young.py` | Scorer joven young-0.4 (<60 min): pesos continuos por edad | producción | `0b258ae077b07c918101f7be7348de10168c2ecc49966c89fe2fdf1d8d9a9d13` |
+| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `ac8c97b6e10a0bb51308c726c7ad28af5c4a8851f28b64a946b7c16751b5ba1a` |
+| `04_Config/scripts/probe_inventario.py` | Sonda de disponibilidad de fuentes | producción | `191eaffb88f67f2dbdee621edb70c7a34de0afd5d2a683f401ed963a31806ba7` |
+| `04_Config/scripts/script_113_dossier_builder.py` | Dossier por activo (ruta de compra primero) | producción | `e5b7a6bb88ba174caecd469bdff29e59ce1ed1b3ffb4a08a085903821d80a087` |
+| `04_Config/scripts/script_114_multichain_scanner.py` | Scanner multi-chain v0.2 | producción | `9d59ca1c08b9301ffe6ba22c398e37be39467aab89bd579e5d49a500d9b27e30` |
+| `04_Config/scripts/script_115_narrative_collector.py` | Colector de menciones (solo identificadores) | producción | `93b221531316d22b0f38562bf4f37ee1fc47c73c2e3090df2e8efefbc4368977` |
+| `04_Config/scripts/script_116_early_watch.py` | Early watch: PumpPortal WS + scorer joven + claims por mint; usa query() | producción (cambio D-035 en rama) | `05664190a2a7c406ec97c7e98924d69e033b4b0652333e82a72ea2a6a8f3cd3f` |
+| `04_Config/scripts/script_82_final_detection.py` | Detección final v7.2.1 (grupo i incluido) | producción | `ee2d5ff729b9d8f4cc746970deeb4e15ebbc2f2594e9aef2bcc830d656d1cddd` |
+| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `0b03b792cb24d395d9bac0740e0ac8c3fe33ff6ad174a65beb401b57d6c311fd` |
+| `04_Config/scripts/script_98_trust_scheduler.py` | Seguimiento de alertas (trust updates) | producción | `aae851c79efa6ca1555c9a054c33ae3b95e1f5f95ff19fb58f113720c1d80594` |
+| `04_Config/scripts/test_datasets_persist.py` | Tests de datasets_persist | test | `a101537e077cc13a1e95ca8df7522bd17892504a3270c5de54098c5cce5f5b14` |
+| `04_Config/scripts/test_early_review.py` | Tests de early_review | test | `249a3af367fdffdc5de94cde9025a59a95d18b5987580e902c35365ddb7c5cb2` |
+| `04_Config/scripts/test_latency_analysis.py` | Tests de latency_analysis | test | `15df25c0cd55e869ec28bbff55e6318fe592b0e4d3217f638d5fb260f7dc44df` |
+| `04_Config/scripts/test_lib_early_signals.py` | Tests de lib_early_signals | test | `3a8089974e7cbb8e627681e8d4d95b255485ffeb22531f01af2081ea68159bce` |
+| `04_Config/scripts/test_lib_info_signals.py` | Tests de lib_info_signals | test | `e802d81d01a366a5023be3beb1b28a60ed73489439da4a23825c0f80778242cd` |
+| `04_Config/scripts/test_lib_scoring_multichain.py` | Tests de lib_scoring_multichain | test | `60eb1f00687174a8baf4dc938fd5696916c75a1c704f34c7a7b3a5d7d23bf565` |
+| `04_Config/scripts/test_lib_scoring_young.py` | Tests de lib_scoring_young | test | `deacc7a34b4596460b676e2cbf1ee45e6974d8490db6f53887b9a17addeaedcb` |
+| `04_Config/scripts/test_probe_inventario.py` | Tests de probe_inventario | test | `65bce852d14d340826bd0020bfec67d42ec73f39e649959f6e7afe1bb8ba490c` |
+| `04_Config/scripts/test_script_114_scanner.py` | Tests de script_114_scanner | test | `ed03b4b4e33a0857375185f6086ff45428852107b31154d34e6e9b2ae0eb5c24` |
+| `04_Config/scripts/test_script_115_collector.py` | Tests de script_115_collector | test | `b0e338fa486d6f41836eeccb899388b9d724c0229f085fde419c63b9b4cf320f` |
+| `04_Config/scripts/test_script_116_early_watch.py` | Tests de script_116_early_watch | test | `f8c0d8e90acb69a46764840a51c4ede8bc22cbb651281b40bc91d2c7852725cd` |
+| `04_Config/scripts/test_script_82_group_i.py` | Tests de script_82_group_i | test | `fad7bfa43879f76cc7c0e58d56841a2965c0ec3047ebf391754d74810ef35fcb` |
+| `04_Config/scripts/test_script_97_early.py` | Tests de script_97_early | test | `e3e091802bacd7fbe88b599606501d8b83f96506a6c448265106fb235be39bd4` |
+| `04_Config/scripts/test_script_97_guias.py` | Tests de script_97_guias | test | `49409de18be3b855a4b8c62c0a9c7e0082beb461146fe74bab17f219d74a613f` |
+| `04_Config/scripts/test_script_97_multichain.py` | Tests de script_97_multichain | test | `a200346bb82ed91a0ac4fbe06104bfe0c9f6528e3c0a2fa408a3aa44a93c608e` |
+| `04_Config/scripts/test_script_98_shadow.py` | Tests de script_98_shadow | test | `a67915793ec471a9485026523e8c1ba0b0cfdd821b2f48e6c378fff9ef63fd90` |
+| `04_Config/scripts/test_sources_bots.py` | Tests de sources_bots | test | `d550ca4b8b5da4cc6f8aae75b3062b703dc7982070933be3b20c81a50254913e` |
+| `04_Config/scripts/test_sources_orchestrator.py` | Tests de sources_orchestrator | test | `b58e5e104fccdbb599f0f2b1f191fdc0d5bdd2b55b4939cfd9d9a4aa9cc61aff` |
+| `04_Config/scripts/test_telegram_template.py` | Tests de telegram_template | test | `741681ec8ac3358e579dc0f46105dcc8129e068af252e02863b62d71e4a8b5e0` |
+| `04_Config/scripts/test_young_watch_analysis.py` | Tests de young_watch_analysis | test | `c47a23ab925aa8acbf6cd23116a2edb34b6c73ef88f2f628be743819b155256f` |
+| `04_Config/scripts/young_watch_analysis.py` | Análisis de los logs JSONL del scorer joven | producción | `31da571be326a6d5729ffea292da1d42ae6ea7458c61ebc4933b7b7e44877539` |
+| `04_Config/sources/_bots.yaml` | Registro de bots: workflow, cadencia, stale, respaldo | rama | `f69def01a846d6387fa35771b61b1bfc42de95bbe994d70d1d6e6ab497a74607` |
+| `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `95c914b62e86f4c275c07a4d164666db03ea407f04415e0228bdbbeeb1ea6409` |
+| `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `e5a9dbbb3a7e1496e5aaee7b0310d78b2a091d895087547830d57b0392c977bb` |
+| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `6030217bdffa1c9b4820e9c3e1c794276b19be9dc1660ff9de9d77f5d2c3def5` |
+| `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `7857695a74fc43688ec02ad8b30efe0ac95639516a960d47e3a4f724e7d46a20` |
+| `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `66f443238fcdf1092464a670c86c8da7f474f87007ca7b73900a61b96831c938` |
+| `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `7c6d3648d1affae0e8d2a15c5ee46ae2a91c31f79ba666efe991944d81c6b116` |
+| `El cerebro de dios/28_INVENTARIO_COMPLETO.md` | Inventario completo de fuentes | doc | `a46eaf3b36d5cfff73a139bf6cb4cb219da4d7475e663ac8ff18644274f1a6d3` |
 | `El cerebro de dios/29_PROTOCOLO_PERSISTENCIA.md` | — | borrado | — |
-| `El cerebro de dios/31_DETECCION_TEMPRANA.md` | Early watch: diseño, hand-off, claims, gate | doc | `e9385fe9a3d5f9f18af4ce4d22e684af3b112e729fd745477ae61fdd29ba47d3` |
-| `El cerebro de dios/32_SCORER_JOVENES.md` | Scorer joven v0.5, H-0, v7.2.2 aprobado, arquitectura Yin-Claude | doc | `af3fd1533292401ad0797a1e35a70aca2b893cc45a6a2aa531cc6fb82a3139a9` |
-| `El cerebro de dios/33_ARQUITECTURA_MULTIBOT.md` | Investigación de fuentes (RSS, MCP, Reddit, Nitter) | doc (diseño reemplazado por 34) | `50131aa522f8c1a81be690f4091da85854b9b3bc4a1425eb328a167e7398090c` |
-| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: 7 bots + store + self-repair + coparticipación | diseño | `0ecc5ca04379336a78c725289bbafdb040caf817a5342e1227e9cfbed9c8af5d` |
+| `El cerebro de dios/31_DETECCION_TEMPRANA.md` | Early watch: diseño, hand-off, claims, gate | doc | `a91528059f86411b894e3c809133ac99b7abedf961ed77c0086304f823c033c6` |
+| `El cerebro de dios/32_SCORER_JOVENES.md` | Scorer joven v0.5, H-0, v7.2.2 aprobado, arquitectura Yin-Claude | doc | `2661694484534a2ebbd79d16112b930010316115624da18e3aaef709f3562447` |
+| `El cerebro de dios/33_ARQUITECTURA_MULTIBOT.md` | Investigación de fuentes (RSS, MCP, Reddit, Nitter) | doc (diseño reemplazado por 34) | `e56ab11c7c742872558d22c8f1f6f17ffccc5cf950182fdc2897bd8aec67c24e` |
+| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: 7 bots + store + self-repair + coparticipación | diseño | `57140c0277c88725739269bbbd705c0420128ef72b420bcb8ccf2f2d402a6cff` |
 
 ## 2. Lógica por archivo
 
