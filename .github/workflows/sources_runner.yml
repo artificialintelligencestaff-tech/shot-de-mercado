@@ -1,0 +1,103 @@
+name: sources_runner
+
+# Ejecutor genérico de recetas (Ola 3, D-067; doc 34). Un workflow para todos los bots-receta:
+#   plan  → bot_runner.py --plan: recetas habilitadas por bot_genesis (_recipes_state.json) cuya cadencia venció.
+#   run   → matriz, un job por receta: bot_runner.py --recipe <nombre>. Cada job commitea SOLO su carpeta
+#           02_Analisis/sources/<nombre>/ y sus eventos 02_Analisis/events/runner_<nombre>/ (un dueño por archivo).
+# Agregar un bot = commitear una receta en 04_Config/recipes/ (no hace falta tocar workflows).
+# Solo GET públicos; HELIUS_API_KEY existe solo si Dirección crea el secret (sin él, esa receta no corre).
+
+on:
+  schedule:
+    - cron: '4,14,24,34,44,54 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sources-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      any: ${{ steps.plan.outputs.any }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Plan
+        id: plan
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python 04_Config/scripts/bot_runner.py --plan --github-output
+
+  run:
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        recipe: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+          pip install --require-hashes --no-deps -r 04_Config/requirements/sources_telegram.txt
+
+      - name: Run recipe
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+        run: |
+          python 04_Config/scripts/bot_runner.py --recipe "${{ matrix.recipe }}"
+
+      - name: Commit sources/<receta>
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          for p in "02_Analisis/sources/${{ matrix.recipe }}" "02_Analisis/events/runner_${{ matrix.recipe }}"; do
+            if [ -e "$p" ]; then git add -A -- "$p"; fi
+          done
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "sources_runner ${{ matrix.recipe }}: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear 02_Analisis/sources/${{ matrix.recipe }} tras 4 intentos"
+          exit 1

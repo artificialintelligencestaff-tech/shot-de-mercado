@@ -29,7 +29,7 @@ SCHEMA = "src-1"
 TITLE_MAX = 160
 MERGE_HOURS = 48
 MERGED_STALE_S = 15 * 60          # _merged.jsonl más viejo que esto: query() reconstruye en memoria
-KINDS = {"news", "message", "post", "repo", "tweet"}
+KINDS = {"news", "message", "post", "repo", "tweet", "token"}   # token: lanzamiento/pool/ficha de un token (recetas, Ola 3)
 # Misma sal y mismas expresiones que script_115 (doc 26): seudónimo de autor, sin handles en el repo.
 AUTHOR_SALT = os.environ.get("NARRATIVE_AUTHOR_SALT") or "shot-de-mercado/rep-0.1"
 BASE58_RE = re.compile(r"(?<![0-9A-Za-z])[1-9A-HJ-NP-Za-km-z]{32,44}(?![1-9A-HJ-NP-Za-km-z])")
