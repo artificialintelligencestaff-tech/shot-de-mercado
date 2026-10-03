@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -153,7 +154,8 @@ def main():
                     alert["final_verdict"] = max(_all_verdicts, key=lambda v: _priority.get(v, 0))
 
                 # Save individual trust file
-                trust_file = os.path.join(ALERTS_DIR, f"trust_{mint}.json")
+                safe_mint = re.sub(r"[^A-Za-z0-9]+", "_", mint)
+                trust_file = os.path.join(ALERTS_DIR, f"trust_{safe_mint}.json")
                 with open(trust_file, "w") as f:
                     json.dump(trust_updates, f, indent=2)
 
