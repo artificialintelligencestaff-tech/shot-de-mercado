@@ -10,6 +10,7 @@ frecuencia real ~15 min por el desfase del cron de Actions). No genera código.
      sin_datos (nunca corrió) · diseño (enabled: false).
   4. Poda los diarios de más de 7 días (siguen en el historial de git).
   5. Bloque automático de _servicios_open_source/_INSTALADOS.md, solo si cambió algún estado.
+  6. Grafo de conocimiento de las menciones (lib_knowledge_graph, patrón #7) → 02_Analisis/sources/_graph.json.
 
 Uso: python 04_Config/scripts/bot_orchestrator.py [--dry-run]
 """
@@ -22,6 +23,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import lib_knowledge_graph as kg  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
 VERSION = "orch-0.1"
@@ -124,15 +126,16 @@ def run(root, now=None, write=True):
     history.append({"ts": int(now), "merged": merged, **{n: h["status"] for n, h in health.items()}})
     doc = {"version": VERSION, "generated_at": int(now), "merged_items": merged, "bots": health,
            "history": history}
-    pruned, installed = [], False
+    pruned, installed, graph = [], False, None
     if write:
+        graph = kg.write_graph(store.read_jsonl(base / "_merged.jsonl"), now, root).to_json()["counts"]
         pruned = prune(root, now)
         (base / "_health.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True),
                                            encoding="utf-8")
         changed = {n: h["status"] for n, h in health.items()} != {n: (h or {}).get("status") for n, h in prev.items()}
         if changed:
             installed = update_installed(Path(root) / "_servicios_open_source" / "_INSTALADOS.md", health)
-    doc["pruned"], doc["installed_updated"] = pruned, installed
+    doc["pruned"], doc["installed_updated"], doc["graph"] = pruned, installed, graph
     return doc
 
 
@@ -142,7 +145,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     doc = run(store.ROOT, write=not args.dry_run)
     print(f"orchestrator: {doc['merged_items']} ítems en _merged (48 h) · podados {len(doc['pruned'])}"
-          f" · _INSTALADOS {'actualizado' if doc['installed_updated'] else 'sin cambios'}")
+          f" · _INSTALADOS {'actualizado' if doc['installed_updated'] else 'sin cambios'} · grafo {doc['graph']}")
     for n, h in sorted(doc["bots"].items()):
         print(f"  {n:10s} {h['status']:10s} " + "; ".join(h.get("errors") or [])[:200])
     return 0
