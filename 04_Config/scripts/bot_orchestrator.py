@@ -51,6 +51,25 @@ def read_json(path, default=None):
         return default
 
 
+def read_bot_state(base, name):
+    """_state.json del bot; si corre en varias instancias (_state_a.json, _state_b.json: un dueño por archivo), las
+    combina: última corrida, salida de la instancia más reciente y, por fuente, la fila consultada más tarde."""
+    single = read_json(Path(base) / name / "_state.json")
+    if single is not None:
+        return single
+    parts = [s for s in (read_json(p) for p in sorted((Path(base) / name).glob("_state_*.json"))) if isinstance(s, dict)]
+    if not parts:
+        return None
+    latest = max(parts, key=lambda s: s.get("last_run") or 0)
+    sources = {}
+    for st in parts:
+        for k, v in (st.get("sources") or st.get("feeds") or {}).items():
+            if (v or {}).get("checked_at", 0) >= (sources.get(k) or {}).get("checked_at", 0):
+                sources[k] = v
+    return {"last_run": latest.get("last_run"), "items_last_run": latest.get("items_last_run"), "sources": sources,
+            "instances": len(parts)}
+
+
 def bot_health(name, cfg, state, prev, now):
     """Estado de un bot a partir de su _state.json y del registro anterior en _health.json."""
     prev = prev or {}
@@ -121,8 +140,7 @@ def run(root, now=None, write=True):
     registry = load_registry(root)
     prev_doc = read_json(base / "_health.json", {}) or {}
     prev = prev_doc.get("bots") or {}
-    health = {n: bot_health(n, cfg, read_json(base / n / "_state.json"), prev.get(n), now)
-              for n, cfg in registry.items()}
+    health = {n: bot_health(n, cfg, read_bot_state(base, n), prev.get(n), now) for n, cfg in registry.items()}
     stats = {}
     merged = store.merge(now, root, stats=stats) if write else len(store.collect(now, store.MERGE_HOURS, root, stats))
     history = [h for h in prev_doc.get("history") or [] if now - h.get("ts", 0) <= HISTORY_S]

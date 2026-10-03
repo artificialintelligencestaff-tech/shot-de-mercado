@@ -1,0 +1,28 @@
+# bot_telegram_public (doc 34 §3/§5; D-041 T5). Vista web pública t.me/s/<canal>, sin cuenta ni API de Telegram.
+# Sumar un canal = sumar una línea. enabled: false lo saca sin borrarlo.
+# Los 15 canales tienen vista previa verificada el 2026-10-03 [V]. Del doc 34 quedaron afuera porque redirigen sin
+# vista previa: SolanaNews, DexToolsAlerts, CryptoCom, PepeWorld, coin_alert. 'memecoins' es un alias del canal
+# 'crypto' (data-post 'crypto/…') y se usa el nombre canónico. Un canal que deja de dar vista previa se apaga solo
+# y se reintenta cada recheck_hours.
+bot: telegram
+loop_minutes: 40
+poll_minutes: 4
+pause_s: 2
+recheck_hours: 24
+dedup_hours: 72
+channels:
+  - {name: whale_alert_io}
+  - {name: cointelegraph}
+  - {name: WatcherGuru}
+  - {name: pumpfun}
+  - {name: BinanceKillers}
+  - {name: crypto}
+  - {name: binance_announcements}
+  - {name: CoinDeskGlobal}
+  - {name: BitcoinNews}
+  - {name: dexscreener_trending}
+  - {name: Cryptoquant_official}
+  - {name: unfolded}
+  - {name: DegenerateNews}
+  - {name: CoinMarketCapAnnouncements}
+  - {name: OKXAnnouncements}

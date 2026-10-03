@@ -63,16 +63,18 @@ def metrics(lines, now, sources_healthy, sources_total):
             "sources_healthy": int(sources_healthy), "sources_total": int(sources_total), "window_days": METRICS_DAYS}
 
 
-def record_run(folder, line, sources_healthy, sources_total):
-    """Agrega la línea (podando lo de más de 90 días) y reescribe _metrics.json. Devuelve las métricas."""
+def record_run(folder, line, sources_healthy, sources_total, suffix=""):
+    """Agrega la línea (podando lo de más de 90 días) y reescribe _metrics.json. Devuelve las métricas.
+    `suffix` ('_a', '_b'): un archivo por instancia cuando un bot corre en paralelo (un dueño por archivo)."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     now = line["ts"]
-    lines = [r for r in read_lines(folder / "_audit.jsonl") if now - (r.get("ts") or 0) <= RETENTION_DAYS * 86400]
+    audit_file = folder / f"_audit{suffix}.jsonl"
+    lines = [r for r in read_lines(audit_file) if now - (r.get("ts") or 0) <= RETENTION_DAYS * 86400]
     lines.append(line)
-    tmp = folder / "_audit.jsonl.tmp"
+    tmp = folder / f"_audit{suffix}.jsonl.tmp"
     tmp.write_text("".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in lines), encoding="utf-8")
-    tmp.replace(folder / "_audit.jsonl")
+    tmp.replace(audit_file)
     m = metrics(lines, now, sources_healthy, sources_total)
-    (folder / "_metrics.json").write_text(json.dumps(m, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    (folder / f"_metrics{suffix}.json").write_text(json.dumps(m, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     return m

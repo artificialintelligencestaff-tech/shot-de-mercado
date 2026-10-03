@@ -50,7 +50,7 @@ class Orchestrator(Base):
         self.assertEqual(json.loads((self.base / "_index.json").read_text())["a"][MINT], [1])
         h = json.loads((self.base / "_health.json").read_text())
         self.assertEqual((h["bots"]["rss"]["status"], h["bots"]["rss"]["last_output"]), ("ok", 2))
-        self.assertEqual(h["bots"]["telegram"]["status"], "diseño")
+        self.assertEqual(h["bots"]["web"]["status"], "diseño")                  # D-041: telegram ya está activo
 
     def test_estados_atrasado_sin_datos_y_errores(self):
         self.assertEqual(orch.run(self.root, NOW)["bots"]["rss"]["status"], "sin_datos")
