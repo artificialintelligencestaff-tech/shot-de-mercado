@@ -127,6 +127,52 @@ def trial_rows(root, gate_max=TRIAL_GATE_MAX):
     return rows
 
 
+def h0_rows(root):
+    """Alertas del scorer joven con subtotales (D-014-R-5), para la H-0 pre-registrada (doc 32 §6)."""
+    rows = []
+    for r in early_records(root):
+        if r.get("h0_group") not in ("info_ge20", "info_lt20"):
+            continue
+        detail = read_json(Path(root) / "02_Analisis" / "alerts" / f"alert_{r.get('mint')}_{r.get('timestamp')}.json", {})
+        rows.append({"mint": r.get("mint"), "symbol": r.get("symbol"), "alert_ts": r.get("timestamp"),
+                     "t0": alert_epoch(r.get("timestamp")), "price": r.get("initial_price"),
+                     "pool": (detail.get("dexscreener") or {}).get("pairAddress"), "h0_group": r["h0_group"],
+                     "info_score": r.get("info_score"), "struct_score": r.get("struct_score"),
+                     "pv_score": r.get("pv_score")})
+    return rows
+
+
+def fisher_one_sided(k1, n1, k2, n2):
+    """P(X >= k1) con X hipergeométrica (márgenes fijos): ¿la tasa del grupo 1 supera a la del 2?"""
+    from math import comb
+    K, N = k1 + k2, n1 + n2
+    total = comb(N, K)
+    return sum(comb(n1, x) * comb(n2, K - x) for x in range(k1, min(n1, K) + 1)) / total if total else 1.0
+
+
+H0_MIN_N = 40
+H0_ALPHA = 0.10
+
+
+def evaluate_h0(rows, min_n=H0_MIN_N, alpha=H0_ALPHA):
+    """H-0 (pre-registrada 2026-10-02): la tasa primaria con info_score >= 20 NO supera a la de < 20.
+    Se decide con n >= 40 primarias resueltas en total; Fisher exacto a una cola, alfa 0,10. H-0 se rechaza (lo
+    informacional discrimina) solo si p < alfa."""
+    groups = {}
+    for g in ("info_ge20", "info_lt20"):
+        res = [r for r in rows if r["h0_group"] == g and r.get("primary") in ("hit", "miss")]
+        k = sum(r["primary"] == "hit" for r in res)
+        groups[g] = {"n": len(res), "k_hit": k, "rate": round(k / len(res), 4) if res else None}
+    n = groups["info_ge20"]["n"] + groups["info_lt20"]["n"]
+    out = {"hypothesis": "H-0: info_score >= 20 no supera a info_score < 20 en tasa primaria (tokens < 60 min)",
+           "min_n": min_n, "alpha": alpha, "n_resolved": n, "groups": groups}
+    if n < min_n or not groups["info_ge20"]["n"] or not groups["info_lt20"]["n"]:
+        return dict(out, verdict="pendiente")
+    p = fisher_one_sided(groups["info_ge20"]["k_hit"], groups["info_ge20"]["n"],
+                         groups["info_lt20"]["k_hit"], groups["info_lt20"]["n"])
+    return dict(out, p_value=round(p, 4), verdict="H-0 rechazada" if p < alpha else "H-0 no rechazada")
+
+
 def measure(rows, source, now):
     import calibrate_threshold_v72 as cal
     for r in rows:
@@ -174,7 +220,11 @@ def run(root=None, source=None, now=None, dry_run=False):
     if source is not None:
         measure(rows, source, now)
     decision, new_gate = decide(rows, gate, now) if source is not None else ({"decision": "sin_medir"}, None)
+    h0 = h0_rows(root)
+    if source is not None:
+        measure(h0, source, now)
     report = {"version": VERSION, "generated_at": iso(now), "gate": decision,
+              "h0": evaluate_h0(h0) if source is not None else {"verdict": "sin_medir"},
               "coverage_pumpportal": coverage(load_intervals(root), now), "rows": rows}
     if new_gate and not dry_run:
         gate_path.parent.mkdir(parents=True, exist_ok=True)

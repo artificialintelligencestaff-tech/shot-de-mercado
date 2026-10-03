@@ -707,6 +707,22 @@ def _persist():
     return lib_persist
 
 
+def tradability_flags(token=None, cex_links=None):
+    """D-023-R3 T4: flag informativo de cada alerta (no bloquea): tradable, liquidity_usd, buy_route,
+    initial_liquidity_usd. On-chain: lib_info_signals.tradability sobre el par. CEX: exchanges confirmados."""
+    if cex_links is not None:
+        names = [n for n, _ in cex_links]
+        return {"tradable": bool(names), "liquidity_usd": None, "buy_route": "CEX: " + ", ".join(names),
+                "initial_liquidity_usd": None}
+    here = str(_Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import lib_info_signals   # noqa: E402
+    dx = (token or {}).get("dexscreener") or (token or {}).get("dx") or {}
+    liq = dx.get("liquidityUsd")
+    return lib_info_signals.tradability(dx, [(0, liq)] if liq is not None else None)
+
+
 def _load_lib_scoring():
     """lib_scoring_multichain, cargada recién al emitir multi-chain (vive al lado de este script)."""
     here = str(_Path(__file__).resolve().parent)
@@ -983,6 +999,7 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
                 continue
             msg = format_multichain_message(r, links, detected_at)
             acq = [_plain(x) for x in cex_acquisition_lines(r, links)]
+        flags = tradability_flags(token if onchain else None, None if onchain else links)
         price = r.get("price_usd")
         if not price or price <= 0:
             print(f"[SKIP] {r['symbol']} sin precio. No se emite.")
@@ -994,6 +1011,7 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
                   "status": ("shadow" if shadow else "active_tracking" if onchain else "active_tracking_cex"),
                   "multichain": True, "group": r["group"], "scoring_version": r["scoring_version"],
                   "chain": r.get("chain"), "coingecko_id": r.get("cg_id"), "trust_updates": []}
+        record.update(flags)
         safe = re.sub(r"[^A-Za-z0-9]+", "_", r["key"])
         with open(os.path.join(ALERTS_DIR, f"alert_{safe}_{timestamp}.json"), "w", encoding="utf-8") as f:
             json.dump(r, f, indent=2, ensure_ascii=False)
@@ -1236,6 +1254,7 @@ def main(argv=None):
             "status": "shadow" if shadow else "active_tracking",
             "trust_updates": []
         }
+        alert_record.update(tradability_flags(token))      # D-023-R3: flag informativo
         if collisions:
             alert_record["symbol_collision"] = collisions
             print(f"[WARN] {symbol}: mismo símbolo que otros mints ya alertados {collisions}")
