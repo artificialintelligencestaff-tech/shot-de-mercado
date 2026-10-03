@@ -19,3 +19,9 @@
 | `web` | diseño | — | —/— |
 | `x` | diseño | — | —/— |
 <!-- /AUTO:sources -->
+
+<!-- AUTO:repair -->
+## Reparaciones escaladas (automático: bot_self_repair)
+
+- Sin problemas abiertos.
+<!-- /AUTO:repair -->
