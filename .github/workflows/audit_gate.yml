@@ -1,0 +1,96 @@
+name: audit_gate
+
+# Auditoría CI determinista (Ola 3, D-067; C-005 P4). Sin LLM. Corre en cada pull request a main.
+#   a) tests       batería completa, archivo por archivo, PYTHONUTF8=1
+#   b) doc35       SHA-256 del inventario del doc 35 contra los blobs de git (LF)
+#   c) prohibited  líneas agregadas: --force / reset --hard en comandos, TELEGRAM_CHAT_ID, secretos, .env
+#   d) touched     workflows y archivos de producción tocados (informativo)
+#   e) bundle      audit_bundle.md como artifact: stat + diff de código sin 02_Analisis/ + resultados
+# Para que un check en rojo BLOQUEE el merge, la protección de rama de main tiene que exigir los checks
+# "audit_gate / tests", "audit_gate / doc35" y "audit_gate / prohibited" (configuración del repo: Dirección).
+# Solo lectura: no escribe en el repo ni usa secretos.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml python-dotenv websockets
+          pip install --require-hashes --no-deps -r 04_Config/requirements/sources_telegram.txt
+      - name: Battery
+        env:
+          PYTHONUTF8: '1'
+          PYTHONIOENCODING: utf-8
+        run: python 04_Config/scripts/audit_gate.py tests
+
+  doc35:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Doc 35 vs blobs
+        run: python 04_Config/scripts/audit_gate.py doc35 --rev HEAD
+
+  prohibited:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Prohibited patterns in added lines
+        run: python 04_Config/scripts/audit_gate.py prohibited --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+
+  bundle:
+    needs: [tests, doc35, prohibited]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Touched workflows and production files
+        run: python 04_Config/scripts/audit_gate.py touched --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+      - name: Build audit_bundle.md
+        run: |
+          cat > gate_results.json <<EOF
+          {"tests": "${{ needs.tests.result }}", "doc35": "${{ needs.doc35.result }}", "prohibited": "${{ needs.prohibited.result }}"}
+          EOF
+          python 04_Config/scripts/audit_gate.py bundle --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}" --results gate_results.json --out audit_bundle.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit_bundle
+          path: audit_bundle.md
+          retention-days: 30

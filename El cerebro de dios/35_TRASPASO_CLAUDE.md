@@ -60,7 +60,7 @@ Estados:
 | `04_Config/scripts/lib_persist.py` | Persistencia: dataset propio y bitácora de operaciones | producción | `cea9a34e13391b95af5591d6ee0120a00839f5ff86faffc9654d5b7d27f4cc4a` |
 | `04_Config/scripts/lib_scoring_multichain.py` | Scoring por tipo de activo (grupos b–i) | producción | `f216f81bb76e99adb7454b4b07afca4c74aa7ef076b66c09392ff4fed99098a3` |
 | `04_Config/scripts/lib_scoring_young.py` | Scorer joven young-0.4 (<60 min): pesos continuos por edad | producción | `e74f08934d1f0d2532447504b5dadfb92e0399c37bf881f73ff046cc943696b0` |
-| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `7660d2a47260d25f419f40295e4d360d926727829ea3fcc61267211647a57af9` |
+| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `abb11c18064117c9b41ba28e33b24bd4cac5041528e072fc49f277307e08dd18` |
 | `04_Config/scripts/probe_inventario.py` | Sonda de disponibilidad de fuentes | producción | `c0446affa69deaa34c6d8a9cdcddbaba711ae82b66bf716114d68003397961bf` |
 | `04_Config/scripts/script_113_dossier_builder.py` | Dossier por activo (ruta de compra primero) | producción | `e2a6e6c8cb3c07ba7b0a5635876d0c677a38c6a06ab8cdf49449dec4d4fe1e4a` |
 | `04_Config/scripts/script_114_multichain_scanner.py` | Scanner multi-chain v0.2 | producción | `08cd30be1827abfac97333ac770fd05e25c4c42a010c5d5967cd254ca10eb54c` |
