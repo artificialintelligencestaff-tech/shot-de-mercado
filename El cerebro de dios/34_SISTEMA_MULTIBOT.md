@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (implementador) — pendiente auditoría YANG
-status: DISEÑO COMPLETO (D-033, D-035) — implementado: lib_sources_store, bot_rss_news, bot_orchestrator, 2 workflows, query() en script_116/script_97
+status: DISEÑO COMPLETO (D-033, D-035) — implementado: lib_sources_store, bot_rss_news, bot_orchestrator, query() en script_116/script_97; D-041: lib_normalize, bot_self_repair, lib_knowledge_graph, auditoría por bot, bot_telegram_public
 last_updated: 2026-10-03
-version: 0.2
+version: 0.3
 reemplaza: doc 33 §2–§5 (el doc 33 queda como investigación de fuentes)
 ---
 
@@ -131,8 +131,11 @@ feeds:
 bot: telegram
 loop_minutes: 40
 poll_minutes: 4
-channels: [whale_alert_io, cointelegraph, WatcherGuru, pumpfun, SolanaNews, DexToolsAlerts, BinanceKillers,
-           CryptoCom, memecoins, PepeWorld, coin_alert]   # + 2 que verifica YIN; solana/dexscreener fuera (§1 #6)
+channels: [whale_alert_io, cointelegraph, WatcherGuru, pumpfun, BinanceKillers, crypto, binance_announcements,
+           CoinDeskGlobal, BitcoinNews, dexscreener_trending, Cryptoquant_official, unfolded, DegenerateNews,
+           CoinMarketCapAnnouncements, OKXAnnouncements]
+# D-041: 15 con vista previa verificada el 03/10 [V]. Fuera (redirigen): SolanaNews, DexToolsAlerts, CryptoCom,
+# PepeWorld, coin_alert. 'memecoins' es alias de 'crypto'. Archivo real: 04_Config/sources/telegram.yaml
 
 # web.yaml — la plantilla clave: sumar fuente = sumar un bloque
 bot: web
@@ -246,20 +249,22 @@ Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `
 5. `query()` en `script_116` (`mentions`) y en `script_97` (campos informativos `sources_mentions_*` para tokens ≥ 60 min) **[hecho en D-035]**. Falta que el bono de v7.2.2 los use.
 6. `bot_self_repair` (§11).
 
-## 11. bot_self_repair (D-035, diseño; sin implementar)
+## 11. bot_self_repair (D-035 diseño; **implementado en D-041**: `bot_self_repair.py` + `sources_self_repair.yml`)
+
+> D-041: el auto_off vive en `_repair_state.json` (dueño: el reparador) y los bots lo leen; el reparador no edita el `_state.json` de un bot salvo para renombrarlo si está corrupto o recortar `seen`. Reruns solo en workflows de bots de fuentes; producción solo se escala.
 
 **Qué hace.** Corre cada 30 min (`19,49 * * * *`). Lee `_health.json`, el `_state.json` de cada bot y las
 últimas corridas de cada workflow (API de Actions, `GITHUB_TOKEN` con `actions: write`). Solo aplica reglas
 explícitas: **cero IA generativa en producción**. Lo que no está en la tabla no lo toca: lo escala.
 
-| Detección | Señal | Fix conocido | Límite |
-|---|---|---|---|
-| Feed o fuente caída | `status != 200` en 3 corridas seguidas | `enabled: auto_off` en `_state.json`; el bot la salta 6 h y después reintenta una vez. **No edita el YAML**: el YAML es de Claude y YIN. | Si 24 h después sigue caída: escala [P] (P-13: reemplazarla) |
-| Workflow fallido recurrente | ≥2 fallas seguidas (`conclusion: failure`) | 1 re-run del job fallido (`POST /actions/runs/{id}/rerun-failed-jobs`) | 1 re-run por falla; la 2.ª falla se escala con el log del paso |
-| Bot atrasado | `atrasado` en `_health.json` | 1 `workflow_dispatch` | 1 por atraso; un atraso repetido en 24 h se escala |
-| Archivo corrupto | `_state.json` o `_health.json` que no parsea; JSONL con líneas que no parsean | `_state.json`: se renombra a `.corrupt-<ts>` y el bot arranca con estado vacío (solo pierde el dedup de 72 h). JSONL: se reescribe sin las líneas rotas, y las rotas se guardan en `.rejected`. | Más de 1 por día en el mismo archivo: escala |
-| Output vacío anómalo | `vacío` con fuentes OK: los feeds responden 200 pero el parser da 0 ítems en 3 corridas (cambió el formato) | Ninguno: un parser roto no se repara con reglas | Escala de inmediato |
-| Caché o estado inflado | `seen` con más de 50.000 claves, o `_state.json` de más de 5 MB | Recorta `seen` a la ventana `dedup_hours` | — |
+|| Detección | Señal | Fix conocido | Límite |
+||---|---|---|---|
+|| Feed o fuente caída | `status != 200` en 3 corridas seguidas [H] | `enabled: auto_off` en `_state.json`; el bot la salta 6 h [H] y después reintenta una vez. **No edita el YAML**: el YAML es de Claude y YIN. | Si 24 h [H] después sigue caída: escala [P] (P-13: reemplazarla) |
+|| Workflow fallido recurrente | ≥2 fallas seguidas (`conclusion: failure`) | 1 re-run del job fallido (`POST /actions/runs/{id}/rerun-failed-jobs`) | 1 re-run por falla; la 2.ª falla se escala con el log del paso |
+|| Bot atrasado | `atrasado` en `_health.json` | 1 `workflow_dispatch` | 1 por atraso; un atraso repetido en 24 h [H] se escala |
+|| Archivo corrupto | `_state.json` o `_health.json` que no parsea; JSONL con líneas que no parsean | `_state.json`: se renombra a `.corrupt-<ts>` y el bot arranca con estado vacío (solo pierde el dedup de 72 h). JSONL: se reescribe sin las líneas rotas, y las rotas se guardan en `.rejected`. | Más de 1 por día en el mismo archivo: escala |
+|| Output vacío anómalo | `vacío` con fuentes OK: los feeds responden 200 pero el parser da 0 ítems en 3 corridas [H] (cambió el formato) | Ninguno: un parser roto no se repara con reglas | Escala de inmediato |
+|| Caché o estado inflado | `seen` con más de 50.000 [H] claves, o `_state.json` de más de 5 MB [H] | Recorta `seen` a la ventana `dedup_hours` | — |
 
 **Escalado.** Una fila en el bloque `<!-- AUTO:repair -->` de `_INSTALADOS.md` con el formato
 `[P] <fecha> <bot> <detección> <evidencia>`. Una fila por problema abierto: si el problema persiste, no se

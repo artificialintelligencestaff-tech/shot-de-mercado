@@ -3,7 +3,8 @@
 # enabled: false = diseñado, sin implementar (no cuenta como caído).
 bots:
   rss:      {workflow: sources_rss.yml,        every_min: 20,  stale_min: 60,   backup: forums,   enabled: true}
-  telegram: {workflow: sources_telegram_a.yml, every_min: 30,  stale_min: 90,   backup: rss,      enabled: false}
+  telegram: {workflow: sources_telegram_a.yml, every_min: 30,  stale_min: 90,   backup: rss,      enabled: true,  respaldo: sources_telegram_b.yml}   # 2 instancias (a :05, b :35)
+  telegram_b: {workflow: sources_telegram_b.yml, every_min: 30,  stale_min: 90,   backup: rss,      enabled: true,  respaldo: sources_telegram_a.yml}
   web:      {workflow: sources_web.yml,        every_min: 30,  stale_min: 120,  backup: forums,   enabled: false}
   github:   {workflow: sources_github.yml,     every_min: 360, stale_min: 780,  backup: rss,      enabled: false}
   x:        {workflow: sources_x.yml,          every_min: 20,  stale_min: 1440, backup: telegram, enabled: false}

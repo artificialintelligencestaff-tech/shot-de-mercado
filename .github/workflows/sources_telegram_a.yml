@@ -1,0 +1,63 @@
+name: sources_telegram_a
+
+# bot_telegram_public, instancia a (doc 34 §3; D-041 T5): job largo de 40 min con una pasada cada 4 min por 15
+# canales públicos (vista web t.me/s/<canal>, sin cuenta ni API de Telegram). La instancia b corre en :35; se
+# solapan 10 min y cubren el desfase del cron. El bot commitea su carpeta cada 3 pasadas; el último paso commitea
+# lo que haya quedado. Commitea únicamente 02_Analisis/sources/telegram/. Sin secretos ni envíos.
+
+on:
+  schedule:
+    - cron: '5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sources-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+          pip install --require-hashes --no-deps -r 04_Config/requirements/sources_telegram.txt
+
+      - name: Collect Telegram (loop 40 min)
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          python 04_Config/scripts/bot_telegram_public.py --instance a --loop-minutes 40
+
+      - name: Commit leftovers
+        if: always()
+        run: |
+          git add -A -- 02_Analisis/sources/telegram
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "sources_telegram_a: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear 02_Analisis/sources/telegram tras 4 intentos"
+          exit 1

@@ -21,6 +21,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import lib_audit as audit  # noqa: E402
 import lib_repetition as rep  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
@@ -98,17 +99,22 @@ def load_state(path):
         return {}
 
 
-def run(config, state, fetch=http_fetch, now=None, sleep=time.sleep, keywords=store.DEFAULT_KEYWORDS):
-    """Una pasada por los feeds. Devuelve (registros nuevos, estado actualizado)."""
+def run(config, state, fetch=http_fetch, now=None, sleep=time.sleep, keywords=store.DEFAULT_KEYWORDS, auto_off=None):
+    """Una pasada por los feeds. Devuelve (registros nuevos, estado actualizado).
+    `auto_off`: {feed: {"until": epoch}} de bot_self_repair; el feed se salta hasta `until` (reintenta después)."""
     now = now if now is not None else time.time()
     keep_s = float(config.get("dedup_hours") or 72) * 3600
     seen = {k: t for k, t in (state.get("seen") or {}).items() if now - t <= keep_s}
-    health = dict(state.get("feeds") or {})
+    configured = {f["name"] for f in config["feeds"] if f.get("enabled", True) is not False}
+    health = {k: v for k, v in (state.get("feeds") or {}).items() if k in configured}   # lo que se sacó, se va
     records, first = [], True
     for feed in config["feeds"]:
         name = feed["name"]
         if feed.get("enabled", True) is False:
-            health.pop(name, None)
+            continue
+        off = (auto_off or {}).get(name) or {}
+        if (off.get("until") or 0) > now:
+            health[name] = {**(health.get(name) or {}), "auto_off_until": int(off["until"])}
             continue
         if not first:
             sleep(float(feed.get("pause_s", config.get("pause_s", 1))))
@@ -149,7 +155,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
     config = load_config(args.config or config_path())
     state_file = store.sources_dir() / BOT / "_state.json"
-    records, state = run(config, load_state(state_file), fetch=http_fetch, keywords=store.load_keywords())
+    t_start = time.time()
+    repair = load_state(store.sources_dir() / "_repair_state.json")
+    records, state = run(config, load_state(state_file), fetch=http_fetch, keywords=store.load_keywords(),
+                         auto_off=(repair.get("auto_off") or {}).get(BOT))
     ok = sum(1 for f in state["feeds"].values() if f["status"] == 200 and "parse_error" not in f)
     print(f"{BOT}: {len(records)} ítems nuevos · feeds OK {ok}/{len(state['feeds'])}")
     for name, f in sorted(state["feeds"].items()):
@@ -160,7 +169,19 @@ def main(argv=None):
     store.append_records(BOT, records, state["last_run"])
     state_file.parent.mkdir(parents=True, exist_ok=True)
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+    write_audit(state, len(records), time.time() - t_start)
     return 0
+
+
+def write_audit(state, items_new, duration_s, folder=None):
+    """Una línea en rss/_audit.jsonl + _metrics.json (patrón #15). Solo cuenta los feeds consultados en esta corrida."""
+    now = state["last_run"]
+    fetched = {k: f for k, f in state["feeds"].items() if f.get("checked_at") == now}
+    errors = sum(1 for f in fetched.values() if f.get("status") != 200 or f.get("parse_error"))
+    line = audit.audit_line(BOT, now, sum(f.get("items") or 0 for f in fetched.values()), items_new, errors,
+                            len(fetched), duration_s)
+    healthy = sum(1 for f in state["feeds"].values() if f.get("status") == 200 and not f.get("parse_error"))
+    return audit.record_run(folder or store.sources_dir() / BOT, line, healthy, len(state["feeds"]))
 
 
 if __name__ == "__main__":

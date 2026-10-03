@@ -10,6 +10,7 @@ frecuencia real ~15 min por el desfase del cron de Actions). No genera código.
      sin_datos (nunca corrió) · diseño (enabled: false).
   4. Poda los diarios de más de 7 días (siguen en el historial de git).
   5. Bloque automático de _servicios_open_source/_INSTALADOS.md, solo si cambió algún estado.
+  6. Grafo de conocimiento de las menciones (lib_knowledge_graph, patrón #7) → 02_Analisis/sources/_graph.json.
 
 Uso: python 04_Config/scripts/bot_orchestrator.py [--dry-run]
 """
@@ -22,6 +23,8 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import lib_audit as audit  # noqa: E402
+import lib_knowledge_graph as kg  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
 VERSION = "orch-0.1"
@@ -46,6 +49,25 @@ def read_json(path, default=None):
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return default
+
+
+def read_bot_state(base, name):
+    """_state.json del bot; si corre en varias instancias (_state_a.json, _state_b.json: un dueño por archivo), las
+    combina: última corrida, salida de la instancia más reciente y, por fuente, la fila consultada más tarde."""
+    single = read_json(Path(base) / name / "_state.json")
+    if single is not None:
+        return single
+    parts = [s for s in (read_json(p) for p in sorted((Path(base) / name).glob("_state_*.json"))) if isinstance(s, dict)]
+    if not parts:
+        return None
+    latest = max(parts, key=lambda s: s.get("last_run") or 0)
+    sources = {}
+    for st in parts:
+        for k, v in (st.get("sources") or st.get("feeds") or {}).items():
+            if (v or {}).get("checked_at", 0) >= (sources.get(k) or {}).get("checked_at", 0):
+                sources[k] = v
+    return {"last_run": latest.get("last_run"), "items_last_run": latest.get("items_last_run"), "sources": sources,
+            "instances": len(parts)}
 
 
 def bot_health(name, cfg, state, prev, now):
@@ -113,26 +135,34 @@ def update_installed(path, bots_health):
 
 def run(root, now=None, write=True):
     now = now if now is not None else time.time()
+    t_start = time.time()
     base = store.sources_dir(root)
     registry = load_registry(root)
     prev_doc = read_json(base / "_health.json", {}) or {}
     prev = prev_doc.get("bots") or {}
-    health = {n: bot_health(n, cfg, read_json(base / n / "_state.json"), prev.get(n), now)
-              for n, cfg in registry.items()}
-    merged = store.merge(now, root) if write else len(store.collect(now, store.MERGE_HOURS, root))
+    health = {n: bot_health(n, cfg, read_bot_state(base, n), prev.get(n), now) for n, cfg in registry.items()}
+    stats = {}
+    merged = store.merge(now, root, stats=stats) if write else len(store.collect(now, store.MERGE_HOURS, root, stats))
     history = [h for h in prev_doc.get("history") or [] if now - h.get("ts", 0) <= HISTORY_S]
     history.append({"ts": int(now), "merged": merged, **{n: h["status"] for n, h in health.items()}})
     doc = {"version": VERSION, "generated_at": int(now), "merged_items": merged, "bots": health,
            "history": history}
-    pruned, installed = [], False
+    pruned, installed, graph = [], False, None
     if write:
+        graph = kg.write_graph(store.read_jsonl(base / "_merged.jsonl"), now, root).to_json()["counts"]
         pruned = prune(root, now)
         (base / "_health.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True),
                                            encoding="utf-8")
         changed = {n: h["status"] for n, h in health.items()} != {n: (h or {}).get("status") for n, h in prev.items()}
         if changed:
             installed = update_installed(Path(root) / "_servicios_open_source" / "_INSTALADOS.md", health)
-    doc["pruned"], doc["installed_updated"] = pruned, installed
+    doc["pruned"], doc["installed_updated"], doc["graph"] = pruned, installed, graph
+    if write:                                # auto-monitoreo (patrón #15): sources/orchestrator/_audit.jsonl
+        active = {n: h for n, h in health.items() if h["status"] != "diseño"}
+        problems = sum(1 for h in active.values() if h["status"] in ("caído", "atrasado", "vacío", "sin_datos"))
+        line = audit.audit_line("orchestrator", now, stats.get("read", 0), merged, problems, len(active),
+                                time.time() - t_start)
+        doc["metrics"] = audit.record_run(base / "orchestrator", line, len(active) - problems, len(active))
     return doc
 
 
@@ -142,7 +172,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     doc = run(store.ROOT, write=not args.dry_run)
     print(f"orchestrator: {doc['merged_items']} ítems en _merged (48 h) · podados {len(doc['pruned'])}"
-          f" · _INSTALADOS {'actualizado' if doc['installed_updated'] else 'sin cambios'}")
+          f" · _INSTALADOS {'actualizado' if doc['installed_updated'] else 'sin cambios'} · grafo {doc['graph']}")
     for n, h in sorted(doc["bots"].items()):
         print(f"  {n:10s} {h['status']:10s} " + "; ".join(h.get("errors") or [])[:200])
     return 0

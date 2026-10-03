@@ -57,7 +57,8 @@ class Store(Tmp):
         self.assertEqual(r["v"], "src-1")
         self.assertEqual(r["a"], sorted([MINT, EVM.lower()]))
         self.assertEqual((r["c"], r["k"]), (["WIF"], ["memecoin"]))
-        self.assertEqual(len(r["title"]), store.TITLE_MAX)
+        self.assertLessEqual(len(r["title"]), store.TITLE_MAX)                 # cortado y sin espacio final
+        self.assertEqual(r["title"], r["title"].strip())
         self.assertNotIn("cuerpo", json.dumps(r))
         self.assertEqual((len(r["h"]), len(r["au"])), (16, 12))
         self.assertIsNone(store.make_record("telegram", "c", "message", "hola", title="hola")["title"])
@@ -143,7 +144,7 @@ class Rss(Tmp):
 
     def test_config_real_y_validacion(self):
         cfg = bot.load_config(bot.config_path(HERE.parents[1]))
-        self.assertEqual(len(cfg["feeds"]), 12)
+        self.assertEqual(len(cfg["feeds"]), 11)                                 # D-041: messari eliminado (404)
         bad = self.root / "bad.yaml"
         for text in ("feeds: 3", "feeds:\n  - {name: a}", "feeds:\n  - {name: a, url: x}\n  - {name: a, url: y}"):
             bad.write_text(text)

@@ -21,6 +21,9 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
+import sys  # noqa: E402
+sys.path.insert(0, str(SCRIPTS))
+import lib_normalize as norm  # noqa: E402  forma canónica de direcciones, cashtags, keywords, fechas y URLs (#19)
 
 SCHEMA = "src-1"
 TITLE_MAX = 160
@@ -87,10 +90,10 @@ def make_record(bot, src, kind, text, *, id=None, url=None, ts=None, seen=None, 
         raise ValueError(f"kind desconocido: {kind}")
     a, c, k = extract(" ".join(x for x in (title, text) if x), keywords)
     t = " ".join(str(title).split())[:TITLE_MAX] if title and kind not in ("message", "tweet") else None
-    return {"v": SCHEMA, "bot": bot, "src": src, "kind": kind, "id": id or url, "url": url,
-            "ts": int(ts) if isinstance(ts, (int, float)) else None,
-            "seen": int(seen if seen is not None else time.time()), "title": t, "a": a, "c": c, "k": k,
-            "h": text_hash(" ".join(x for x in (title, text) if x)), "au": author_hash(author), "m": meta or {}}
+    return norm.record({"v": SCHEMA, "bot": bot, "src": src, "kind": kind, "id": id or url, "url": url,
+                        "ts": ts, "seen": seen if seen is not None else time.time(), "title": t, "a": a, "c": c,
+                        "k": k, "h": text_hash(" ".join(x for x in (title, text) if x)), "au": author_hash(author),
+                        "m": meta or {}})
 
 
 def day_path(bot, when=None, instance=None, root=None):
@@ -134,8 +137,9 @@ def dedup_key(r):
     return (r.get("src"), r.get("ts"), r.get("h"))
 
 
-def collect(now=None, hours=MERGE_HOURS, root=None):
-    """Todos los diarios de los bots dentro de la ventana, dedup global por (src, ts, h), más reciente primero."""
+def collect(now=None, hours=MERGE_HOURS, root=None, stats=None):
+    """Todos los diarios de los bots dentro de la ventana, dedup global por (src, ts, h), más reciente primero.
+    `stats` (dict opcional): 'read' = ítems src-1 leídos antes de ventana y dedup (auditoría del orquestador)."""
     now = now if now is not None else time.time()
     cutoff = now - hours * 3600
     days = {datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
@@ -146,7 +150,12 @@ def collect(now=None, hours=MERGE_HOURS, root=None):
         if path.name[:10] not in days:
             continue
         for r in read_jsonl(path):
-            if r.get("v") != SCHEMA or _when(r) < cutoff or _when(r) > now + 600:
+            if r.get("v") != SCHEMA:
+                continue
+            if stats is not None:
+                stats["read"] = stats.get("read", 0) + 1
+            r = norm.record(r)            # diarios viejos o de otro bot: misma forma canónica al fusionar
+            if _when(r) < cutoff or _when(r) > now + 600:
                 continue
             key = dedup_key(r)
             if key in seen:
@@ -167,10 +176,10 @@ def build_index(records):
     return idx
 
 
-def merge(now=None, root=None, hours=MERGE_HOURS):
+def merge(now=None, root=None, hours=MERGE_HOURS, stats=None):
     """Escribe _merged.jsonl y _index.json (dueño: bot_orchestrator). Devuelve la cantidad de ítems."""
     now = now if now is not None else time.time()
-    records = collect(now, hours, root)
+    records = collect(now, hours, root, stats)
     base = sources_dir(root)
     base.mkdir(parents=True, exist_ok=True)
     tmp = base / "_merged.jsonl.tmp"
@@ -203,9 +212,9 @@ def matches(r, keyword):
     if ADDRESS_RE.fullmatch(q):
         return (q.lower() if q.startswith("0x") else q) in (r.get("a") or [])
     if q.startswith("$"):
-        return q[1:].upper() in (r.get("c") or [])
-    low = q.lower()
-    return (q.upper() in (r.get("c") or []) or low in (r.get("k") or [])
+        return norm.cashtag(q) in (r.get("c") or [])
+    low, canon = q.lower(), norm.keyword(q)
+    return (q.upper() in (r.get("c") or []) or low in (r.get("k") or []) or canon in (r.get("k") or [])
             or bool(r.get("title") and _kw_pattern(low).search(r["title"])))
 
 
