@@ -117,6 +117,27 @@ class IdentifiersTest(unittest.TestCase):
     def test_user_agent_ascii(self):
         c.HEADERS["User-Agent"].encode("ascii")
 
+    def test_evm_no_confunde_con_base58(self):
+        """EVM address 0x + 40 hex no debe producir falso positivo base58."""
+        # EVM correcto: 0x + 40 hex = 42 chars total
+        evm = "0x" + "AB" * 20
+        addr, ct = c.extract_identifiers(evm)
+        # Solo debe detectar la dirección EVM, ninguna base58
+        self.assertEqual(addr, [evm.lower()])
+        # Caso: EVM + Solana en mismo texto
+        sol = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
+        text = f"{evm} and {sol}"
+        addr, ct = c.extract_identifiers(text)
+        evm_found = [a for a in addr if a.startswith("0x")]
+        sol_found = [a for a in addr if not a.startswith("0x")]
+        self.assertEqual(evm_found, [evm.lower()])
+        self.assertEqual(sol_found, [sol])
+        # Caso: múltiples EVM
+        text2 = f"{evm} 0x{'CD' * 20}"
+        addr, ct = c.extract_identifiers(text2)
+        self.assertEqual(len(addr), 2)
+        self.assertTrue(all(a.startswith("0x") for a in addr))
+
 
 class CandidatesTest(unittest.TestCase):
     def test_umbral_ventana_y_version_vigente(self):
