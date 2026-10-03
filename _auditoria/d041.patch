@@ -1,0 +1,2539 @@
+diff --git a/.github/workflows/sources_self_repair.yml b/.github/workflows/sources_self_repair.yml
+new file mode 100644
+index 0000000..006e40a
+--- /dev/null
++++ b/.github/workflows/sources_self_repair.yml
+@@ -0,0 +1,64 @@
++name: sources_self_repair
++
++# bot_self_repair (patrón #20; doc 34 §11) — cada 30 min (19/49: fuera del pipeline, early watch, script_115 y los
++# bots de fuentes). Solo reglas explícitas: auto_off de fuentes caídas, 1 rerun de workflows de bots de fuentes,
++# 1 dispatch por bot atrasado, reset de estados corruptos; lo demás lo escala en _INSTALADOS.md (AUTO:repair).
++# Nunca relanza producción (pipeline, early watch): esos solo se escalan. Sin IA generativa, sin envíos.
++
++on:
++  schedule:
++    - cron: '19,49 * * * *'
++  workflow_dispatch:
++
++permissions:
++  contents: write
++  actions: write
++
++concurrency:
++  group: sources-${{ github.workflow }}
++  cancel-in-progress: false
++
++jobs:
++  repair:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 10
++
++    steps:
++      - name: Checkout repo
++        uses: actions/checkout@v5
++        with:
++          fetch-depth: 1
++
++      - name: Setup Python 3.11
++        uses: actions/setup-python@v6
++        with:
++          python-version: '3.11'
++
++      - name: Install dependencies
++        run: |
++          python -m pip install --upgrade pip
++          pip install requests pyyaml
++
++      - name: Detect + repair
++        env:
++          SHOT_ROOT: ${{ github.workspace }}
++          PYTHONIOENCODING: utf-8
++          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          GITHUB_REPOSITORY: ${{ github.repository }}
++        run: |
++          python 04_Config/scripts/bot_self_repair.py
++
++      - name: Commit repair state
++        run: |
++          git config user.name "shot-de-mercado-bot"
++          git config user.email "bot@shotdemercado.local"
++          git add -A -- 02_Analisis/sources _servicios_open_source/_INSTALADOS.md
++          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
++          git commit -q -m "sources_self_repair: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
++          for i in 1 2 3 4; do
++            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
++            git rebase --abort 2>/dev/null || true
++            sleep $((i * 15))
++          done
++          echo "::error::No se pudo pushear el estado del reparador tras 4 intentos"
++          exit 1
+diff --git a/.github/workflows/sources_telegram_a.yml b/.github/workflows/sources_telegram_a.yml
+new file mode 100644
+index 0000000..cd44485
+--- /dev/null
++++ b/.github/workflows/sources_telegram_a.yml
+@@ -0,0 +1,63 @@
++name: sources_telegram_a
++
++# bot_telegram_public, instancia a (doc 34 §3; D-041 T5): job largo de 40 min con una pasada cada 4 min por 15
++# canales públicos (vista web t.me/s/<canal>, sin cuenta ni API de Telegram). La instancia b corre en :35; se
++# solapan 10 min y cubren el desfase del cron. El bot commitea su carpeta cada 3 pasadas; el último paso commitea
++# lo que haya quedado. Commitea únicamente 02_Analisis/sources/telegram/. Sin secretos ni envíos.
++
++on:
++  schedule:
++    - cron: '5 * * * *'
++  workflow_dispatch:
++
++permissions:
++  contents: write
++
++concurrency:
++  group: sources-${{ github.workflow }}
++  cancel-in-progress: false
++
++jobs:
++  collect:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 50
++
++    steps:
++      - name: Checkout repo
++        uses: actions/checkout@v5
++        with:
++          fetch-depth: 1
++
++      - name: Setup Python 3.11
++        uses: actions/setup-python@v6
++        with:
++          python-version: '3.11'
++
++      - name: Install dependencies
++        run: |
++          python -m pip install --upgrade pip
++          pip install requests pyyaml
++          pip install --require-hashes --no-deps -r 04_Config/requirements/sources_telegram.txt
++
++      - name: Collect Telegram (loop 40 min)
++        env:
++          SHOT_ROOT: ${{ github.workspace }}
++          PYTHONIOENCODING: utf-8
++        run: |
++          git config user.name "shot-de-mercado-bot"
++          git config user.email "bot@shotdemercado.local"
++          python 04_Config/scripts/bot_telegram_public.py --instance a --loop-minutes 40
++
++      - name: Commit leftovers
++        if: always()
++        run: |
++          git add -A -- 02_Analisis/sources/telegram
++          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
++          git commit -q -m "sources_telegram_a: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
++          for i in 1 2 3 4; do
++            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
++            git rebase --abort 2>/dev/null || true
++            sleep $((i * 15))
++          done
++          echo "::error::No se pudo pushear 02_Analisis/sources/telegram tras 4 intentos"
++          exit 1
+diff --git a/.github/workflows/sources_telegram_b.yml b/.github/workflows/sources_telegram_b.yml
+new file mode 100644
+index 0000000..79b8ee0
+--- /dev/null
++++ b/.github/workflows/sources_telegram_b.yml
+@@ -0,0 +1,63 @@
++name: sources_telegram_b
++
++# bot_telegram_public, instancia b (doc 34 §3; D-041 T5): job largo de 40 min con una pasada cada 4 min por 15
++# canales públicos (vista web t.me/s/<canal>, sin cuenta ni API de Telegram). La instancia a corre en :05; se
++# solapan 10 min y cubren el desfase del cron. El bot commitea su carpeta cada 3 pasadas; el último paso commitea
++# lo que haya quedado. Commitea únicamente 02_Analisis/sources/telegram/. Sin secretos ni envíos.
++
++on:
++  schedule:
++    - cron: '35 * * * *'
++  workflow_dispatch:
++
++permissions:
++  contents: write
++
++concurrency:
++  group: sources-${{ github.workflow }}
++  cancel-in-progress: false
++
++jobs:
++  collect:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 50
++
++    steps:
++      - name: Checkout repo
++        uses: actions/checkout@v5
++        with:
++          fetch-depth: 1
++
++      - name: Setup Python 3.11
++        uses: actions/setup-python@v6
++        with:
++          python-version: '3.11'
++
++      - name: Install dependencies
++        run: |
++          python -m pip install --upgrade pip
++          pip install requests pyyaml
++          pip install --require-hashes --no-deps -r 04_Config/requirements/sources_telegram.txt
++
++      - name: Collect Telegram (loop 40 min)
++        env:
++          SHOT_ROOT: ${{ github.workspace }}
++          PYTHONIOENCODING: utf-8
++        run: |
++          git config user.name "shot-de-mercado-bot"
++          git config user.email "bot@shotdemercado.local"
++          python 04_Config/scripts/bot_telegram_public.py --instance b --loop-minutes 40
++
++      - name: Commit leftovers
++        if: always()
++        run: |
++          git add -A -- 02_Analisis/sources/telegram
++          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
++          git commit -q -m "sources_telegram_b: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
++          for i in 1 2 3 4; do
++            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
++            git rebase --abort 2>/dev/null || true
++            sleep $((i * 15))
++          done
++          echo "::error::No se pudo pushear 02_Analisis/sources/telegram tras 4 intentos"
++          exit 1
+diff --git a/04_Config/requirements/sources_telegram.txt b/04_Config/requirements/sources_telegram.txt
+new file mode 100644
+index 0000000..ca2b7f3
+--- /dev/null
++++ b/04_Config/requirements/sources_telegram.txt
+@@ -0,0 +1,7 @@
++# bot_telegram_public (D-041 T5): parser HTML de t.me/s/<canal>. Instalar con:
++#   pip install --require-hashes --no-deps -r 04_Config/requirements/sources_telegram.txt
++# Supply chain verificada el 2026-10-03 en PyPI: wheels de Python puro (sin código al instalar), licencias MIT/PSF.
++# soupsieve fijado en 2.9.2 (agosto) y no en 2.10 (publicada el 2026-09-24, una semana antes de la verificación).
++beautifulsoup4==4.15.0 --hash=sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9
++soupsieve==2.9.2 --hash=sha256:8089a26fd974ca7a1f30276d3d8492ab266ab15af581642dfe8aa162e0c1c823
++typing-extensions==4.16.0 --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+diff --git a/04_Config/scripts/bot_orchestrator.py b/04_Config/scripts/bot_orchestrator.py
+index 0f01c34..4f89cb6 100644
+--- a/04_Config/scripts/bot_orchestrator.py
++++ b/04_Config/scripts/bot_orchestrator.py
+@@ -10,6 +10,7 @@ frecuencia real ~15 min por el desfase del cron de Actions). No genera código.
+      sin_datos (nunca corrió) · diseño (enabled: false).
+   4. Poda los diarios de más de 7 días (siguen en el historial de git).
+   5. Bloque automático de _servicios_open_source/_INSTALADOS.md, solo si cambió algún estado.
++  6. Grafo de conocimiento de las menciones (lib_knowledge_graph, patrón #7) → 02_Analisis/sources/_graph.json.
+ 
+ Uso: python 04_Config/scripts/bot_orchestrator.py [--dry-run]
+ """
+@@ -22,6 +23,8 @@ from pathlib import Path
+ 
+ SCRIPTS = Path(__file__).resolve().parent
+ sys.path.insert(0, str(SCRIPTS))
++import lib_audit as audit  # noqa: E402
++import lib_knowledge_graph as kg  # noqa: E402
+ import lib_sources_store as store  # noqa: E402
+ 
+ VERSION = "orch-0.1"
+@@ -48,6 +51,25 @@ def read_json(path, default=None):
+         return default
+ 
+ 
++def read_bot_state(base, name):
++    """_state.json del bot; si corre en varias instancias (_state_a.json, _state_b.json: un dueño por archivo), las
++    combina: última corrida, salida de la instancia más reciente y, por fuente, la fila consultada más tarde."""
++    single = read_json(Path(base) / name / "_state.json")
++    if single is not None:
++        return single
++    parts = [s for s in (read_json(p) for p in sorted((Path(base) / name).glob("_state_*.json"))) if isinstance(s, dict)]
++    if not parts:
++        return None
++    latest = max(parts, key=lambda s: s.get("last_run") or 0)
++    sources = {}
++    for st in parts:
++        for k, v in (st.get("sources") or st.get("feeds") or {}).items():
++            if (v or {}).get("checked_at", 0) >= (sources.get(k) or {}).get("checked_at", 0):
++                sources[k] = v
++    return {"last_run": latest.get("last_run"), "items_last_run": latest.get("items_last_run"), "sources": sources,
++            "instances": len(parts)}
++
++
+ def bot_health(name, cfg, state, prev, now):
+     """Estado de un bot a partir de su _state.json y del registro anterior en _health.json."""
+     prev = prev or {}
+@@ -113,26 +135,34 @@ def update_installed(path, bots_health):
+ 
+ def run(root, now=None, write=True):
+     now = now if now is not None else time.time()
++    t_start = time.time()
+     base = store.sources_dir(root)
+     registry = load_registry(root)
+     prev_doc = read_json(base / "_health.json", {}) or {}
+     prev = prev_doc.get("bots") or {}
+-    health = {n: bot_health(n, cfg, read_json(base / n / "_state.json"), prev.get(n), now)
+-              for n, cfg in registry.items()}
+-    merged = store.merge(now, root) if write else len(store.collect(now, store.MERGE_HOURS, root))
++    health = {n: bot_health(n, cfg, read_bot_state(base, n), prev.get(n), now) for n, cfg in registry.items()}
++    stats = {}
++    merged = store.merge(now, root, stats=stats) if write else len(store.collect(now, store.MERGE_HOURS, root, stats))
+     history = [h for h in prev_doc.get("history") or [] if now - h.get("ts", 0) <= HISTORY_S]
+     history.append({"ts": int(now), "merged": merged, **{n: h["status"] for n, h in health.items()}})
+     doc = {"version": VERSION, "generated_at": int(now), "merged_items": merged, "bots": health,
+            "history": history}
+-    pruned, installed = [], False
++    pruned, installed, graph = [], False, None
+     if write:
++        graph = kg.write_graph(store.read_jsonl(base / "_merged.jsonl"), now, root).to_json()["counts"]
+         pruned = prune(root, now)
+         (base / "_health.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True),
+                                            encoding="utf-8")
+         changed = {n: h["status"] for n, h in health.items()} != {n: (h or {}).get("status") for n, h in prev.items()}
+         if changed:
+             installed = update_installed(Path(root) / "_servicios_open_source" / "_INSTALADOS.md", health)
+-    doc["pruned"], doc["installed_updated"] = pruned, installed
++    doc["pruned"], doc["installed_updated"], doc["graph"] = pruned, installed, graph
++    if write:                                # auto-monitoreo (patrón #15): sources/orchestrator/_audit.jsonl
++        active = {n: h for n, h in health.items() if h["status"] != "diseño"}
++        problems = sum(1 for h in active.values() if h["status"] in ("caído", "atrasado", "vacío", "sin_datos"))
++        line = audit.audit_line("orchestrator", now, stats.get("read", 0), merged, problems, len(active),
++                                time.time() - t_start)
++        doc["metrics"] = audit.record_run(base / "orchestrator", line, len(active) - problems, len(active))
+     return doc
+ 
+ 
+@@ -142,7 +172,7 @@ def main(argv=None):
+     args = ap.parse_args(argv)
+     doc = run(store.ROOT, write=not args.dry_run)
+     print(f"orchestrator: {doc['merged_items']} ítems en _merged (48 h) · podados {len(doc['pruned'])}"
+-          f" · _INSTALADOS {'actualizado' if doc['installed_updated'] else 'sin cambios'}")
++          f" · _INSTALADOS {'actualizado' if doc['installed_updated'] else 'sin cambios'} · grafo {doc['graph']}")
+     for n, h in sorted(doc["bots"].items()):
+         print(f"  {n:10s} {h['status']:10s} " + "; ".join(h.get("errors") or [])[:200])
+     return 0
+diff --git a/04_Config/scripts/bot_rss_news.py b/04_Config/scripts/bot_rss_news.py
+index a757a13..6ac4029 100644
+--- a/04_Config/scripts/bot_rss_news.py
++++ b/04_Config/scripts/bot_rss_news.py
+@@ -21,6 +21,7 @@ from pathlib import Path
+ 
+ SCRIPTS = Path(__file__).resolve().parent
+ sys.path.insert(0, str(SCRIPTS))
++import lib_audit as audit  # noqa: E402
+ import lib_repetition as rep  # noqa: E402
+ import lib_sources_store as store  # noqa: E402
+ 
+@@ -98,17 +99,22 @@ def load_state(path):
+         return {}
+ 
+ 
+-def run(config, state, fetch=http_fetch, now=None, sleep=time.sleep, keywords=store.DEFAULT_KEYWORDS):
+-    """Una pasada por los feeds. Devuelve (registros nuevos, estado actualizado)."""
++def run(config, state, fetch=http_fetch, now=None, sleep=time.sleep, keywords=store.DEFAULT_KEYWORDS, auto_off=None):
++    """Una pasada por los feeds. Devuelve (registros nuevos, estado actualizado).
++    `auto_off`: {feed: {"until": epoch}} de bot_self_repair; el feed se salta hasta `until` (reintenta después)."""
+     now = now if now is not None else time.time()
+     keep_s = float(config.get("dedup_hours") or 72) * 3600
+     seen = {k: t for k, t in (state.get("seen") or {}).items() if now - t <= keep_s}
+-    health = dict(state.get("feeds") or {})
++    configured = {f["name"] for f in config["feeds"] if f.get("enabled", True) is not False}
++    health = {k: v for k, v in (state.get("feeds") or {}).items() if k in configured}   # lo que se sacó, se va
+     records, first = [], True
+     for feed in config["feeds"]:
+         name = feed["name"]
+         if feed.get("enabled", True) is False:
+-            health.pop(name, None)
++            continue
++        off = (auto_off or {}).get(name) or {}
++        if (off.get("until") or 0) > now:
++            health[name] = {**(health.get(name) or {}), "auto_off_until": int(off["until"])}
+             continue
+         if not first:
+             sleep(float(feed.get("pause_s", config.get("pause_s", 1))))
+@@ -149,7 +155,10 @@ def main(argv=None):
+     args = ap.parse_args(argv)
+     config = load_config(args.config or config_path())
+     state_file = store.sources_dir() / BOT / "_state.json"
+-    records, state = run(config, load_state(state_file), fetch=http_fetch, keywords=store.load_keywords())
++    t_start = time.time()
++    repair = load_state(store.sources_dir() / "_repair_state.json")
++    records, state = run(config, load_state(state_file), fetch=http_fetch, keywords=store.load_keywords(),
++                         auto_off=(repair.get("auto_off") or {}).get(BOT))
+     ok = sum(1 for f in state["feeds"].values() if f["status"] == 200 and "parse_error" not in f)
+     print(f"{BOT}: {len(records)} ítems nuevos · feeds OK {ok}/{len(state['feeds'])}")
+     for name, f in sorted(state["feeds"].items()):
+@@ -160,8 +169,20 @@ def main(argv=None):
+     store.append_records(BOT, records, state["last_run"])
+     state_file.parent.mkdir(parents=True, exist_ok=True)
+     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
++    write_audit(state, len(records), time.time() - t_start)
+     return 0
+ 
+ 
++def write_audit(state, items_new, duration_s, folder=None):
++    """Una línea en rss/_audit.jsonl + _metrics.json (patrón #15). Solo cuenta los feeds consultados en esta corrida."""
++    now = state["last_run"]
++    fetched = {k: f for k, f in state["feeds"].items() if f.get("checked_at") == now}
++    errors = sum(1 for f in fetched.values() if f.get("status") != 200 or f.get("parse_error"))
++    line = audit.audit_line(BOT, now, sum(f.get("items") or 0 for f in fetched.values()), items_new, errors,
++                            len(fetched), duration_s)
++    healthy = sum(1 for f in state["feeds"].values() if f.get("status") == 200 and not f.get("parse_error"))
++    return audit.record_run(folder or store.sources_dir() / BOT, line, healthy, len(state["feeds"]))
++
++
+ if __name__ == "__main__":
+     sys.exit(main())
+diff --git a/04_Config/scripts/bot_self_repair.py b/04_Config/scripts/bot_self_repair.py
+new file mode 100644
+index 0000000..29d5de9
+--- /dev/null
++++ b/04_Config/scripts/bot_self_repair.py
+@@ -0,0 +1,350 @@
++#!/usr/bin/env python3
++"""
++bot_self_repair.py — bot reparador de los bots de fuentes (patrón #20; doc 34 §11). Cada 30 min
++(sources_self_repair.yml). Solo reglas explícitas: cero IA generativa. Lo que no está en la tabla lo escala.
++
++  Detección                                 Fix (idempotente, reversible)                   Escala si
++  fuente caída: fails >= 3 seguidas          auto_off 6 h en _repair_state.json (el bot      sigue caída 24 h después
++                                             la salta y después reintenta una vez)
++  workflow de bot: >= 2 fallas seguidas      1 rerun de los jobs fallidos (una vez por run)  > 3 fallas seguidas
++  otro workflow: > 3 fallas seguidas         ninguno (no se relanza producción)              de inmediato
++  bot atrasado (_health.json)                1 workflow_dispatch                              atraso repetido en 24 h
++  salida vacía                               ninguno (un parser roto no se arregla con reglas) > 24 h sin ítems, o vacío
++                                                                                             con todas las fuentes OK
++  _state.json / _health.json que no parsea   se renombra a .corrupt-<ts> (el dueño lo recrea) más de 1 por día
++  _state.json inflado (seen > 50.000)        recorta seen a la ventana de dedup              —
++
++Archivos propios (un dueño por archivo): 02_Analisis/sources/_repair_state.json y _repair_log.jsonl (7 días), más el
++bloque <!-- AUTO:repair --> de _servicios_open_source/_INSTALADOS.md (una fila por problema abierto; se borra
++sola al resolverse). Toca el _state.json de un bot solo para renombrarlo si está corrupto o recortar `seen`.
++No toca código, YAML de configuración, score ni emisión.
++
++Uso: python 04_Config/scripts/bot_self_repair.py [--dry-run]   (sin GITHUB_TOKEN: detecta y escala, no actúa)
++"""
++import argparse
++import json
++import os
++import sys
++import time
++from datetime import datetime, timezone
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_sources_store as store  # noqa: E402
++
++VERSION = "repair-0.1"
++FAIL_RUNS = 3                 # fuente: fallas seguidas para apagarla
++AUTO_OFF_S = 6 * 3600
++SOURCE_ESCALATE_S = 24 * 3600
++WF_RERUN_AT = 2               # workflow de bot: fallas seguidas para relanzar
++WF_ESCALATE_ABOVE = 3         # workflow: más de 3 fallas seguidas -> escala
++DISPATCH_WINDOW_S = 24 * 3600
++EMPTY_ESCALATE_S = 24 * 3600
++SEEN_MAX = 50_000
++STATE_MAX_BYTES = 5 * 1024 * 1024
++LOG_KEEP_S = 7 * 86400
++AUTO_START, AUTO_END = "<!-- AUTO:repair -->", "<!-- /AUTO:repair -->"
++API = "https://api.github.com"
++
++
++class GitHub:
++    """API de Actions con el GITHUB_TOKEN del workflow. Sin token, las acciones no se ejecutan."""
++
++    def __init__(self, token=None, repo=None, http=None):
++        self.token, self.repo = token, repo
++        self.http = http
++
++    @property
++    def enabled(self):
++        return bool(self.token and self.repo)
++
++    def _req(self, method, path, body=None):
++        import requests
++        http = self.http or requests
++        headers = {"Authorization": f"Bearer {self.token}", "Accept": "application/vnd.github+json",
++                   "X-GitHub-Api-Version": "2022-11-28"}
++        r = http.request(method, f"{API}/repos/{self.repo}{path}", headers=headers, json=body, timeout=20)
++        return r.status_code, (r.json() if r.content and r.status_code < 300 else None)
++
++    def runs(self, workflow, per_page=10):
++        """Corridas terminadas, de la más nueva a la más vieja: [{id, conclusion, html_url, created_at}]."""
++        status, data = self._req("GET", f"/actions/workflows/{workflow}/runs?per_page={per_page}&status=completed")
++        return [{k: r.get(k) for k in ("id", "conclusion", "html_url", "created_at")}
++                for r in (data or {}).get("workflow_runs") or []] if status == 200 else None
++
++    def workflows(self):
++        status, data = self._req("GET", "/actions/workflows?per_page=100")
++        if status != 200:
++            return None
++        return [Path(w["path"]).name for w in (data or {}).get("workflows") or [] if w.get("state") == "active"]
++
++    def rerun_failed(self, run_id):
++        return self._req("POST", f"/actions/runs/{run_id}/rerun-failed-jobs")[0] in (201, 204)
++
++    def dispatch(self, workflow, ref="main"):
++        return self._req("POST", f"/actions/workflows/{workflow}/dispatches", {"ref": ref})[0] == 204
++
++
++def read_json(path):
++    """(dato, estado): estado 'ok', 'missing' o 'corrupt'."""
++    try:
++        return json.loads(Path(path).read_text(encoding="utf-8")), "ok"
++    except FileNotFoundError:
++        return None, "missing"
++    except (OSError, ValueError):
++        return None, "corrupt"
++
++
++def consecutive_failures(runs):
++    n = 0
++    for r in runs or []:
++        if r.get("conclusion") in ("failure", "timed_out"):
++            n += 1
++        elif r.get("conclusion") in ("cancelled", "skipped"):
++            continue
++        else:
++            break
++    return n
++
++
++def bot_sources(state):
++    return (state or {}).get("feeds") or (state or {}).get("sources") or (state or {}).get("channels") or {}
++
++
++class Repair:
++    def __init__(self, root, registry, gh, now=None, write=True):
++        self.root, self.registry, self.gh = Path(root), registry, gh
++        self.now = now if now is not None else time.time()
++        self.write = write
++        self.base = store.sources_dir(root)
++        prev, _ = read_json(self.base / "_repair_state.json")
++        prev = prev if isinstance(prev, dict) else {}
++        self.state = {"version": VERSION, "auto_off": prev.get("auto_off") or {}, "reruns": prev.get("reruns") or {},
++                      "dispatches": prev.get("dispatches") or {}, "last_nonempty": prev.get("last_nonempty") or {},
++                      "corrupt": prev.get("corrupt") or {}, "escalations": prev.get("escalations") or {}}
++        self.open = set()          # escaladas vigentes en esta corrida
++        self.actions = []
++
++    # -- registro ---------------------------------------------------------------------------------------------
++    def act(self, bot, detection, action, evidence):
++        self.actions.append({"ts": int(self.now), "bot": bot, "detection": detection, "action": action,
++                             "evidence": evidence})
++
++    def escalate(self, key, bot, detection, evidence):
++        self.open.add(key)
++        esc = self.state["escalations"].get(key)
++        if not esc:
++            self.state["escalations"][key] = {"since": int(self.now), "bot": bot, "detection": detection,
++                                              "evidence": evidence}
++            self.act(bot, detection, "escalate", evidence)
++        else:
++            esc["evidence"] = evidence
++
++    # -- reglas -----------------------------------------------------------------------------------------------
++    def check_states(self):
++        for bot, cfg in self.registry.items():
++            if cfg.get("enabled", True) is False:
++                continue
++            for path in sorted((self.base / bot).glob("_state*.json")):
++                if ".corrupt-" in path.name:
++                    continue
++                state, status = read_json(path)
++                if status == "corrupt":
++                    self.reset_corrupt(bot, path)
++                    continue
++                if status == "ok":
++                    self.check_sources(bot, state)
++                    self.trim_seen(bot, path, state, cfg)
++
++    def reset_corrupt(self, bot, path):
++        day = datetime.fromtimestamp(self.now, timezone.utc).strftime("%Y-%m-%d")
++        key = f"{path.name}|{day}"
++        count = self.state["corrupt"].get(key, 0) + 1
++        self.state["corrupt"] = {k: v for k, v in self.state["corrupt"].items() if k.endswith(day)} | {key: count}
++        target = path.with_name(f"{path.name}.corrupt-{int(self.now)}")
++        if self.write:
++            path.rename(target)
++        self.act(bot, "archivo corrupto", "reset_state", f"{path.name} -> {target.name}")
++        if count > 1:
++            self.escalate(f"corrupt:{bot}:{path.name}", bot, "archivo corrupto repetido",
++                          f"{path.name}: {count} veces hoy")
++
++    def check_sources(self, bot, state):
++        offs = self.state["auto_off"].setdefault(bot, {})
++        sources = bot_sources(state)
++        for name, row in sources.items():
++            fails = int((row or {}).get("fails") or 0)
++            healthy = (row or {}).get("status") == 200 and not (row or {}).get("parse_error") and fails == 0
++            key = f"source:{bot}:{name}"
++            if healthy:
++                if name in offs:
++                    self.act(bot, "fuente recuperada", "auto_on", name)
++                offs.pop(name, None)
++                continue
++            if fails < FAIL_RUNS:
++                continue
++            off = offs.get(name)
++            if not off:
++                offs[name] = {"first_seen": int(self.now), "until": int(self.now + AUTO_OFF_S)}
++                self.act(bot, "fuente caída", "auto_off", f"{name}: {row.get('status')} x{fails}")
++            elif self.now >= off["until"]:
++                off["until"] = int(self.now + AUTO_OFF_S)
++                self.act(bot, "fuente sigue caída", "auto_off", f"{name}: {row.get('status')} x{fails}")
++            if offs.get(name) and self.now - offs[name]["first_seen"] >= SOURCE_ESCALATE_S:
++                self.escalate(key, bot, "fuente caída 24 h (P-13: reemplazar)", f"{name}: {row.get('status')} x{fails}")
++        for name in list(offs):
++            if name not in sources:                     # la fuente se sacó del YAML: no queda nada abierto
++                offs.pop(name)
++        if not offs:
++            self.state["auto_off"].pop(bot, None)
++
++    def trim_seen(self, bot, path, state, cfg):
++        seen = state.get("seen") or {}
++        too_big = path.stat().st_size > STATE_MAX_BYTES if path.exists() else False
++        if len(seen) <= SEEN_MAX and not too_big:
++            return
++        keep_s = float(cfg.get("dedup_hours") or 72) * 3600
++        state["seen"] = {k: t for k, t in seen.items() if isinstance(t, (int, float)) and self.now - t <= keep_s}
++        if self.write:
++            path.write_text(json.dumps(state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
++        self.act(bot, "estado inflado", "trim_seen", f"{path.name}: seen {len(seen)} -> {len(state['seen'])}")
++
++    def check_health(self):
++        health, status = read_json(self.base / "_health.json")
++        if status == "corrupt":
++            target = self.base / f"_health.json.corrupt-{int(self.now)}"
++            if self.write:
++                (self.base / "_health.json").rename(target)
++            self.act("orchestrator", "archivo corrupto", "reset_state", f"_health.json -> {target.name}")
++            return
++        bots = (health or {}).get("bots") or {}
++        for bot, cfg in self.registry.items():
++            h = bots.get(bot) or {}
++            if cfg.get("enabled", True) is False or h.get("status") in (None, "diseño", "sin_datos"):
++                continue
++            if (h.get("last_output") or 0) > 0:
++                self.state["last_nonempty"][bot] = int(h.get("last_run") or self.now)
++            last = self.state["last_nonempty"].setdefault(bot, int(self.now))
++            if h.get("status") in ("ok", "vacío") and self.now - last > EMPTY_ESCALATE_S:   # corre, pero sin ítems
++                self.escalate(f"empty:{bot}", bot, "sin ítems hace más de 24 h", f"último ítem: {_fmt(last)}")
++            if h.get("status") == "vacío" and h.get("sources_total") and h.get("sources_ok") == h.get("sources_total"):
++                self.escalate(f"parser:{bot}", bot, "vacío con todas las fuentes OK (¿cambió el formato?)",
++                              f"{h.get('empty_runs')} corridas sin ítems")
++            if h.get("status") == "atrasado":
++                self.handle_late(bot, cfg, h)
++
++    def handle_late(self, bot, cfg, h):
++        recent = [t for t in self.state["dispatches"].get(bot) or [] if self.now - t <= DISPATCH_WINDOW_S]
++        if recent:
++            self.escalate(f"late:{bot}", bot, "atraso repetido en 24 h", f"última corrida: {_fmt(h.get('last_run'))}")
++        elif self.gh.enabled and cfg.get("workflow"):
++            ok = self.write and self.gh.dispatch(cfg["workflow"])
++            recent.append(int(self.now))
++            self.act(bot, "bot atrasado", "dispatch" if ok else "dispatch_failed", cfg["workflow"])
++        else:
++            self.act(bot, "bot atrasado", "sin_token", cfg.get("workflow") or "—")
++        self.state["dispatches"][bot] = recent
++
++    def check_workflows(self):
++        if not self.gh.enabled:
++            return
++        bot_wf = {cfg.get("workflow"): bot for bot, cfg in self.registry.items()
++                  if cfg.get("workflow") and cfg.get("enabled", True) is not False}
++        for wf in self.gh.workflows() or sorted(bot_wf):
++            runs = self.gh.runs(wf)
++            if not runs:
++                continue
++            n = consecutive_failures(runs)
++            owner = bot_wf.get(wf, "workflow")
++            failed = next((r for r in runs if r.get("conclusion") in ("failure", "timed_out")), None)
++            if n >= WF_RERUN_AT and wf in bot_wf and failed and str(failed["id"]) not in self.state["reruns"]:
++                ok = self.write and self.gh.rerun_failed(failed["id"])
++                self.state["reruns"][str(failed["id"])] = int(self.now)
++                self.act(owner, f"workflow con {n} fallas seguidas", "rerun" if ok else "rerun_failed",
++                         failed.get("html_url") or str(failed["id"]))
++            if n > WF_ESCALATE_ABOVE:
++                self.escalate(f"workflow:{wf}", owner, f"workflow {wf} con {n} fallas seguidas",
++                              failed.get("html_url") if failed else "—")
++        self.state["reruns"] = {k: t for k, t in self.state["reruns"].items() if self.now - t <= LOG_KEEP_S}
++
++    # -- salida -----------------------------------------------------------------------------------------------
++    def finish(self):
++        resolved = [k for k in self.state["escalations"] if k not in self.open]
++        for k in resolved:
++            esc = self.state["escalations"].pop(k)
++            self.act(esc["bot"], esc["detection"], "resolved", k)
++        self.state["last_run"] = int(self.now)
++        self.state["open"] = len(self.state["escalations"])
++        if self.write:
++            self.base.mkdir(parents=True, exist_ok=True)
++            (self.base / "_repair_state.json").write_text(
++                json.dumps(self.state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
++            append_log(self.base / "_repair_log.jsonl", self.actions, self.now)
++            update_installed(self.root / "_servicios_open_source" / "_INSTALADOS.md", self.state["escalations"])
++        return {"actions": self.actions, "escalations": self.state["escalations"]}
++
++    def run(self):
++        self.check_states()
++        self.check_health()
++        self.check_workflows()
++        return self.finish()
++
++
++def _fmt(ts):
++    return datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%d %H:%M UTC") if ts else "n/d"
++
++
++def append_log(path, actions, now):
++    rows = [r for r in store.read_jsonl(path) if now - (r.get("ts") or 0) <= LOG_KEEP_S] + list(actions)
++    tmp = Path(str(path) + ".tmp")
++    tmp.write_text("".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in rows), encoding="utf-8")
++    tmp.replace(path)
++
++
++def repair_block(escalations):
++    rows = "\n".join(f"- [P] {_fmt(e['since'])[:10]} `{e['bot']}` {e['detection']} — {e['evidence']}"
++                     for _, e in sorted(escalations.items(), key=lambda kv: (kv[1]["since"], kv[0])))
++    return (f"{AUTO_START}\n## Reparaciones escaladas (automático: bot_self_repair)\n\n"
++            f"{rows or '- Sin problemas abiertos.'}\n{AUTO_END}")
++
++
++def update_installed(path, escalations):
++    """Reescribe solo el bloque AUTO:repair; el resto (incluido AUTO:sources) no se toca. True si cambió."""
++    path = Path(path)
++    try:
++        text = path.read_text(encoding="utf-8")
++    except OSError:
++        return False
++    block = repair_block(escalations)
++    if AUTO_START in text and AUTO_END in text:
++        new = text[:text.index(AUTO_START)] + block + text[text.index(AUTO_END) + len(AUTO_END):]
++    else:
++        new = text.rstrip("\n") + "\n\n" + block + "\n"
++    if new == text:
++        return False
++    path.write_text(new, encoding="utf-8")
++    return True
++
++
++def load_registry(root):
++    import yaml
++    doc = yaml.safe_load((Path(root) / "04_Config" / "sources" / "_bots.yaml").read_text(encoding="utf-8")) or {}
++    return doc.get("bots") or {}
++
++
++def main(argv=None):
++    ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
++    ap.add_argument("--dry-run", action="store_true")
++    args = ap.parse_args(argv)
++    gh = GitHub(os.environ.get("GITHUB_TOKEN"), os.environ.get("GITHUB_REPOSITORY"))
++    out = Repair(store.ROOT, load_registry(store.ROOT), gh, write=not args.dry_run).run()
++    print(f"self_repair: {len(out['actions'])} acciones · {len(out['escalations'])} problemas abiertos"
++          + ("" if gh.enabled else " · sin GITHUB_TOKEN: solo detección"))
++    for a in out["actions"]:
++        print(f"  {a['bot']:12s} {a['action']:14s} {a['detection']} — {a['evidence']}")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/04_Config/scripts/bot_telegram_public.py b/04_Config/scripts/bot_telegram_public.py
+new file mode 100644
+index 0000000..f822b97
+--- /dev/null
++++ b/04_Config/scripts/bot_telegram_public.py
+@@ -0,0 +1,253 @@
++#!/usr/bin/env python3
++"""
++bot_telegram_public.py — bot de canales públicos de Telegram (doc 34 §3; D-041 T5). Solo la vista web pública
++t.me/s/<canal>: sin cuenta, sin API de Telegram, sin Telethon / Pyrogram (prohibidos en el proyecto).
++
++Job largo: un loop de `loop_minutes` (40) con una pasada cada `poll_minutes` (4). Corren 2 instancias desfasadas
++(sources_telegram_a.yml en :05, _b.yml en :35) que se solapan 10 min y cubren el desfase del cron de Actions.
++
++  1. Lee 04_Config/sources/telegram.yaml (sumar canal = sumar línea; enabled: false lo saca).
++  2. Descarga cada canal y lo parsea con BeautifulSoup (html.parser): un ítem por mensaje (data-post, <time>,
++     texto, enlaces del texto — el contrato suele venir en un enlace a pump.fun / dexscreener / solscan —, vistas).
++  3. Cursor por canal (id del último post) + dedup de 72 h: cada instancia escribe solo lo nuevo para ella; lo que
++     ven las dos se descarta en el merge (dedup global por src, ts, h).
++  4. src-1 (lib_sources_store) en 02_Analisis/sources/telegram/<fecha>_<inst>.jsonl, sin cuerpo de texto.
++  5. Estado por instancia en telegram/_state_<inst>.json (un dueño por archivo): salud por canal, cursor, vista
++     previa. Un canal sin vista previa (redirige a t.me/<canal>) se apaga y se reintenta cada recheck_hours.
++  6. Respeta los auto_off de bot_self_repair (_repair_state.json).
++  7. Commitea su carpeta cada `commit_every` pasadas y al final; auditoría al final (_audit_<inst>.jsonl).
++
++Uso: python 04_Config/scripts/bot_telegram_public.py --instance a [--loop-minutes 40] [--once] [--dry-run]
++"""
++import argparse
++import json
++import re
++import subprocess
++import sys
++import time
++from pathlib import Path
++from urllib.parse import urlsplit
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_audit as audit  # noqa: E402
++import lib_normalize as norm  # noqa: E402
++import lib_sources_store as store  # noqa: E402
++
++BOT = "telegram"
++VERSION = "tg-0.1"
++TIMEOUT_S = 20
++HEADERS = {"User-Agent": "shot-de-mercado-sources/1.0 (research; repo artificialintelligencestaff-tech/shot-de-mercado)"}
++VIEWS_RE = re.compile(r"^([\d.,]+)\s*([KkMm]?)$")
++
++
++def config_path(root=None):
++    return Path(root or store.ROOT) / "04_Config" / "sources" / "telegram.yaml"
++
++
++def load_config(path):
++    import yaml
++    doc = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
++    channels = doc.get("channels") if isinstance(doc, dict) else None
++    if not isinstance(channels, list) or not channels:
++        raise ValueError("telegram.yaml: falta la lista 'channels'")
++    names = set()
++    for c in channels:
++        if not isinstance(c, dict) or not re.fullmatch(r"[A-Za-z0-9_]{4,64}", str(c.get("name") or "")):
++            raise ValueError(f"telegram.yaml: canal inválido: {c!r}")
++        if c["name"].lower() in names:
++            raise ValueError(f"telegram.yaml: canal repetido: {c['name']}")
++        names.add(c["name"].lower())
++    return doc
++
++
++def parse_views(text):
++    m = VIEWS_RE.match((text or "").strip())
++    if not m:
++        return None
++    n = float(m.group(1).replace(",", ""))
++    return int(n * {"k": 1_000, "m": 1_000_000}.get(m.group(2).lower(), 1))
++
++
++def parse_preview(html):
++    """Mensajes de la vista previa: [{"post", "num", "ts", "text", "views"}] (texto + enlaces, para extraer CAs)."""
++    from bs4 import BeautifulSoup
++    soup = BeautifulSoup(html or "", "html.parser")
++    out = []
++    for m in soup.select("div.tgme_widget_message[data-post]"):
++        post = m["data-post"]
++        num = post.rsplit("/", 1)[-1]
++        body = m.select_one(".tgme_widget_message_text")
++        text = body.get_text(" ", strip=True) if body else ""
++        links = [a.get("href") for a in (body.select("a[href]") if body else []) if a.get("href")]
++        t = m.select_one("time[datetime]")
++        views = m.select_one(".tgme_widget_message_views")
++        out.append({"post": post, "num": int(num) if num.isdigit() else None,
++                    "ts": norm.timestamp(t["datetime"]) if t else None,
++                    "text": " ".join([text] + links).strip(),
++                    "views": parse_views(views.get_text()) if views else None})
++    return out
++
++
++def has_preview(final_url, channel):
++    """La vista previa vive en /s/<canal>; sin ella, Telegram redirige a t.me/<canal>."""
++    path = urlsplit(final_url or "").path.rstrip("/").lower()
++    return path == f"/s/{channel.lower()}"
++
++
++def http_fetch(channel):
++    """(estado, html|None, url final). Nunca lanza."""
++    import requests
++    url = f"https://t.me/s/{channel}"
++    try:
++        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT_S)
++    except requests.RequestException as e:
++        return f"error {type(e).__name__}", None, url
++    return r.status_code, (r.text if r.status_code == 200 else None), r.url
++
++
++def load_state(path):
++    try:
++        st = json.loads(Path(path).read_text(encoding="utf-8"))
++        return st if isinstance(st, dict) else {}
++    except (OSError, ValueError):
++        return {}
++
++
++def poll(config, state, now, fetch=http_fetch, sleep=time.sleep, auto_off=None, keywords=store.DEFAULT_KEYWORDS):
++    """Una pasada por los canales. Devuelve (registros nuevos, estado actualizado)."""
++    keep_s = float(config.get("dedup_hours") or 72) * 3600
++    recheck_s = float(config.get("recheck_hours") or 24) * 3600
++    seen = {k: t for k, t in (state.get("seen") or {}).items() if now - t <= keep_s}
++    active = [c for c in config["channels"] if c.get("enabled", True) is not False]
++    names = {c["name"] for c in active}
++    health = {k: v for k, v in (state.get("sources") or {}).items() if k in names}
++    records, first = [], True
++    for ch in active:
++        name = ch["name"]
++        prev = health.get(name) or {}
++        if prev.get("preview") is False and now < (prev.get("next_check") or 0):
++            continue                                       # sin vista previa: se reintenta cada recheck_hours
++        off = (auto_off or {}).get(name) or {}
++        if (off.get("until") or 0) > now:
++            health[name] = {**prev, "auto_off_until": int(off["until"])}
++            continue
++        if not first:
++            sleep(float(ch.get("pause_s", config.get("pause_s", 2))))
++        first = False
++        status, html, final_url = fetch(name)
++        row = {"status": status, "items": 0, "new": 0, "checked_at": int(now), "last_ok": prev.get("last_ok"),
++               "fails": 0, "cursor": prev.get("cursor"), "preview": True}
++        msgs = []
++        if status == 200 and not has_preview(final_url, name):
++            row.update(preview=False, next_check=int(now + recheck_s))
++        elif status == 200:
++            try:
++                msgs = parse_preview(html)
++            except Exception as e:                         # HTML inesperado: cuenta como falla del canal
++                row["parse_error"] = f"{type(e).__name__}: {str(e)[:100]}"
++        if status != 200 or "parse_error" in row:
++            row["fails"] = int(prev.get("fails") or 0) + 1
++        elif row["preview"]:
++            row["last_ok"] = int(now)
++        row["items"] = len(msgs)
++        cursor = prev.get("cursor") or 0
++        for msg in msgs:
++            if (msg["num"] or 0) <= cursor or msg["post"] in seen:
++                continue
++            seen[msg["post"]] = now
++            records.append(store.make_record(BOT, name, "message", msg["text"], id=msg["post"],
++                                             url=f"https://t.me/{msg['post']}", ts=msg["ts"], seen=now, author=name,
++                                             meta={"views": msg["views"]} if msg["views"] is not None else {},
++                                             keywords=keywords))
++            row["new"] += 1
++        nums = [m["num"] for m in msgs if m["num"]]
++        row["cursor"] = max([cursor] + nums) or None
++        health[name] = row
++    return records, {"version": VERSION, "last_run": int(now), "items_last_run": len(records), "sources": health,
++                     "seen": seen}
++
++
++def git_commit(paths, message, retries=4, run=subprocess.run, sleep=time.sleep):
++    """Commit solo de `paths` + pull --rebase + push, con reintentos (mismo patrón que los workflows). Nunca --force."""
++    def git(*args):
++        return run(["git", *args], capture_output=True, text=True).returncode == 0
++    git("add", "-A", "--", *[str(p) for p in paths])
++    if git("diff", "--staged", "--quiet"):
++        return True                                        # sin cambios
++    if not git("commit", "-q", "-m", message):
++        return False
++    for i in range(1, retries + 1):
++        if git("pull", "-q", "--rebase", "origin", "main") and git("push", "origin", "HEAD:main"):
++            return True
++        git("rebase", "--abort")
++        sleep(i * 15)
++    return False
++
++
++def run_loop(config, instance, root=None, loop_minutes=None, fetch=http_fetch, clock=time.time, sleep=time.sleep,
++             commit=None, commit_every=3, write=True):
++    """Job largo: pasadas cada poll_minutes durante loop_minutes. Devuelve el resumen del job."""
++    base = store.sources_dir(root) / BOT
++    state_file = base / f"_state_{instance}.json"
++    state = load_state(state_file)
++    repair = load_state(store.sources_dir(root) / "_repair_state.json")
++    auto_off = (repair.get("auto_off") or {}).get(BOT)
++    keywords = store.load_keywords(root)
++    t_start = clock()
++    minutes = loop_minutes if loop_minutes is not None else (config.get("loop_minutes") or 40)   # 0 = una pasada
++    end = t_start + float(minutes) * 60
++    poll_s = float(config.get("poll_minutes") or 4) * 60
++    totals = {"polls": 0, "items_in": 0, "items_new": 0, "errors": 0, "sources": 0, "commits": 0}
++    while True:
++        now = clock()
++        records, state = poll(config, state, now, fetch=fetch, sleep=sleep, auto_off=auto_off, keywords=keywords)
++        polled = {k: v for k, v in state["sources"].items() if v.get("checked_at") == int(now)}
++        totals["polls"] += 1
++        totals["items_in"] += sum(v.get("items") or 0 for v in polled.values())
++        totals["items_new"] += len(records)
++        totals["errors"] += sum(1 for v in polled.values() if v.get("status") != 200 or v.get("parse_error"))
++        totals["sources"] += len(polled)
++        if write:
++            store.append_records(BOT, records, now, instance=instance, root=root)
++            base.mkdir(parents=True, exist_ok=True)
++            state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
++        last = clock() + poll_s >= end
++        if write and commit and (totals["polls"] % commit_every == 0 or last):
++            if last:
++                write_audit(state, totals, clock() - t_start, instance, base)
++            totals["commits"] += bool(commit([base], f"sources_telegram_{instance}: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(now))}"))
++        elif write and last:
++            write_audit(state, totals, clock() - t_start, instance, base)
++        if last:
++            return totals
++        sleep(max(0.0, now + poll_s - clock()))
++
++
++def write_audit(state, totals, duration_s, instance, folder):
++    """Una línea por job en telegram/_audit_<inst>.jsonl + _metrics_<inst>.json (patrón #15)."""
++    line = audit.audit_line(f"{BOT}_{instance}", state["last_run"], totals["items_in"], totals["items_new"],
++                            totals["errors"], totals["sources"], duration_s)
++    healthy = sum(1 for v in state["sources"].values() if v.get("status") == 200 and v.get("preview") is not False
++                  and not v.get("parse_error"))
++    return audit.record_run(folder, line, healthy, len(state["sources"]), suffix=f"_{instance}")
++
++
++def main(argv=None):
++    ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
++    ap.add_argument("--instance", choices=["a", "b"], required=True)
++    ap.add_argument("--loop-minutes", type=float, default=None)
++    ap.add_argument("--once", action="store_true", help="una sola pasada (loop de 0 min)")
++    ap.add_argument("--no-commit", action="store_true", help="no commitea desde el loop (lo hace el workflow)")
++    ap.add_argument("--dry-run", action="store_true")
++    args = ap.parse_args(argv)
++    config = load_config(config_path())
++    totals = run_loop(config, args.instance, loop_minutes=0 if args.once else args.loop_minutes,
++                      commit=None if (args.no_commit or args.dry_run) else git_commit, write=not args.dry_run)
++    print(f"{BOT}_{args.instance}: {totals['polls']} pasadas · {totals['items_new']} ítems nuevos de "
++          f"{totals['items_in']} leídos · errores {totals['errors']}/{totals['sources']} · commits {totals['commits']}")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/04_Config/scripts/lib_audit.py b/04_Config/scripts/lib_audit.py
+new file mode 100644
+index 0000000..a7e6176
+--- /dev/null
++++ b/04_Config/scripts/lib_audit.py
+@@ -0,0 +1,80 @@
++#!/usr/bin/env python3
++"""
++lib_audit.py — auto-monitoreo por bot (patrón #15). Plantilla: 02_Analisis/sources/_audit_template/_README.md.
++
++Cada corrida de un bot agrega una línea a 02_Analisis/sources/<bot>/_audit.jsonl y recalcula <bot>/_metrics.json
++sobre los últimos 30 días. Retención de _audit.jsonl: 90 días (se poda al agregar). Dueño: el propio bot.
++
++Línea: {ts, timestamp, bot, items_in, items_new, items_discarded, errors, sources, duration_s, status, run_id}
++  status: success (0 errores) · partial (algunas fuentes con error) · failure (todas con error, o 0 fuentes)
++Solo biblioteca estándar.
++"""
++import json
++import os
++from datetime import datetime, timezone
++from pathlib import Path
++
++METRICS_DAYS = 30
++RETENTION_DAYS = 90
++
++
++def status_of(errors, sources):
++    if sources <= 0 or errors >= sources:
++        return "failure"
++    return "partial" if errors else "success"
++
++
++def audit_line(bot, now, items_in, items_new, errors, sources, duration_s, run_id=None):
++    items_in, items_new = int(items_in), int(items_new)
++    return {"ts": int(now), "timestamp": datetime.fromtimestamp(now, timezone.utc).isoformat(timespec="seconds"),
++            "bot": bot, "items_in": items_in, "items_new": items_new,
++            "items_discarded": max(0, items_in - items_new), "errors": int(errors), "sources": int(sources),
++            "duration_s": round(float(duration_s), 2), "status": status_of(errors, sources),
++            "run_id": run_id if run_id is not None else os.environ.get("GITHUB_RUN_ID")}
++
++
++def read_lines(path):
++    out = []
++    try:
++        for line in Path(path).read_text(encoding="utf-8").splitlines():
++            try:
++                r = json.loads(line)
++            except ValueError:
++                continue
++            if isinstance(r, dict):
++                out.append(r)
++    except OSError:
++        pass
++    return out
++
++
++def metrics(lines, now, sources_healthy, sources_total):
++    recent = [r for r in lines if now - (r.get("ts") or 0) <= METRICS_DAYS * 86400]
++    runs = len(recent)
++    items_in = sum(r.get("items_in") or 0 for r in recent)
++    items_new = sum(r.get("items_new") or 0 for r in recent)
++    queried = sum(r.get("sources") or 0 for r in recent)
++    return {"runs": runs, "items_total": items_new,
++            "dedup_rate": round(sum(r.get("items_discarded") or 0 for r in recent) / items_in, 4) if items_in else 0,
++            "error_rate": round(sum(r.get("errors") or 0 for r in recent) / queried, 4) if queried else 0,
++            "availability": round(sum(r.get("status") != "failure" for r in recent) / runs, 4) if runs else 0,
++            "last_update": int(now), "avg_items_per_run": round(items_new / runs, 2) if runs else 0,
++            "avg_duration_s": round(sum(r.get("duration_s") or 0 for r in recent) / runs, 2) if runs else 0,
++            "sources_healthy": int(sources_healthy), "sources_total": int(sources_total), "window_days": METRICS_DAYS}
++
++
++def record_run(folder, line, sources_healthy, sources_total, suffix=""):
++    """Agrega la línea (podando lo de más de 90 días) y reescribe _metrics.json. Devuelve las métricas.
++    `suffix` ('_a', '_b'): un archivo por instancia cuando un bot corre en paralelo (un dueño por archivo)."""
++    folder = Path(folder)
++    folder.mkdir(parents=True, exist_ok=True)
++    now = line["ts"]
++    audit_file = folder / f"_audit{suffix}.jsonl"
++    lines = [r for r in read_lines(audit_file) if now - (r.get("ts") or 0) <= RETENTION_DAYS * 86400]
++    lines.append(line)
++    tmp = folder / f"_audit{suffix}.jsonl.tmp"
++    tmp.write_text("".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in lines), encoding="utf-8")
++    tmp.replace(audit_file)
++    m = metrics(lines, now, sources_healthy, sources_total)
++    (folder / f"_metrics{suffix}.json").write_text(json.dumps(m, ensure_ascii=False, sort_keys=True), encoding="utf-8")
++    return m
+diff --git a/04_Config/scripts/lib_knowledge_graph.py b/04_Config/scripts/lib_knowledge_graph.py
+new file mode 100644
+index 0000000..4d1b225
+--- /dev/null
++++ b/04_Config/scripts/lib_knowledge_graph.py
+@@ -0,0 +1,174 @@
++#!/usr/bin/env python3
++"""
++lib_knowledge_graph.py — grafo de conocimiento de las menciones (patrón #7; doc 35 §6.3 "grafo de co-mención").
++
++Input: los ítems src-1 de _merged.jsonl (todas las menciones de los bots de fuentes, 48 h).
++Output: 02_Analisis/sources/_graph.json (dueño: bot_orchestrator, que lo escribe después del merge).
++
++  Nodos    t:<dirección>  token (mint o contrato)       c:<CASHTAG>   cashtag
++           k:<keyword>    palabra clave (canónica)      s:<bot>:<src> fuente
++  Aristas  co-aparición en el mismo ítem. count = frecuencia; weight = Σ exp(−edad / τ) con τ = 24 h, que junta
++           frecuencia y recencia (una mención de hace 24 h pesa 0,37; una de ahora, 1).
++
++API: neighbors(node), co_occurrence(a, b), top_keywords(window_h) y related(token): tokens a dos saltos vía
++keywords o cashtags compartidos (si uno del cluster se acelera, los demás son candidatos a mirar).
++Los nodos se pueden pedir en forma cruda ("$WIF", "Meme Coin", una dirección): se normalizan con lib_normalize.
++Solo biblioteca estándar.
++"""
++import json
++import math
++import sys
++import time
++from itertools import combinations
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_normalize as norm  # noqa: E402
++
++VERSION = "kg-0.1"
++TAU_H = 24.0
++HOURS_KEPT = 48
++MAX_ENTITIES = 20            # tope de nodos por ítem (un ítem con 200 keywords no arma 20.000 aristas)
++TYPES = {"t": "token", "c": "cashtag", "k": "keyword", "s": "source"}
++
++
++def node_id(value):
++    """Id de nodo desde una forma cruda: 't:/c:/k:/s:' se respeta; dirección -> t; '$X' -> c; resto -> k."""
++    s = str(value or "").strip()
++    if len(s) > 2 and s[1] == ":" and s[0] in TYPES:
++        return s
++    a = norm.address(s)
++    if a:
++        return f"t:{a}"
++    if s.startswith("$") and norm.cashtag(s):
++        return f"c:{norm.cashtag(s)}"
++    k = norm.keyword(s)
++    return f"k:{k}" if k else None
++
++
++def item_nodes(r):
++    nodes = [f"t:{a}" for a in r.get("a") or []] + [f"c:{c}" for c in r.get("c") or []] + \
++            [f"k:{k}" for k in r.get("k") or []]
++    nodes = sorted(set(nodes))[:MAX_ENTITIES]
++    if r.get("bot") and r.get("src"):
++        nodes.append(f"s:{r['bot']}:{r['src']}")
++    return nodes
++
++
++def _when(r):
++    return r.get("ts") if isinstance(r.get("ts"), (int, float)) else (r.get("seen") or 0)
++
++
++class KnowledgeGraph:
++    def __init__(self, now=None, tau_h=TAU_H):
++        self.now = int(now if now is not None else time.time())
++        self.tau_h = tau_h
++        self.nodes, self.edges = {}, {}
++
++    # -- construcción -----------------------------------------------------------------------------------------
++    @classmethod
++    def build(cls, records, now=None, tau_h=TAU_H):
++        g = cls(now, tau_h)
++        for r in records:
++            g.add(r)
++        return g
++
++    def add(self, r):
++        nodes = item_nodes(r)
++        if len(nodes) < 1:
++            return
++        ts = int(_when(r) or self.now)
++        w = math.exp(-max(0, self.now - ts) / (self.tau_h * 3600))
++        hour = ts // 3600
++        for n in nodes:
++            d = self.nodes.setdefault(n, {"type": TYPES[n[0]], "count": 0, "weight": 0.0, "last_ts": 0, "hours": {}})
++            d["count"] += 1
++            d["weight"] += w
++            d["last_ts"] = max(d["last_ts"], ts)
++            if self.now // 3600 - hour < HOURS_KEPT:
++                d["hours"][str(hour)] = d["hours"].get(str(hour), 0) + 1
++        for a, b in combinations(sorted(nodes), 2):
++            e = self.edges.setdefault((a, b), {"count": 0, "weight": 0.0, "last_ts": 0})
++            e["count"] += 1
++            e["weight"] += w
++            e["last_ts"] = max(e["last_ts"], ts)
++
++    # -- consultas --------------------------------------------------------------------------------------------
++    def neighbors(self, node, limit=10, type=None):
++        """[(vecino, {count, weight, last_ts})] ordenados por peso. `type`: token / cashtag / keyword / source."""
++        n = node_id(node)
++        out = []
++        for (a, b), e in self.edges.items():
++            if n in (a, b):
++                other = b if a == n else a
++                if type is None or TYPES[other[0]] == type:
++                    out.append((other, e))
++        out.sort(key=lambda x: (-x[1]["weight"], -x[1]["count"], x[0]))
++        return out[:limit] if limit else out
++
++    def co_occurrence(self, a, b):
++        x, y = sorted((node_id(a), node_id(b)))
++        return dict(self.edges.get((x, y)) or {"count": 0, "weight": 0.0, "last_ts": 0})
++
++    def top_keywords(self, window_h=24, limit=10):
++        """[(keyword, menciones en las últimas `window_h` horas)], de más a menos (máx. 48 h)."""
++        cur = self.now // 3600
++        out = []
++        for n, d in self.nodes.items():
++            if d["type"] != "keyword":
++                continue
++            c = sum(v for h, v in d["hours"].items() if cur - int(h) < window_h)
++            if c:
++                out.append((n[2:], c))
++        out.sort(key=lambda x: (-x[1], x[0]))
++        return out[:limit] if limit else out
++
++    def related(self, token, limit=10):
++        """Tokens a dos saltos vía keywords o cashtags compartidos, con peso Σ w(token–nexo) · w(nexo–otro)."""
++        t = node_id(token)
++        scores = {}
++        for hub, e1 in self.neighbors(t, limit=0):
++            if hub[0] not in ("k", "c"):
++                continue
++            for other, e2 in self.neighbors(hub, limit=0, type="token"):
++                if other != t:
++                    scores[other] = scores.get(other, 0.0) + e1["weight"] * e2["weight"]
++        return sorted(scores.items(), key=lambda x: (-x[1], x[0]))[:limit]
++
++    # -- serialización ----------------------------------------------------------------------------------------
++    def to_json(self):
++        return {"version": VERSION, "generated_at": self.now, "tau_h": self.tau_h,
++                "counts": {t: sum(1 for d in self.nodes.values() if d["type"] == t) for t in TYPES.values()},
++                "nodes": {n: {**d, "weight": round(d["weight"], 6)} for n, d in sorted(self.nodes.items())},
++                "edges": [{"a": a, "b": b, **{**e, "weight": round(e["weight"], 6)}}
++                          for (a, b), e in sorted(self.edges.items())]}
++
++    @classmethod
++    def from_json(cls, doc):
++        g = cls(doc.get("generated_at"), doc.get("tau_h") or TAU_H)
++        g.nodes = {n: dict(d) for n, d in (doc.get("nodes") or {}).items()}
++        g.edges = {(e["a"], e["b"]): {k: e[k] for k in ("count", "weight", "last_ts")} for e in doc.get("edges") or []}
++        return g
++
++
++def graph_path(root):
++    return Path(root) / "02_Analisis" / "sources" / "_graph.json"
++
++
++def write_graph(records, now, root):
++    """Construye y escribe _graph.json. Devuelve el grafo."""
++    g = KnowledgeGraph.build(records, now)
++    path = graph_path(root)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    tmp = Path(str(path) + ".tmp")
++    tmp.write_text(json.dumps(g.to_json(), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
++    tmp.replace(path)
++    return g
++
++
++def load_graph(root):
++    try:
++        return KnowledgeGraph.from_json(json.loads(graph_path(root).read_text(encoding="utf-8")))
++    except (OSError, ValueError, KeyError):
++        return None
+diff --git a/04_Config/scripts/lib_normalize.py b/04_Config/scripts/lib_normalize.py
+new file mode 100644
+index 0000000..b1e0f10
+--- /dev/null
++++ b/04_Config/scripts/lib_normalize.py
+@@ -0,0 +1,213 @@
++#!/usr/bin/env python3
++"""
++lib_normalize.py — normalización semántica (patrón #19) de los ítems src-1 de los bots de fuentes (doc 34).
++
++Una sola forma canónica para cada cosa que comparan los bots, el almacén, el grafo y los scorers:
++  dirección   base58 (Solana) tal cual, validada · EVM 0x en minúsculas · lo demás no es dirección
++  cashtag     MAYÚSCULAS sin '$' (1 letra + hasta 14 alfanuméricos)
++  keyword     minúsculas, espacios colapsados, sinónimos al término canónico (ALIASES) + grupo a–i
++  timestamp   epoch UTC entero; acepta segundos, milisegundos, ISO 8601, RFC 822 y 'YYYY-mm-dd_HHMMSS'
++  url         esquema y host en minúsculas, sin fragmento ni parámetros de rastreo (utm_*, ref, fbclid…)
++  hash        hex en minúsculas (12–64 caracteres)
++  nulos       None, '', 'null', 'none', 'n/a', 'nan' -> None
++
++Se aplica al escribir (lib_sources_store.make_record) y al fusionar (lib_sources_store.collect): cada dueño
++normaliza su archivo, nadie reescribe el de otro. `--check` mide cuánto cambiaría sobre los JSONL de sources/.
++Solo biblioteca estándar.
++
++Uso: python 04_Config/scripts/lib_normalize.py --check
++"""
++import json
++import re
++import sys
++from datetime import datetime, timezone
++from email.utils import parsedate_to_datetime
++from pathlib import Path
++from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
++
++VERSION = "norm-0.1"
++NULLS = {"", "null", "none", "n/a", "nan", "undefined", "-"}
++BASE58 = re.compile(r"[1-9A-HJ-NP-Za-km-z]{32,44}")
++EVM = re.compile(r"0x[0-9a-fA-F]{40}")
++CASHTAG = re.compile(r"[A-Z][A-Z0-9]{0,14}")
++HEX = re.compile(r"[0-9a-f]{12,64}")
++TS_MIN, TS_MAX = 946684800, 4102444800          # 2000-01-01 .. 2100-01-01: fuera de eso no es una fecha válida
++TRACKING = re.compile(r"^(utm_.*|ref|ref_src|fbclid|gclid|mc_cid|mc_eid|igshid)$", re.IGNORECASE)
++# Sinónimos -> término canónico. Las claves y los valores salen de 04_Config/sources/keywords.yaml.
++ALIASES = {"meme coin": "memecoin", "meme coins": "memecoin", "memecoins": "memecoin", "pumpfun": "pump.fun",
++           "pump fun": "pump.fun", "synthetics": "synthetic", "real world assets": "rwa",
++           "real-world assets": "rwa", "tokenized": "tokenization", "listed": "listing", "l2": "layer 2",
++           "layer-2": "layer 2", "layer2": "layer 2", "layer-1": "layer 1", "layer1": "layer 1", "l1": "layer 1",
++           "perpetuals": "perps", "presales": "presale", "airdrops": "airdrop", "daos": "dao"}
++
++
++def is_null(value):
++    return value is None or (isinstance(value, str) and value.strip().lower() in NULLS)
++
++
++def address(value):
++    """Dirección canónica o None: base58 exacto (32–44, sin 0/O/I/l) o EVM en minúsculas."""
++    if is_null(value):
++        return None
++    s = str(value).strip()
++    if EVM.fullmatch(s):
++        return s.lower()
++    if BASE58.fullmatch(s):
++        return s
++    return None
++
++
++def cashtag(value):
++    """'$wif' / 'wif' / 'WIF' -> 'WIF'. None si no es un cashtag válido."""
++    if is_null(value):
++        return None
++    s = str(value).strip().lstrip("$").upper()
++    return s if CASHTAG.fullmatch(s) else None
++
++
++def keyword(value):
++    """Minúsculas, espacios colapsados, puntuación de los bordes fuera y sinónimo al término canónico."""
++    if is_null(value):
++        return None
++    s = " ".join(str(value).lower().split()).strip(" .,;:!?\"'()[]{}")
++    if not s:
++        return None
++    return ALIASES.get(s, s)
++
++
++def load_groups(root=None):
++    """keyword canónica -> grupo ('a'..'i') desde keywords.yaml. Sin PyYAML o sin archivo: {}."""
++    path = Path(root or Path(__file__).resolve().parents[2]) / "04_Config" / "sources" / "keywords.yaml"
++    try:
++        import yaml
++        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
++    except (OSError, ImportError, ValueError):
++        return {}
++    out = {}
++    for group, words in (doc.get("keywords") or {}).items():
++        for w in words or []:
++            k = keyword(w)
++            if k:
++                out.setdefault(k, str(group)[:1])
++    return out
++
++
++def keyword_group(word, groups):
++    return groups.get(keyword(word) or "")
++
++
++def timestamp(value):
++    """Epoch UTC entero o None. Números > 1e12 se toman como milisegundos."""
++    if is_null(value) or isinstance(value, bool):
++        return None
++    if isinstance(value, (int, float)):
++        t = value / 1000 if value > 1e12 else value
++    else:
++        s = str(value).strip()
++        if re.fullmatch(r"\d+(\.\d+)?", s):
++            return timestamp(float(s))
++        dt = None
++        for parse in (lambda x: datetime.strptime(x, "%Y-%m-%d_%H%M%S"),
++                      lambda x: datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", x).replace("Z", "+00:00")),
++                      parsedate_to_datetime):
++            try:
++                dt = parse(s)
++                break
++            except (TypeError, ValueError, IndexError):
++                continue
++        if dt is None:
++            return None
++        t = (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)).timestamp()
++    t = int(t)
++    return t if TS_MIN <= t <= TS_MAX else None
++
++
++def url(value):
++    """http(s) canónica: esquema y host en minúsculas, sin fragmento, sin parámetros de rastreo, sin '/' final."""
++    if is_null(value):
++        return None
++    s = str(value).strip()
++    try:
++        parts = urlsplit(s)
++    except ValueError:
++        return None
++    if parts.scheme.lower() not in ("http", "https") or not parts.netloc:
++        return None
++    query = urlencode([(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if not TRACKING.match(k)])
++    path = parts.path.rstrip("/") if parts.path not in ("", "/") else ""
++    return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, query, ""))
++
++
++def hash_hex(value):
++    if is_null(value):
++        return None
++    s = str(value).strip().lower()
++    return s if HEX.fullmatch(s) else None
++
++
++def _unique(values, fn):
++    out = []
++    for v in values or []:
++        n = fn(v)
++        if n and n not in out:
++            out.append(n)
++    return sorted(out)
++
++
++def record(r):
++    """Copia normalizada de un ítem src-1 (las claves que no conoce quedan igual)."""
++    out = dict(r)
++    out["a"] = _unique(r.get("a"), address)
++    out["c"] = _unique(r.get("c"), cashtag)
++    out["k"] = _unique(r.get("k"), keyword)
++    out["ts"] = timestamp(r.get("ts"))
++    out["seen"] = timestamp(r.get("seen"))
++    out["url"] = url(r.get("url"))
++    out["h"] = hash_hex(r.get("h"))
++    out["au"] = hash_hex(r.get("au"))
++    for key in ("id", "title", "src", "bot", "kind"):
++        if key in out:
++            out[key] = None if is_null(out[key]) else " ".join(str(out[key]).split())
++    return out
++
++
++def check_file(path):
++    """Cuántos ítems del JSONL cambiarían al normalizar (no escribe)."""
++    total = changed = broken = 0
++    try:
++        lines = Path(path).read_text(encoding="utf-8").splitlines()
++    except OSError:
++        return {"total": 0, "changed": 0, "broken": 0}
++    for line in lines:
++        try:
++            r = json.loads(line)
++        except ValueError:
++            broken += 1
++            continue
++        if not isinstance(r, dict):
++            broken += 1
++            continue
++        total += 1
++        changed += record(r) != r
++    return {"total": total, "changed": changed, "broken": broken}
++
++
++def main(argv=None):
++    import argparse
++    ap = argparse.ArgumentParser(description="Normalización semántica de los JSONL de sources/ (solo mide).")
++    ap.add_argument("--check", action="store_true", help="cuenta ítems que cambiarían (por defecto)")
++    ap.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
++    args = ap.parse_args(argv)
++    base = Path(args.root) / "02_Analisis" / "sources"
++    tot = {"total": 0, "changed": 0, "broken": 0}
++    for path in sorted(base.glob("*/*.jsonl")) + sorted(base.glob("_merged.jsonl")):
++        st = check_file(path)
++        for k in tot:
++            tot[k] += st[k]
++        print(f"{path.relative_to(base)}: {st['total']} ítems · cambiarían {st['changed']} · rotos {st['broken']}")
++    print(f"TOTAL {tot['total']} ítems · cambiarían {tot['changed']} · rotos {tot['broken']} ({VERSION})")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/04_Config/scripts/lib_sources_store.py b/04_Config/scripts/lib_sources_store.py
+index 0ce0902..babf745 100644
+--- a/04_Config/scripts/lib_sources_store.py
++++ b/04_Config/scripts/lib_sources_store.py
+@@ -21,6 +21,9 @@ from pathlib import Path
+ 
+ SCRIPTS = Path(__file__).resolve().parent
+ ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
++import sys  # noqa: E402
++sys.path.insert(0, str(SCRIPTS))
++import lib_normalize as norm  # noqa: E402  forma canónica de direcciones, cashtags, keywords, fechas y URLs (#19)
+ 
+ SCHEMA = "src-1"
+ TITLE_MAX = 160
+@@ -87,10 +90,10 @@ def make_record(bot, src, kind, text, *, id=None, url=None, ts=None, seen=None,
+         raise ValueError(f"kind desconocido: {kind}")
+     a, c, k = extract(" ".join(x for x in (title, text) if x), keywords)
+     t = " ".join(str(title).split())[:TITLE_MAX] if title and kind not in ("message", "tweet") else None
+-    return {"v": SCHEMA, "bot": bot, "src": src, "kind": kind, "id": id or url, "url": url,
+-            "ts": int(ts) if isinstance(ts, (int, float)) else None,
+-            "seen": int(seen if seen is not None else time.time()), "title": t, "a": a, "c": c, "k": k,
+-            "h": text_hash(" ".join(x for x in (title, text) if x)), "au": author_hash(author), "m": meta or {}}
++    return norm.record({"v": SCHEMA, "bot": bot, "src": src, "kind": kind, "id": id or url, "url": url,
++                        "ts": ts, "seen": seen if seen is not None else time.time(), "title": t, "a": a, "c": c,
++                        "k": k, "h": text_hash(" ".join(x for x in (title, text) if x)), "au": author_hash(author),
++                        "m": meta or {}})
+ 
+ 
+ def day_path(bot, when=None, instance=None, root=None):
+@@ -134,8 +137,9 @@ def dedup_key(r):
+     return (r.get("src"), r.get("ts"), r.get("h"))
+ 
+ 
+-def collect(now=None, hours=MERGE_HOURS, root=None):
+-    """Todos los diarios de los bots dentro de la ventana, dedup global por (src, ts, h), más reciente primero."""
++def collect(now=None, hours=MERGE_HOURS, root=None, stats=None):
++    """Todos los diarios de los bots dentro de la ventana, dedup global por (src, ts, h), más reciente primero.
++    `stats` (dict opcional): 'read' = ítems src-1 leídos antes de ventana y dedup (auditoría del orquestador)."""
+     now = now if now is not None else time.time()
+     cutoff = now - hours * 3600
+     days = {datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
+@@ -146,7 +150,12 @@ def collect(now=None, hours=MERGE_HOURS, root=None):
+         if path.name[:10] not in days:
+             continue
+         for r in read_jsonl(path):
+-            if r.get("v") != SCHEMA or _when(r) < cutoff or _when(r) > now + 600:
++            if r.get("v") != SCHEMA:
++                continue
++            if stats is not None:
++                stats["read"] = stats.get("read", 0) + 1
++            r = norm.record(r)            # diarios viejos o de otro bot: misma forma canónica al fusionar
++            if _when(r) < cutoff or _when(r) > now + 600:
+                 continue
+             key = dedup_key(r)
+             if key in seen:
+@@ -167,10 +176,10 @@ def build_index(records):
+     return idx
+ 
+ 
+-def merge(now=None, root=None, hours=MERGE_HOURS):
++def merge(now=None, root=None, hours=MERGE_HOURS, stats=None):
+     """Escribe _merged.jsonl y _index.json (dueño: bot_orchestrator). Devuelve la cantidad de ítems."""
+     now = now if now is not None else time.time()
+-    records = collect(now, hours, root)
++    records = collect(now, hours, root, stats)
+     base = sources_dir(root)
+     base.mkdir(parents=True, exist_ok=True)
+     tmp = base / "_merged.jsonl.tmp"
+@@ -203,9 +212,9 @@ def matches(r, keyword):
+     if ADDRESS_RE.fullmatch(q):
+         return (q.lower() if q.startswith("0x") else q) in (r.get("a") or [])
+     if q.startswith("$"):
+-        return q[1:].upper() in (r.get("c") or [])
+-    low = q.lower()
+-    return (q.upper() in (r.get("c") or []) or low in (r.get("k") or [])
++        return norm.cashtag(q) in (r.get("c") or [])
++    low, canon = q.lower(), norm.keyword(q)
++    return (q.upper() in (r.get("c") or []) or low in (r.get("k") or []) or canon in (r.get("k") or [])
+             or bool(r.get("title") and _kw_pattern(low).search(r["title"])))
+ 
+ 
+diff --git a/04_Config/scripts/test_bot_self_repair.py b/04_Config/scripts/test_bot_self_repair.py
+new file mode 100644
+index 0000000..5a7f117
+--- /dev/null
++++ b/04_Config/scripts/test_bot_self_repair.py
+@@ -0,0 +1,179 @@
++#!/usr/bin/env python3
++"""Tests de bot_self_repair (patrón #20, doc 34 §11). unittest, sin red: API de GitHub simulada.
++
++Uso: python 04_Config/scripts/test_bot_self_repair.py
++"""
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import bot_rss_news as rss  # noqa: E402
++import bot_self_repair as sr  # noqa: E402
++
++T0 = 1791000000
++BOTS = {"rss": {"workflow": "sources_rss.yml", "every_min": 20, "stale_min": 60, "enabled": True},
++        "telegram": {"workflow": "sources_telegram_a.yml", "enabled": False}}
++INSTALADOS = "# Instalados\n\n<!-- AUTO:sources -->\nbloque del orquestador\n<!-- /AUTO:sources -->\n"
++
++
++class FakeGH:
++    def __init__(self, runs=None, enabled=True):
++        self.enabled, self._runs = enabled, runs or {}
++        self.reruns, self.dispatched = [], []
++
++    def workflows(self):
++        return sorted(self._runs)
++
++    def runs(self, wf):
++        return self._runs.get(wf)
++
++    def rerun_failed(self, run_id):
++        self.reruns.append(run_id)
++        return True
++
++    def dispatch(self, wf):
++        self.dispatched.append(wf)
++        return True
++
++
++def run_list(*conclusions):
++    return [{"id": 100 + i, "conclusion": c, "html_url": f"https://x/runs/{100 + i}"} for i, c in enumerate(conclusions)]
++
++
++class Base(unittest.TestCase):
++    def setUp(self):
++        self.root = Path(tempfile.mkdtemp(prefix="repair_"))
++        self.addCleanup(shutil.rmtree, self.root, True)
++        self.src = self.root / "02_Analisis" / "sources"
++        (self.src / "rss").mkdir(parents=True)
++        (self.root / "_servicios_open_source").mkdir()
++        self.inst = self.root / "_servicios_open_source" / "_INSTALADOS.md"
++        self.inst.write_text(INSTALADOS, encoding="utf-8")
++
++    def state(self, feeds, seen=None):
++        (self.src / "rss" / "_state.json").write_text(
++            json.dumps({"last_run": T0, "feeds": feeds, "seen": seen or {}}), encoding="utf-8")
++
++    def health(self, **rss_row):
++        row = {"status": "ok", "last_run": T0, "last_output": 5, "sources_ok": 2, "sources_total": 2, **rss_row}
++        (self.src / "_health.json").write_text(json.dumps({"bots": {"rss": row}}), encoding="utf-8")
++
++    def repair(self, now, gh=None):
++        return sr.Repair(self.root, BOTS, gh or FakeGH(enabled=False), now=now).run()
++
++    def repair_state(self):
++        return json.loads((self.src / "_repair_state.json").read_text(encoding="utf-8"))
++
++
++class FuenteCaida(Base):
++    def test_3_fallas_apaga_6_h_y_el_bot_la_salta(self):
++        self.state({"ok": {"status": 200, "fails": 0}, "muerta": {"status": 404, "fails": 3}})
++        self.health()
++        out = self.repair(T0)
++        self.assertEqual([a["action"] for a in out["actions"]], ["auto_off"])
++        off = self.repair_state()["auto_off"]["rss"]["muerta"]
++        self.assertEqual(off["until"], T0 + sr.AUTO_OFF_S)
++        fetched = []
++        config = {"feeds": [{"name": "ok", "url": "u1"}, {"name": "muerta", "url": "u2"}]}
++        _, st = rss.run(config, {"feeds": {"muerta": {"status": 404, "fails": 3}}}, now=T0 + 60, sleep=lambda s: None,
++                        fetch=lambda u: fetched.append(u) or (200, "<rss><channel></channel></rss>"),
++                        auto_off={"muerta": off})
++        self.assertEqual(fetched, ["u1"])                                   # la caída no se consulta
++        self.assertEqual(st["feeds"]["muerta"]["auto_off_until"], off["until"])
++        _, st = rss.run(config, st, now=off["until"] + 1, sleep=lambda s: None,
++                        fetch=lambda u: (200, "<rss><channel></channel></rss>"), auto_off={"muerta": off})
++        self.assertEqual(st["feeds"]["muerta"]["fails"], 0)                 # al vencer reintenta (y se recuperó)
++
++    def test_24_h_caida_escala_y_al_recuperarse_se_borra(self):
++        self.health()
++        self.state({"muerta": {"status": 404, "fails": 3}})
++        self.repair(T0)
++        self.state({"muerta": {"status": 404, "fails": 9}})
++        self.health(last_run=T0 + sr.SOURCE_ESCALATE_S)                    # el bot sigue corriendo y trayendo ítems
++        out = self.repair(T0 + sr.SOURCE_ESCALATE_S + 60)
++        self.assertIn("source:rss:muerta", out["escalations"])
++        text = self.inst.read_text(encoding="utf-8")
++        self.assertIn("[P]", text)
++        self.assertIn("muerta: 404 x9", text)
++        self.assertIn("bloque del orquestador", text)                      # AUTO:sources intacto
++        self.state({"muerta": {"status": 200, "fails": 0}})
++        self.health(last_run=T0 + sr.SOURCE_ESCALATE_S + 3000)
++        out = self.repair(T0 + sr.SOURCE_ESCALATE_S + 3600)
++        self.assertEqual(out["escalations"], {})
++        self.assertNotIn("rss", self.repair_state()["auto_off"])
++        self.assertIn("Sin problemas abiertos", self.inst.read_text(encoding="utf-8"))
++        self.assertIn("resolved", [a["action"] for a in out["actions"]])
++
++
++class Workflows(Base):
++    def test_rerun_una_vez_y_escala_sin_relanzar_produccion(self):
++        self.health()
++        gh = FakeGH({"sources_rss.yml": run_list("failure", "failure", "success"),
++                     "pipeline_t0.yml": run_list("failure", "failure", "failure", "failure", "success")})
++        out = self.repair(T0, gh)
++        self.assertEqual(gh.reruns, [100])                                  # solo el workflow de un bot de fuentes
++        self.assertIn("workflow:pipeline_t0.yml", out["escalations"])
++        self.assertNotIn("workflow:sources_rss.yml", out["escalations"])   # 2 fallas: relanza, todavía no escala
++        self.repair(T0 + 1800, gh)
++        self.assertEqual(gh.reruns, [100])                                  # el mismo run no se relanza dos veces
++
++    def test_atrasado_un_dispatch_y_despues_escala(self):
++        self.health(status="atrasado", last_run=T0 - 7200)
++        gh = FakeGH({})
++        self.repair(T0, gh)
++        self.assertEqual(gh.dispatched, ["sources_rss.yml"])
++        out = self.repair(T0 + 3600, gh)
++        self.assertEqual(gh.dispatched, ["sources_rss.yml"])                # no reintenta en loop
++        self.assertIn("late:rss", out["escalations"])
++
++
++class Salidas(Base):
++    def test_vacio_mas_de_24_h_y_vacio_con_fuentes_ok_escalan(self):
++        self.health(last_output=5)
++        self.repair(T0)
++        self.health(last_output=0, status="vacío", empty_runs=3, sources_ok=2, sources_total=2, last_run=T0 + 3000)
++        out = self.repair(T0 + 3600)
++        self.assertIn("parser:rss", out["escalations"])                    # vacío con fuentes OK: de inmediato
++        self.assertNotIn("empty:rss", out["escalations"])
++        out = self.repair(T0 + sr.EMPTY_ESCALATE_S + 60)
++        self.assertIn("empty:rss", out["escalations"])
++
++    def test_estado_corrupto_y_seen_inflado(self):
++        self.health()
++        (self.src / "rss" / "_state.json").write_text("{roto", encoding="utf-8")
++        out = self.repair(T0)
++        self.assertEqual([a["action"] for a in out["actions"]], ["reset_state"])
++        self.assertFalse((self.src / "rss" / "_state.json").exists())
++        self.assertTrue((self.src / "rss" / f"_state.json.corrupt-{T0}").exists())
++        seen = {f"k{i}": T0 - (10 if i % 2 else 400_000) for i in range(sr.SEEN_MAX + 10)}
++        self.state({"ok": {"status": 200, "fails": 0}}, seen)
++        out = self.repair(T0 + 60)
++        self.assertEqual([a["action"] for a in out["actions"]], ["trim_seen"])
++        st = json.loads((self.src / "rss" / "_state.json").read_text(encoding="utf-8"))
++        self.assertEqual(len(st["seen"]), (sr.SEEN_MAX + 10) // 2)          # quedan solo las de la ventana de 72 h
++
++    def test_sin_token_detecta_pero_no_actua(self):
++        self.health(status="atrasado", last_run=T0 - 7200)
++        out = self.repair(T0, FakeGH({"sources_rss.yml": run_list("failure", "failure")}, enabled=False))
++        self.assertEqual([a["action"] for a in out["actions"]], ["sin_token"])
++        log = (self.src / "_repair_log.jsonl").read_text(encoding="utf-8").splitlines()
++        self.assertEqual(json.loads(log[0])["action"], "sin_token")
++
++
++class RssConfig(unittest.TestCase):
++    def test_feed_sacado_del_yaml_no_queda_en_la_salud(self):
++        config = {"feeds": [{"name": "ok", "url": "u1"}]}
++        _, st = rss.run(config, {"feeds": {"messari": {"status": 404, "fails": 2}}}, now=T0, sleep=lambda s: None,
++                        fetch=lambda u: (200, "<rss><channel></channel></rss>"))
++        self.assertEqual(sorted(st["feeds"]), ["ok"])
++        feeds = rss.load_config(SCRIPTS.parents[0] / "sources" / "rss.yaml")["feeds"]
++        self.assertNotIn("messari", [f["name"] for f in feeds])           # D-041: Messari eliminado (404)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_bot_telegram_public.py b/04_Config/scripts/test_bot_telegram_public.py
+new file mode 100644
+index 0000000..0191347
+--- /dev/null
++++ b/04_Config/scripts/test_bot_telegram_public.py
+@@ -0,0 +1,142 @@
++#!/usr/bin/env python3
++"""Tests de bot_telegram_public (D-041 T5). unittest, sin red: HTML sintético de t.me/s/<canal>.
++
++Uso: python 04_Config/scripts/test_bot_telegram_public.py
++"""
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import bot_orchestrator as orch  # noqa: E402
++import bot_telegram_public as tg  # noqa: E402
++import lib_sources_store as store  # noqa: E402
++
++NOW = 1791000000
++MINT = "6BfTBNYJcZW9AnxRQ7aAx4Luf2K4BpmWpR7FWTPZpump"
++
++
++def message(channel, num, text, iso="2026-10-03T03:20:00+00:00", views="1.2K", link=None):
++    a = f'<a href="{link}">ver</a>' if link else ""
++    return (f'<div class="tgme_widget_message_wrap"><div class="tgme_widget_message js-widget_message" '
++            f'data-post="{channel}/{num}"><div class="tgme_widget_message_text js-message_text">{text}<br/>{a}</div>'
++            f'<div class="tgme_widget_message_footer"><span class="tgme_widget_message_views">{views}</span>'
++            f'<a class="tgme_widget_message_date"><time datetime="{iso}"></time></a></div></div></div>')
++
++
++def page(channel, *nums):
++    return "<html><body>" + "".join(message(channel, n, f"post {n} sobre $WIF memecoin") for n in nums) + "</body></html>"
++
++
++CONFIG = {"channels": [{"name": "canal_uno"}, {"name": "sin_preview"}], "pause_s": 0, "recheck_hours": 24,
++          "loop_minutes": 40, "poll_minutes": 4}
++
++
++class Fetch:
++    def __init__(self, pages):
++        self.pages, self.calls = pages, []
++
++    def __call__(self, channel):
++        self.calls.append(channel)
++        if channel == "sin_preview":                          # Telegram redirige a t.me/<canal>
++            return 200, "<html>canal</html>", f"https://t.me/{channel}"
++        return 200, self.pages[channel], f"https://t.me/s/{channel}"
++
++
++class Parser(unittest.TestCase):
++    def test_parser_bs4_texto_enlaces_fecha_y_vistas(self):
++        html = message("canal_uno", 41, "Nuevo token <b>VSOF</b>", views="1.2K",
++                       link=f"https://pump.fun/coin/{MINT}")
++        (m,) = tg.parse_preview(html)
++        self.assertEqual((m["post"], m["num"], m["views"]), ("canal_uno/41", 41, 1200))
++        self.assertEqual(m["ts"], 1790997600)                          # 2026-10-03T03:20:00Z
++        self.assertIn("Nuevo token VSOF", m["text"])
++        self.assertIn(MINT, m["text"])                                  # el contrato llega por el enlace
++        r = tg.poll({"channels": [{"name": "canal_uno"}]}, {}, NOW, fetch=lambda c: (200, html, f"https://t.me/s/{c}"),
++                    sleep=lambda s: None)[0][0]
++        self.assertEqual((r["kind"], r["a"], r["title"], r["m"]), ("message", [MINT], None, {"views": 1200}))
++        self.assertEqual(tg.parse_views("15M"), 15_000_000)
++
++
++class Poll(unittest.TestCase):
++    def test_sin_vista_previa_se_apaga_y_se_reintenta_a_las_24_h(self):
++        f = Fetch({"canal_uno": page("canal_uno", 1)})
++        _, st = tg.poll(CONFIG, {}, NOW, fetch=f, sleep=lambda s: None)
++        self.assertEqual((st["sources"]["sin_preview"]["preview"], st["sources"]["sin_preview"]["next_check"]),
++                         (False, NOW + 24 * 3600))
++        f.calls.clear()
++        tg.poll(CONFIG, st, NOW + 600, fetch=f, sleep=lambda s: None)
++        self.assertEqual(f.calls, ["canal_uno"])                        # no se consulta hasta el recheck
++        f.calls.clear()
++        tg.poll(CONFIG, st, NOW + 24 * 3600 + 1, fetch=f, sleep=lambda s: None)
++        self.assertEqual(f.calls, ["canal_uno", "sin_preview"])
++
++    def test_cursor_solo_lo_nuevo_y_auto_off_del_reparador(self):
++        f = Fetch({"canal_uno": page("canal_uno", 10, 11)})
++        recs, st = tg.poll(CONFIG, {}, NOW, fetch=f, sleep=lambda s: None)
++        self.assertEqual(len(recs), 2)
++        self.assertEqual(st["sources"]["canal_uno"]["cursor"], 11)
++        f.pages["canal_uno"] = page("canal_uno", 10, 11, 12)
++        recs, st = tg.poll(CONFIG, st, NOW + 240, fetch=f, sleep=lambda s: None)
++        self.assertEqual([r["id"] for r in recs], ["canal_uno/12"])
++        f.calls.clear()
++        _, st = tg.poll(CONFIG, st, NOW + 480, fetch=f, sleep=lambda s: None,
++                        auto_off={"canal_uno": {"until": NOW + 9999}})
++        self.assertNotIn("canal_uno", f.calls)
++        self.assertEqual(st["sources"]["canal_uno"]["auto_off_until"], NOW + 9999)
++
++
++class Instancias(unittest.TestCase):
++    def setUp(self):
++        self.root = Path(tempfile.mkdtemp(prefix="tg_"))
++        self.addCleanup(shutil.rmtree, self.root, True)
++
++    def test_dos_instancias_no_duplican_en_el_merge_y_el_orquestador_las_combina(self):
++        f = Fetch({"canal_uno": page("canal_uno", 1, 2, 3)})
++        for inst, t in (("a", NOW), ("b", NOW + 60)):
++            tg.run_loop(CONFIG, inst, root=self.root, loop_minutes=0, fetch=f, clock=lambda t=t: t,
++                        sleep=lambda s: None)
++        base = store.sources_dir(self.root) / "telegram"
++        self.assertEqual(sorted(p.name for p in base.glob("*.jsonl") if not p.name.startswith("_")),
++                         ["2026-10-03_a.jsonl", "2026-10-03_b.jsonl"])
++        merged = store.collect(NOW + 120, root=self.root)
++        self.assertEqual(len(merged), 3)                               # 6 escritos, 3 únicos
++        state = orch.read_bot_state(store.sources_dir(self.root), "telegram")
++        self.assertEqual((state["last_run"], state["instances"]), (NOW + 60, 2))
++        self.assertEqual(state["sources"]["canal_uno"]["checked_at"], NOW + 60)
++
++    def test_loop_de_40_min_commitea_cada_3_pasadas_y_audita(self):
++        f = Fetch({"canal_uno": page("canal_uno", 1)})
++        t = {"now": float(NOW)}
++
++        def sleep(s):
++            t["now"] += s
++        commits = []
++        totals = tg.run_loop(CONFIG, "a", root=self.root, fetch=f, clock=lambda: t["now"], sleep=sleep,
++                             commit=lambda paths, msg: commits.append(msg) or True)
++        self.assertEqual(totals["polls"], 10)                           # 40 min / 4 min
++        self.assertEqual(len(commits), 4)                               # pasadas 3, 6, 9 y la última
++        self.assertEqual(totals["items_new"], 1)
++        base = store.sources_dir(self.root) / "telegram"
++        (line,) = [json.loads(x) for x in (base / "_audit_a.jsonl").read_text(encoding="utf-8").splitlines()]
++        self.assertEqual((line["bot"], line["items_new"], line["sources"]), ("telegram_a", 1, 11))
++        self.assertTrue((base / "_metrics_a.json").exists())
++        self.assertTrue((base / "_state_a.json").exists())
++
++    def test_config_real(self):
++        cfg = tg.load_config(tg.config_path(SCRIPTS.parents[1]))
++        names = [c["name"] for c in cfg["channels"]]
++        self.assertEqual(len(names), 15)
++        self.assertNotIn("memecoins", names)                            # alias de 'crypto'
++        with self.assertRaises(ValueError):
++            bad = self.root / "bad.yaml"
++            bad.write_text("channels:\n  - {name: uno_dos}\n  - {name: UNO_DOS}\n", encoding="utf-8")
++            tg.load_config(bad)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_lib_audit.py b/04_Config/scripts/test_lib_audit.py
+new file mode 100644
+index 0000000..a8a65c1
+--- /dev/null
++++ b/04_Config/scripts/test_lib_audit.py
+@@ -0,0 +1,91 @@
++#!/usr/bin/env python3
++"""Tests de la auditoría por bot (patrón #15): lib_audit, bot_rss_news y bot_orchestrator. unittest, sin red.
++
++Uso: python 04_Config/scripts/test_lib_audit.py
++"""
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import bot_orchestrator as orch  # noqa: E402
++import bot_rss_news as rss  # noqa: E402
++import lib_audit as audit  # noqa: E402
++import lib_sources_store as store  # noqa: E402
++
++NOW = 1791000000
++MINT = "6BfTBNYJcZW9AnxRQ7aAx4Luf2K4BpmWpR7FWTPZpump"
++
++
++class Base(unittest.TestCase):
++    def setUp(self):
++        self.root = Path(tempfile.mkdtemp(prefix="audit_"))
++        self.addCleanup(shutil.rmtree, self.root, True)
++
++    def lines(self, folder):
++        return [json.loads(x) for x in (folder / "_audit.jsonl").read_text(encoding="utf-8").splitlines()]
++
++
++class Rss(Base):
++    def test_linea_por_corrida_y_metricas(self):
++        state = {"last_run": NOW, "feeds": {
++            "ok": {"status": 200, "items": 5, "new": 3, "checked_at": NOW},
++            "caido": {"status": 404, "items": 0, "new": 0, "checked_at": NOW, "fails": 2},
++            "apagado": {"status": 404, "items": 0, "checked_at": NOW - 3600, "auto_off_until": NOW + 100}}}
++        folder = self.root / "rss"
++        m = rss.write_audit(state, 3, 12.345, folder=folder)
++        (line,) = self.lines(folder)
++        self.assertEqual({k: line[k] for k in ("ts", "bot", "items_in", "items_new", "items_discarded", "errors",
++                                               "sources", "duration_s", "status")},
++                         {"ts": NOW, "bot": "rss", "items_in": 5, "items_new": 3, "items_discarded": 2, "errors": 1,
++                          "sources": 2, "duration_s": 12.35, "status": "partial"})   # el apagado no se consultó
++        self.assertTrue(line["timestamp"].startswith("2026-10-0"))
++        self.assertEqual((m["runs"], m["dedup_rate"], m["error_rate"], m["sources_healthy"], m["sources_total"]),
++                         (1, 0.4, 0.5, 1, 3))
++        self.assertEqual(json.loads((folder / "_metrics.json").read_text(encoding="utf-8")), m)
++
++
++class Orchestrator(Base):
++    def test_auditoria_del_orquestador(self):
++        (self.root / "04_Config" / "sources").mkdir(parents=True)
++        (self.root / "04_Config" / "sources" / "_bots.yaml").write_text(
++            "bots:\n  rss: {workflow: x.yml, stale_min: 60}\n  web: {workflow: w.yml, enabled: false}\n",
++            encoding="utf-8")
++        rec = store.make_record("rss", "s", "news", f"memecoin {MINT}", ts=NOW - 600, seen=NOW - 500)
++        store.append_records("rss", [rec, rec], NOW - 500, root=self.root)       # duplicado: se descarta al fusionar
++        base = store.sources_dir(self.root)
++        (base / "rss" / "_state.json").write_text(json.dumps({"last_run": NOW - 300, "items_last_run": 2,
++                                                              "feeds": {"s": {"status": 200}}}), encoding="utf-8")
++        doc = orch.run(self.root, now=NOW)
++        (line,) = self.lines(base / "orchestrator")
++        self.assertEqual((line["bot"], line["items_in"], line["items_new"], line["items_discarded"]),
++                         ("orchestrator", 2, 1, 1))
++        self.assertEqual((line["errors"], line["sources"], line["status"]), (0, 1, "success"))   # web está en diseño
++        self.assertEqual(doc["metrics"]["runs"], 1)
++        self.assertEqual(store.collect(NOW, root=self.root)[0]["a"], [MINT])     # _audit.jsonl no entra al merge
++        orch.prune(self.root, NOW + 30 * 86400)
++        self.assertTrue((base / "orchestrator" / "_audit.jsonl").exists())        # ni lo poda el orquestador
++
++
++class Agregados(Base):
++    def test_metricas_rodantes_y_retencion(self):
++        folder = self.root / "rss"
++        old = audit.audit_line("rss", NOW - 100 * 86400, 10, 10, 0, 2, 1.0)        # fuera de la retención (90 d)
++        mid = audit.audit_line("rss", NOW - 40 * 86400, 10, 10, 0, 2, 1.0)         # retenida, fuera de métricas (30 d)
++        for line in (old, mid):
++            audit.record_run(folder, line, 2, 2)
++        audit.record_run(folder, audit.audit_line("rss", NOW - 3600, 10, 6, 1, 2, 3.0), 2, 2)   # partial
++        m = audit.record_run(folder, audit.audit_line("rss", NOW, 0, 0, 2, 2, 5.0), 0, 2)
++        lines = self.lines(folder)
++        self.assertEqual([x["ts"] for x in lines], [NOW - 40 * 86400, NOW - 3600, NOW])
++        self.assertEqual((m["runs"], m["items_total"], m["availability"], m["avg_duration_s"]), (2, 6, 0.5, 4.0))
++        self.assertEqual((m["dedup_rate"], m["error_rate"]), (0.4, 0.75))
++        self.assertEqual(audit.status_of(0, 0), "failure")
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_lib_knowledge_graph.py b/04_Config/scripts/test_lib_knowledge_graph.py
+new file mode 100644
+index 0000000..07e6256
+--- /dev/null
++++ b/04_Config/scripts/test_lib_knowledge_graph.py
+@@ -0,0 +1,94 @@
++#!/usr/bin/env python3
++"""Tests de lib_knowledge_graph (patrón #7). unittest, sin red, ítems src-1 sintéticos.
++
++Uso: python 04_Config/scripts/test_lib_knowledge_graph.py
++"""
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++import lib_knowledge_graph as kg  # noqa: E402
++
++NOW = 1791000000
++MINT_A = "6BfTBNYJcZW9AnxRQ7aAx4Luf2K4BpmWpR7FWTPZpump"
++MINT_B = "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump"
++EVM = "0x532f27101965dd16442e59d40670faf5ebb142e4"
++
++
++def item(src, ts, a=(), c=(), k=(), bot="rss"):
++    return {"v": "src-1", "bot": bot, "src": src, "ts": ts, "a": list(a), "c": list(c), "k": list(k)}
++
++
++RECORDS = [
++    item("gnews", NOW - 600, a=[MINT_A], c=["VSOF"], k=["memecoin", "solana"]),
++    item("gnews", NOW - 1200, a=[MINT_A], k=["memecoin"]),
++    item("ctg", NOW - 30 * 3600, a=[MINT_B], c=["WIF"], k=["memecoin"]),
++    item("ctg", NOW - 40 * 3600, a=[EVM], k=["rwa"]),
++    item("tg", NOW - 300, c=["VSOF"], k=["solana"], bot="telegram"),
++]
++
++
++class Grafo(unittest.TestCase):
++    def setUp(self):
++        self.g = kg.KnowledgeGraph.build(RECORDS, NOW)
++
++    def test_nodos_y_aristas(self):
++        self.assertEqual(self.g.nodes[f"t:{MINT_A}"]["count"], 2)
++        self.assertEqual(self.g.nodes["k:memecoin"]["count"], 3)
++        self.assertEqual(self.g.nodes["s:rss:gnews"]["type"], "source")
++        self.assertEqual(self.g.co_occurrence(MINT_A, "memecoin")["count"], 2)
++        self.assertEqual(self.g.co_occurrence(MINT_A, "s:rss:gnews")["count"], 2)
++        self.assertEqual(self.g.to_json()["counts"], {"token": 3, "cashtag": 2, "keyword": 3, "source": 3})
++
++    def test_peso_junta_frecuencia_y_recencia(self):
++        recent = self.g.co_occurrence(MINT_A, "memecoin")                    # 2 menciones de hace minutos
++        old = self.g.co_occurrence(MINT_B, "memecoin")                       # 1 mención de hace 30 h
++        self.assertAlmostEqual(old["weight"], 2.718281828 ** (-30 / 24), places=6)
++        self.assertGreater(recent["weight"], 1.9)
++        self.assertEqual(recent["last_ts"], NOW - 600)
++
++    def test_neighbors_ordenados_y_por_tipo(self):
++        top = self.g.neighbors("memecoin", limit=3)
++        self.assertEqual({n for n, _ in top[:2]}, {f"t:{MINT_A}", "s:rss:gnews"})   # mismos 2 ítems: empate
++        self.assertGreaterEqual(top[1][1]["weight"], top[2][1]["weight"])    # orden por peso
++        self.assertEqual(self.g.neighbors("memecoin", limit=1, type="token")[0][0], f"t:{MINT_A}")
++        tokens = [n for n, _ in self.g.neighbors("Meme Coin", limit=0, type="token")]   # forma cruda: se normaliza
++        self.assertEqual(sorted(tokens), sorted([f"t:{MINT_A}", f"t:{MINT_B}"]))
++
++    def test_co_occurrence_simetrica_y_cero(self):
++        self.assertEqual(self.g.co_occurrence("$vsof", "solana"), self.g.co_occurrence("solana", "$VSOF"))
++        self.assertEqual(self.g.co_occurrence("$vsof", "solana")["count"], 2)
++        self.assertEqual(self.g.co_occurrence(MINT_A, EVM), {"count": 0, "weight": 0.0, "last_ts": 0})
++
++    def test_top_keywords_por_ventana(self):
++        self.assertEqual(self.g.top_keywords(window_h=2), [("memecoin", 2), ("solana", 2)])
++        self.assertEqual(dict(self.g.top_keywords(window_h=48))["memecoin"], 3)
++        self.assertEqual(dict(self.g.top_keywords(window_h=48))["rwa"], 1)
++        self.assertEqual(self.g.related(MINT_A), [(f"t:{MINT_B}", self.g.related(MINT_A)[0][1])])  # vía 'memecoin'
++
++    def test_json_y_orquestador(self):
++        g2 = kg.KnowledgeGraph.from_json(json.loads(json.dumps(self.g.to_json())))
++        self.assertEqual(g2.co_occurrence(MINT_A, "memecoin")["count"], 2)
++        self.assertEqual(g2.top_keywords(2), self.g.top_keywords(2))
++        import bot_orchestrator as orch
++        import lib_sources_store as store
++        root = Path(tempfile.mkdtemp(prefix="kg_"))
++        self.addCleanup(shutil.rmtree, root, True)
++        (root / "04_Config" / "sources").mkdir(parents=True)
++        (root / "04_Config" / "sources" / "_bots.yaml").write_text("bots:\n  rss: {workflow: x.yml, stale_min: 60}\n",
++                                                                   encoding="utf-8")
++        recs = [store.make_record("rss", "gnews", "news", f"nuevo memecoin {MINT_A}", ts=NOW - 600, seen=NOW - 500)]
++        store.append_records("rss", recs, NOW - 500, root=root)
++        doc = orch.run(root, now=NOW)
++        self.assertEqual(doc["graph"]["token"], 1)
++        loaded = kg.load_graph(root)
++        self.assertEqual(loaded.co_occurrence(MINT_A, "memecoin")["count"], 1)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_lib_normalize.py b/04_Config/scripts/test_lib_normalize.py
+new file mode 100644
+index 0000000..75f8ef7
+--- /dev/null
++++ b/04_Config/scripts/test_lib_normalize.py
+@@ -0,0 +1,113 @@
++#!/usr/bin/env python3
++"""Tests de lib_normalize (normalización semántica, patrón #19). unittest, sin red.
++
++Uso: python 04_Config/scripts/test_lib_normalize.py
++"""
++import importlib.util
++import json
++import shutil
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++SCRIPTS = Path(__file__).resolve().parent
++sys.path.insert(0, str(SCRIPTS))
++spec = importlib.util.spec_from_file_location("lib_normalize_test", SCRIPTS / "lib_normalize.py")
++norm = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(norm)
++
++MINT = "6BfTBNYJcZW9AnxRQ7aAx4Luf2K4BpmWpR7FWTPZpump"
++EVM = "0x532f27101965dd16442E59d40670FaF5eBB142E4"
++
++
++class Casos(unittest.TestCase):
++    def test_1_mint_solana(self):
++        self.assertEqual(norm.address(f"  {MINT} "), MINT)                 # base58 exacto: no se cambia el caso
++        self.assertIsNone(norm.address(MINT.replace("6", "0")))            # '0' no es base58
++        self.assertIsNone(norm.address("abc"))
++
++    def test_2_evm(self):
++        self.assertEqual(norm.address(EVM), EVM.lower())
++        self.assertIsNone(norm.address(EVM[:-1]))                          # 39 hex
++
++    def test_3_cashtag(self):
++        for v in ("$wif", "wif", "WIF", " $Wif "):
++            self.assertEqual(norm.cashtag(v), "WIF")
++        self.assertIsNone(norm.cashtag("$1INCH"))                          # tiene que empezar con letra
++        self.assertIsNone(norm.cashtag("$" + "A" * 16))
++
++    def test_4_keyword_y_sinonimos(self):
++        self.assertEqual(norm.keyword("  Meme   Coin "), "memecoin")
++        self.assertEqual(norm.keyword("PumpFun"), "pump.fun")
++        self.assertEqual(norm.keyword("L2"), "layer 2")
++        self.assertEqual(norm.keyword("Solana,"), "solana")
++        groups = {"memecoin": "a", "layer 2": "f"}
++        self.assertEqual(norm.keyword_group("meme coins", groups), "a")
++
++    def test_5_timestamp(self):
++        t = 1790823600                                                     # 01/10/2026 03:00 UTC
++        for v in (t, float(t), t * 1000, str(t), "2026-10-01T03:00:00Z", "2026-10-01T03:00:00.000000123+00:00",
++                  "Thu, 01 Oct 2026 03:00:00 +0000", "2026-10-01_030000"):
++            self.assertEqual(norm.timestamp(v), t, v)
++        self.assertIsNone(norm.timestamp(12))                              # 1970: no es una fecha de ítem
++        self.assertIsNone(norm.timestamp("ayer"))
++        self.assertIsNone(norm.timestamp(True))
++
++    def test_6_url(self):
++        self.assertEqual(norm.url("HTTPS://News.Example.COM/a/b/?utm_source=x&id=7&ref=37754157#frag"),
++                         "https://news.example.com/a/b?id=7")
++        self.assertEqual(norm.url("https://example.com/"), "https://example.com")
++        self.assertIsNone(norm.url("javascript:alert(1)"))
++        self.assertIsNone(norm.url("t.me/s/canal"))                        # sin esquema
++
++    def test_7_hash(self):
++        self.assertEqual(norm.hash_hex(" 3F2A9C1E0B7D4A55 "), "3f2a9c1e0b7d4a55")
++        self.assertIsNone(norm.hash_hex("xyz"))
++        self.assertIsNone(norm.hash_hex("abc"))                            # demasiado corto
++
++    def test_8_nulos(self):
++        for v in (None, "", "  ", "null", "None", "N/A", "nan", "undefined"):
++            self.assertTrue(norm.is_null(v), v)
++            self.assertIsNone(norm.address(v))
++            self.assertIsNone(norm.cashtag(v))
++            self.assertIsNone(norm.keyword(v))
++            self.assertIsNone(norm.timestamp(v))
++            self.assertIsNone(norm.url(v))
++        self.assertFalse(norm.is_null(0))
++
++
++class Registro(unittest.TestCase):
++    def test_registro_src1_completo(self):
++        raw = {"v": "src-1", "bot": " rss ", "src": "gnews", "kind": "news", "id": "x", "url": "https://A.com/x/?utm_medium=1",
++               "ts": 1790823600000, "seen": "2026-10-01T03:05:00Z", "title": "  Hola   mundo ",
++               "a": [EVM, EVM.lower(), MINT, "basura"], "c": ["wif", "$WIF", "bonk"], "k": ["Meme Coin", "memecoin", "l2"],
++               "h": "ABCDEF0123456789", "au": None, "m": {"x": 1}}
++        r = norm.record(raw)
++        self.assertEqual(r["a"], sorted([EVM.lower(), MINT]))
++        self.assertEqual(r["c"], ["BONK", "WIF"])
++        self.assertEqual(r["k"], ["layer 2", "memecoin"])
++        self.assertEqual((r["ts"], r["seen"]), (1790823600, 1790823900))
++        self.assertEqual((r["url"], r["h"], r["bot"], r["title"]), ("https://a.com/x", "abcdef0123456789", "rss", "Hola mundo"))
++        self.assertEqual(r["m"], {"x": 1})
++        self.assertEqual(norm.record(r), r)                                # idempotente
++
++    def test_almacen_usa_la_forma_canonica(self):
++        import lib_sources_store as store
++        root = Path(tempfile.mkdtemp(prefix="norm_"))
++        self.addCleanup(shutil.rmtree, root, True)
++        r = store.make_record("rss", "s", "news", "Nueva meme coin en PumpFun", ts=1790823600, seen=1790823600,
++                              keywords=["meme coin", "pumpfun"])
++        self.assertEqual(r["k"], ["memecoin", "pump.fun"])
++        self.assertEqual(len(store.query("Meme Coin", records=[r])), 1)    # la consulta también se normaliza
++        legacy = dict(r, ts=r["ts"] * 1000, c=["wif"], k=["meme coin"])     # diario viejo, sin normalizar
++        path = store.day_path("rss", 1790823600, root=root)
++        path.parent.mkdir(parents=True)
++        path.write_text(json.dumps(legacy) + "\n", encoding="utf-8")
++        (merged,) = store.collect(now=1790823600 + 60, root=root)
++        self.assertEqual((merged["ts"], merged["c"], merged["k"]), (1790823600, ["WIF"], ["memecoin"]))
++        self.assertEqual(norm.check_file(path), {"total": 1, "changed": 1, "broken": 0})
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/04_Config/scripts/test_sources_bots.py b/04_Config/scripts/test_sources_bots.py
+index 8db61e2..c951633 100644
+--- a/04_Config/scripts/test_sources_bots.py
++++ b/04_Config/scripts/test_sources_bots.py
+@@ -57,7 +57,8 @@ class Store(Tmp):
+         self.assertEqual(r["v"], "src-1")
+         self.assertEqual(r["a"], sorted([MINT, EVM.lower()]))
+         self.assertEqual((r["c"], r["k"]), (["WIF"], ["memecoin"]))
+-        self.assertEqual(len(r["title"]), store.TITLE_MAX)
++        self.assertLessEqual(len(r["title"]), store.TITLE_MAX)                 # cortado y sin espacio final
++        self.assertEqual(r["title"], r["title"].strip())
+         self.assertNotIn("cuerpo", json.dumps(r))
+         self.assertEqual((len(r["h"]), len(r["au"])), (16, 12))
+         self.assertIsNone(store.make_record("telegram", "c", "message", "hola", title="hola")["title"])
+@@ -143,7 +144,7 @@ class Rss(Tmp):
+ 
+     def test_config_real_y_validacion(self):
+         cfg = bot.load_config(bot.config_path(HERE.parents[1]))
+-        self.assertEqual(len(cfg["feeds"]), 12)
++        self.assertEqual(len(cfg["feeds"]), 11)                                 # D-041: messari eliminado (404)
+         bad = self.root / "bad.yaml"
+         for text in ("feeds: 3", "feeds:\n  - {name: a}", "feeds:\n  - {name: a, url: x}\n  - {name: a, url: y}"):
+             bad.write_text(text)
+diff --git a/04_Config/scripts/test_sources_orchestrator.py b/04_Config/scripts/test_sources_orchestrator.py
+index e179b9f..7c0d67c 100644
+--- a/04_Config/scripts/test_sources_orchestrator.py
++++ b/04_Config/scripts/test_sources_orchestrator.py
+@@ -50,7 +50,7 @@ class Orchestrator(Base):
+         self.assertEqual(json.loads((self.base / "_index.json").read_text())["a"][MINT], [1])
+         h = json.loads((self.base / "_health.json").read_text())
+         self.assertEqual((h["bots"]["rss"]["status"], h["bots"]["rss"]["last_output"]), ("ok", 2))
+-        self.assertEqual(h["bots"]["telegram"]["status"], "diseño")
++        self.assertEqual(h["bots"]["web"]["status"], "diseño")                  # D-041: telegram ya está activo
+ 
+     def test_estados_atrasado_sin_datos_y_errores(self):
+         self.assertEqual(orch.run(self.root, NOW)["bots"]["rss"]["status"], "sin_datos")
+diff --git a/04_Config/sources/_bots.yaml b/04_Config/sources/_bots.yaml
+index db74b82..e44954a 100644
+--- a/04_Config/sources/_bots.yaml
++++ b/04_Config/sources/_bots.yaml
+@@ -3,7 +3,7 @@
+ # enabled: false = diseñado, sin implementar (no cuenta como caído).
+ bots:
+   rss:      {workflow: sources_rss.yml,        every_min: 20,  stale_min: 60,   backup: forums,   enabled: true}
+-  telegram: {workflow: sources_telegram_a.yml, every_min: 30,  stale_min: 90,   backup: rss,      enabled: false}
++  telegram: {workflow: sources_telegram_a.yml, every_min: 30,  stale_min: 90,   backup: rss,      enabled: true}   # 2 instancias (a :05, b :35)
+   web:      {workflow: sources_web.yml,        every_min: 30,  stale_min: 120,  backup: forums,   enabled: false}
+   github:   {workflow: sources_github.yml,     every_min: 360, stale_min: 780,  backup: rss,      enabled: false}
+   x:        {workflow: sources_x.yml,          every_min: 20,  stale_min: 1440, backup: telegram, enabled: false}
+diff --git a/04_Config/sources/rss.yaml b/04_Config/sources/rss.yaml
+index 62d1ac2..5058dad 100644
+--- a/04_Config/sources/rss.yaml
++++ b/04_Config/sources/rss.yaml
+@@ -1,5 +1,5 @@
+ # bot_rss_news (doc 34 §5). Sumar un feed = sumar una línea. enabled: false lo saca sin borrarlo (P-13).
+-# Feeds sin verificar desde Actions: la primera corrida deja la salud de cada uno en 02_Analisis/sources/rss/_state.json.
++# Salud por feed en 02_Analisis/sources/rss/_state.json. messari eliminado en D-041 (404 desde Actions: P-13).
+ bot: rss
+ dedup_hours: 72
+ pause_s: 1
+@@ -9,7 +9,6 @@ feeds:
+   - {name: beincrypto, url: "https://beincrypto.com/feed/"}
+   - {name: dlnews, url: "https://www.dlnews.com/arc/outboundfeeds/rss/"}
+   - {name: blockworks, url: "https://blockworks.co/feed"}
+-  - {name: messari, url: "https://messari.io/rss"}
+   - {name: cointelegraph_memecoin, url: "https://cointelegraph.com/rss/tag/memecoin"}
+   - {name: cointelegraph_solana, url: "https://cointelegraph.com/rss/tag/solana"}
+   - {name: gnews_solana_memecoin, url: "https://news.google.com/rss/search?q=solana+memecoin&hl=en-US&gl=US&ceid=US:en"}
+diff --git a/04_Config/sources/telegram.yaml b/04_Config/sources/telegram.yaml
+new file mode 100644
+index 0000000..e990dd3
+--- /dev/null
++++ b/04_Config/sources/telegram.yaml
+@@ -0,0 +1,28 @@
++# bot_telegram_public (doc 34 §3/§5; D-041 T5). Vista web pública t.me/s/<canal>, sin cuenta ni API de Telegram.
++# Sumar un canal = sumar una línea. enabled: false lo saca sin borrarlo.
++# Los 15 canales tienen vista previa verificada el 2026-10-03 [V]. Del doc 34 quedaron afuera porque redirigen sin
++# vista previa: SolanaNews, DexToolsAlerts, CryptoCom, PepeWorld, coin_alert. 'memecoins' es un alias del canal
++# 'crypto' (data-post 'crypto/…') y se usa el nombre canónico. Un canal que deja de dar vista previa se apaga solo
++# y se reintenta cada recheck_hours.
++bot: telegram
++loop_minutes: 40
++poll_minutes: 4
++pause_s: 2
++recheck_hours: 24
++dedup_hours: 72
++channels:
++  - {name: whale_alert_io}
++  - {name: cointelegraph}
++  - {name: WatcherGuru}
++  - {name: pumpfun}
++  - {name: BinanceKillers}
++  - {name: crypto}
++  - {name: binance_announcements}
++  - {name: CoinDeskGlobal}
++  - {name: BitcoinNews}
++  - {name: dexscreener_trending}
++  - {name: Cryptoquant_official}
++  - {name: unfolded}
++  - {name: DegenerateNews}
++  - {name: CoinMarketCapAnnouncements}
++  - {name: OKXAnnouncements}
+diff --git a/El cerebro de dios/22_MEMORIA_CLAUDE.md b/El cerebro de dios/22_MEMORIA_CLAUDE.md
+index a9705cb..d51c0d9 100644
+--- a/El cerebro de dios/22_MEMORIA_CLAUDE.md	
++++ b/El cerebro de dios/22_MEMORIA_CLAUDE.md	
+@@ -284,6 +284,7 @@ Scripts de análisis: `calibrate_threshold_v72.py` (métrica dual, Wilson IC90,
+ | 2026-10-01 (noche, Fase 9) | Datasets + inventario 174 + persistencia | `dataset_builder.py` + `datasets_build.yml`: MemeChain (Zenodo, solo CSV; índice de tasas base por chain/narrativa → umbral del grupo a multi-chain [H]) y Binance diario completo (BTC/ETH/SOL + GARCH) · inventario 91 → 174 (22 MCP nuevos, Pumpfun Corpus de HF como P0) · `lib_persist`: bitácora por operación (`02_Analisis/operations/`) y dataset propio `historical_alerts.jsonl` (backfill 37 alertas; outcome 48–50 h desde `script_98`) · doc 30 (protocolo; el 29 es la memoria de YIN) · Zenodo bloqueado en el contenedor: el índice real sale de la primera corrida en Actions |
+ | 2026-10-01 (noche, Fase 8) | Inventario + activación de grupos | Doc 28 (91 servicios, 68 con endpoint, 9/9 grupos) + `probe_inventario.yml` (manual) · trust loop CEX (`active_tracking_cex`: Binance → Coinbase → Kraken) · `script_114` v0.4: Snapshot, fees por protocolo, todos los perps de Hyperliquid con historial de OI, Aevo pre-mercado · lib 0.2: c con fees + Snapshot, e con ingresos de red, g con yield, d emite con funding/OI/basis, b registra · grupo i en el flujo Solana (`script_82.apply_group_i`: par > 180 días → registro; arc → 0) · `main` todavía sin la Fase 7 (YIN) |
+ | 2026-10-01 (noche, cont.) | Fase 7: cobertura multi-chain | Workflows verificados en Actions (colector 2/2 success, scanner disparado: success) · `lib_scoring_multichain` (19 tests) · `script_114` v0.3 · emisión multi-chain en `script_97` (9 tests, mutación 7/7) · humo con el scan real: 273 activos, 13 emitibles · 302/302 tests |
++| 2026-10-03 (D-041) | Enjambre: normalización, reparador, grafo, auditoría, Telegram, método por grupo | T1 `lib_normalize` (#19; en escritura y fusión; 208/731 ítems cambiarían) · T2 `bot_self_repair` + `sources_self_repair.yml` (#20; auto_off 6 h, 1 rerun solo en bots de fuentes, 1 dispatch, escalado en AUTO:repair) · Messari eliminado (404) · T3 `lib_knowledge_graph` → `_graph.json` vía orquestador (#7) · T4 `lib_audit` (#15; `_audit.jsonl` + `_metrics.json` en rss y orquestador) · T5 `bot_telegram_public` (15 canales [V], 2 instancias de 40 min, bs4 con hash; corrida real 15/15, 267 ítems) · T6/T7 doc 36 (método por grupo a–i + Dossier v2, diseño) · bug corregido: `--once` (loop 0) caía en 40 min · batería 470/470 (con PYTHONUTF8=1, como Linux) · rama `claude/d041-enjambre`, sin push |
+ | 2026-10-03 (cierre) | D-035: orquestador, query(), traspaso | `bot_orchestrator` + `sources_orchestrator.yml` (merge, health, poda, bloque AUTO de `_INSTALADOS.md`) · `query()` conectada en script_116 (menciones del scorer joven) y script_97 (`sources_mentions_*`, informativo hasta v7.2.2) · 8 tests (5 + 3) · 437/437 · doc 34 v0.2 (§11 `bot_self_repair`, §12 coparticipación + `backup` en `_bots.yaml`) · **doc 35 traspaso con SHA-256 por archivo** |
+ | 2026-10-03 | D-033: sistema multi-bot | Doc 34 v0.1: diseño completo de 7 bots + `lib_sources_store`, con esquema src-1, YAML por bot, storage, dependencias y plan de tests · 7 imposibilidades técnicas documentadas (el `GITHUB_TOKEN` no puede escribir workflows; 4plebs no archiva /biz/; DEXTools/Solscan necesitan JS) · implementados `lib_sources_store`, `bot_rss_news` (12 feeds), `sources_rss.yml` y 9 tests · rama sincronizada con main (fast-forward) |
+ | 2026-10-01 (noche) | Fase 6: guías multi-chain + grupo i + incidente | Guías de compra Arbitrum / Optimism / Blast (Monad sin DEX, no emite) con `guide_for` como regla única para alerta y dossier; bloque 🛒 con 1 wallet; 6 tests nuevos + mutación 5/5 · doc 27 v0.2 (grupo i: > 180 días, registro sin emisión) · §1.2 incidente supergrupo · rama `claude/zealous-tesla-3ua19i` (merge de `origin/main` sin force) |
+diff --git a/El cerebro de dios/34_SISTEMA_MULTIBOT.md b/El cerebro de dios/34_SISTEMA_MULTIBOT.md
+index bb53c6f..c61b9a6 100644
+--- a/El cerebro de dios/34_SISTEMA_MULTIBOT.md	
++++ b/El cerebro de dios/34_SISTEMA_MULTIBOT.md	
+@@ -1,8 +1,8 @@
+ ---
+ owner: Claude Code (implementador) — pendiente auditoría YANG
+-status: DISEÑO COMPLETO (D-033, D-035) — implementado: lib_sources_store, bot_rss_news, bot_orchestrator, 2 workflows, query() en script_116/script_97
++status: DISEÑO COMPLETO (D-033, D-035) — implementado: lib_sources_store, bot_rss_news, bot_orchestrator, query() en script_116/script_97; D-041: lib_normalize, bot_self_repair, lib_knowledge_graph, auditoría por bot, bot_telegram_public
+ last_updated: 2026-10-03
+-version: 0.2
++version: 0.3
+ reemplaza: doc 33 §2–§5 (el doc 33 queda como investigación de fuentes)
+ ---
+ 
+@@ -131,8 +131,11 @@ feeds:
+ bot: telegram
+ loop_minutes: 40
+ poll_minutes: 4
+-channels: [whale_alert_io, cointelegraph, WatcherGuru, pumpfun, SolanaNews, DexToolsAlerts, BinanceKillers,
+-           CryptoCom, memecoins, PepeWorld, coin_alert]   # + 2 que verifica YIN; solana/dexscreener fuera (§1 #6)
++channels: [whale_alert_io, cointelegraph, WatcherGuru, pumpfun, BinanceKillers, crypto, binance_announcements,
++           CoinDeskGlobal, BitcoinNews, dexscreener_trending, Cryptoquant_official, unfolded, DegenerateNews,
++           CoinMarketCapAnnouncements, OKXAnnouncements]
++# D-041: 15 con vista previa verificada el 03/10 [V]. Fuera (redirigen): SolanaNews, DexToolsAlerts, CryptoCom,
++# PepeWorld, coin_alert. 'memecoins' es alias de 'crypto'. Archivo real: 04_Config/sources/telegram.yaml
+ 
+ # web.yaml — la plantilla clave: sumar fuente = sumar un bloque
+ bot: web
+@@ -246,7 +249,9 @@ Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `
+ 5. `query()` en `script_116` (`mentions`) y en `script_97` (campos informativos `sources_mentions_*` para tokens ≥ 60 min) **[hecho en D-035]**. Falta que el bono de v7.2.2 los use.
+ 6. `bot_self_repair` (§11).
+ 
+-## 11. bot_self_repair (D-035, diseño; sin implementar)
++## 11. bot_self_repair (D-035 diseño; **implementado en D-041**: `bot_self_repair.py` + `sources_self_repair.yml`)
++
++> D-041: el auto_off vive en `_repair_state.json` (dueño: el reparador) y los bots lo leen; el reparador no edita el `_state.json` de un bot salvo para renombrarlo si está corrupto o recortar `seen`. Reruns solo en workflows de bots de fuentes; producción solo se escala.
+ 
+ **Qué hace.** Corre cada 30 min (`19,49 * * * *`). Lee `_health.json`, el `_state.json` de cada bot y las
+ últimas corridas de cada workflow (API de Actions, `GITHUB_TOKEN` con `actions: write`). Solo aplica reglas
+diff --git a/El cerebro de dios/36_METODO_POR_GRUPO.md b/El cerebro de dios/36_METODO_POR_GRUPO.md
+new file mode 100644
+index 0000000..b741380
+--- /dev/null
++++ b/El cerebro de dios/36_METODO_POR_GRUPO.md	
+@@ -0,0 +1,160 @@
++---
++owner: Claude Code (implementador) — pendiente auditoría YANG
++status: DISEÑO (sin implementar) — D-041 T6 y T7
++last_updated: 2026-10-03
++version: 0.1
++complementa: doc 27 (fórmulas y eventos por grupo), doc 32 (scorer joven), doc 34 (fuentes)
++---
++
++# 36 — Método científico por grupo (a–i) + Dossier v2
++
++Rótulos: [V] verificado · [I] inferido · [H] hipótesis · [P] pendiente.
++
++## 0. Fundamento
++
++**No todos los activos se interpretan igual.**
++- Una memecoin de 5 minutos no tiene historia de precio: solo información (menciones, estructura, liquidez).
++- Un blue chip tiene 9 años de velas y un mercado de derivados que anticipa volatilidad.
++- Una preventa no cotiza: lo único medible es la promesa y el evento de listing.
++
++Aplicar el mismo método a los tres produce ruido. El doc 27 fija, para cada grupo, **qué se puntúa** (componentes, pesos, evento). Este documento fija **cómo se prueba** (patrón #2, método científico automatizado):
++- qué hipótesis se pone a prueba;
++- con qué fuente;
++- con qué métrica;
++- con qué criterio se acepta o se descarta.
++
++Un grupo no gana el derecho a pesar en el score por diseño: lo gana cuando su hipótesis supera al baseline con datos propios.
++
++## 1. Protocolo común (el mismo para los 9 grupos)
++
++| Paso | Qué se hace | Dónde vive |
++|---|---|---|
++| 1. Preregistro | La hipótesis se escribe **antes** de mirar los resultados: enunciado, evento, métrica, n mínimo, α y criterio. No se edita después; una variante es una hipótesis nueva. | `02_Analisis/methods/<grupo>/H-<grupo><n>.json` [P] |
++| 2. Evento | El evento del grupo (doc 27 §3.1): ventana de 48 h, orden intra-vela conservador (open → low → high → close). | `lib_scoring_multichain.EVENTS` [V] |
++| 3. Baseline | Tasa del evento en **todo** el universo del grupo, no solo en lo alertado. Sin baseline, una tasa alta no significa nada. | por grupo [P] |
++| 4. Métrica | Tasa del evento con IC90 de Wilson. Para hipótesis comparativas (señal sí / no), Fisher exacto unilateral con α = 0,10, como H-0 (doc 32). | `calibrate_threshold_v72.wilson` [V] |
++| 5. Controles | **Placebo:** fechas desplazadas ±6–24 h; la señal no debe rendir igual. **Walk-forward** semanal con purga de 48 h. **Contrafactual:** los +20% no alertados y qué señales tenían (doc 35 §6.5). | [P] |
++| 6. Refutación (#8, debate adversario) | Antes de aceptar, un segundo evaluador automático intenta romper el resultado: placebo, permutación de etiquetas, submuestras por chain y por semana. Si una submuestra invierte el signo, no se acepta. | [P] |
++| 7. Decisión | **Acepta:** la señal pasa a pesar en el score con su LLR estimado (doc 27 §4.1). **Rechaza:** sale (#18, poda cognitiva; P-13). **Inconcluso:** sigue midiendo hasta el n máximo y después se rechaza. | memoria episódica (#12) |
++| 8. Episodio (#12) | Cada hipótesis cerrada deja un episodio con hipótesis, datos usados (hash), resultado, decisión y fecha. Es la memoria que impide re-probar lo ya descartado. | `02_Analisis/methods/_episodes.jsonl` [P] |
++
++**Pizarra compartida (#5).** Ninguna hipótesis consulta fuentes por su cuenta. Lee lo que ya escriben los bots:
++- `_merged.jsonl` y `_index.json` (menciones normalizadas, #19);
++- `_graph.json` (co-mención, #7);
++- `02_Analisis/multichain/<chain>.json` (mercado);
++- `_health.json` (si una fuente estuvo caída, la ventana se marca y no cuenta).
++
++## 2. Tabla por grupo
++
++| Grupo | Hipótesis principal [H] | Evento (doc 27) | Fuentes | Métrica | Acepta si | n mín. |
++|---|---|---|---|---|---|---|
++| a memecoins | La aceleración de menciones (sorpresa de Poisson, doc 26) más el cluster de co-mención anticipan el evento | +20% antes de −30%, 48 h | PumpPortal WS, DexScreener, Telegram (dexscreener_trending, pumpfun, BinanceKillers), 4chan, `_graph.json` | tasa primaria; Fisher señal sí/no | p < 0,10 **y** diferencia ≥ 10 pp sobre el baseline del grupo | 40 |
++| b preventa | Un anuncio de listing en un exchange grande anticipa el rendimiento del primer día | precio al listar ≥ +20% sobre la referencia | canales de anuncios (binance_announcements, OKXAnnouncements, CoinMarketCapAnnouncements), RSS | rendimiento a 24 h desde el listing | mediana > 0 con IC90 que no cruza 0 | 20 |
++| c gobernanza | Una propuesta de fee switch, buyback o emisiones, con fees en ascenso, anticipa una revalorización | +20% antes de −15%, 48 h | DefiLlama (fees, `listedAt`), Snapshot, keywords `governance` / `dao` | event study alrededor del cierre de la propuesta | retorno anormal acumulado > 0 con IC90 y placebo nulo | 20 |
++| d sintéticos | Un funding extremo con OI en crecimiento anticipa continuación; un desvío de peg, reversión | +20% antes de −15%, 48 h (peg: vuelta a la banda) | Hyperliquid, dYdX v4, DefiLlama stablecoins | tasa por régimen de funding | régimen extremo > baseline, p < 0,10 | 20 |
++| e DePIN | Fees o revenue que crecen más rápido que el mcap anticipan una revalorización | +20% antes de −15%, 48 h | DefiLlama fees, CoinGecko depin, feed `gnews_depin` | tasa por cuartil de (Δfees − Δmcap) | cuartil superior > inferior, p < 0,10 | 20 |
++| f L1/L2 | El momentum de TVL, la cuota de volumen de DEX y la cantidad de trending pools anticipan el token de la chain (relativo a ETH/SOL) | +20% antes de −15%, 48 h, relativo | `multichain/<chain>.json` (script_114 v0.2), DefiLlama chains, L2BEAT | tasa por percentil de momentum | percentil ≥ 80 > baseline, p < 0,10 | 20 |
++| g RWA | Un TVL que crece más rápido que el mcap anticipa una revalorización del token de la plataforma | +20% antes de −15%, 48 h | DefiLlama RWA, CoinGecko real-world-assets-rwa, feed `gnews_rwa` | tasa por cuartil de (ΔTVL − Δmcap) | cuartil superior > inferior, p < 0,10 | 20 |
++| h blue chips | Un z de retorno extremo contra la σ del GARCH, con DVOL − vol realizada y funding en percentil extremo, anticipa ±2σ | tocar +2σ₄₈ antes de −2σ₄₈ | Binance data-api, Deribit DVOL, Fear & Greed, funding | tasa del evento por régimen | régimen extremo > baseline, p < 0,10; walk-forward estable 4 semanas | 30 |
++| i establecidos | Una reactivación (pico de menciones + pico de volumen tras > 30 días de calma) anticipa el evento | +20% antes de −15%, 48 h (solo registro) | `_merged.jsonl`, `_graph.json`, CoinGecko | tasa con reactivación vs sin | p < 0,10 (registro; no emite por decisión de Dirección) | 20 |
++
++**Modelos por grupo** (doc 27 §3, sin cambios): GARCH, EGARCH, ATR y Bollinger **solo** en h, y en f con ≥ 365 velas; **nunca** en a. El scorer joven (doc 32) cubre a < 60 min.
++
++## 3. Detalle por grupo
++
++### a — Memecoins
++- **Por qué se interpreta distinto.**
++  - El token nace sin historia: la información precede al precio.
++  - El evento útil es tocar +20%. El cierre a 48 h es mayormente un −99% (doc 21: 76,2% después de tocar +20%), así que el método mide la primaria y reporta la post-+20% como métrica.
++- **H-a1 (mención acelerada).** Sorpresa de Poisson ≥ 4,6 nats en la hora anterior a la detección (doc 26 v0.1, sobre `_merged.jsonl`) contra < 4,6. Fisher unilateral.
++- **H-a2 (cluster).** Un token con un vecino a dos saltos en `_graph.json.related()` que tocó +20% en las 24 h previas, contra uno sin ese vecino.
++- **Controles.** Gate de edad (doc 31). Kill switches. Las ventanas con `rss` o `telegram` en estado `caído` en `_health.json` no cuentan para la señal.
++- **No contamina H-0.** H-0 (doc 32) usa la señal informacional del scorer joven. H-a1 y H-a2 se miden sobre un conjunto separado por fecha (posterior al cierre de H-0).
++
++### b — Preventa
++- **Por qué se interpreta distinto.** No hay precio antes del listing: no existe "aceleración", existe la distancia entre la promesa y el primer precio.
++- **H-b1.** Los activos con un anuncio de listing en Binance, OKX o CoinMarketCap (canales de T5, 15 canales [V]) tienen rendimiento a 24 h desde el listing con mediana > 0.
++- **Medición.**
++  - Referencia = primer precio del par.
++  - Solo registro: sin ruta de compra antes del listing (regla núcleo, doc 24).
++
++### c — Gobernanza DeFi
++- **H-c1.** Event study con ventana [−2 d, +2 d] alrededor del cierre de propuestas con keywords de valor (`fee switch`, `buyback`, `emission`; `GOV_KEYWORDS` [V]). Placebo: las mismas fechas en tokens de gobernanza sin propuesta.
++- **Fuente nueva.** Keywords `governance` / `dao` en `_merged.jsonl` como proxy temprano de discusión.
++
++### d — Sintéticos
++- **H-d1 (perps).** Funding por encima del percentil 95 con OI creciendo > 20% en 24 h → continuación en 48 h.
++- **H-d2 (pegs).** Desvío |p − 1| > 1% → vuelta a la banda en 48 h, con un modelo de reversión a la media (OU) [H].
++- Sin GARCH: no hay historia suficiente en la mayoría.
++
++### e — DePIN
++- **H-e1.** Cuartil superior de (crecimiento de fees a 30 d − crecimiento de mcap a 30 d) contra el cuartil inferior.
++- El feed `gnews_depin` (rss, 17 ítems nuevos en una corrida [V]) da el contexto del dossier, no el score.
++
++### f — L1/L2 emergentes
++- **H-f1.** Percentil de momentum compuesto: ΔTVL 7 d + cuota de volumen de DEX + cantidad de trending pools en `multichain/<chain>.json`.
++- El evento se mide **relativo** a ETH (L2) o a SOL: un +20% del token cuando ETH hizo +18% no es una señal propia.
++
++### g — RWA
++- **H-g1.** Igual que e, con TVL de colateral en lugar de fees.
++- El activo tokenizado estable no se puntúa (doc 27 §2.1): solo el token de la plataforma.
++
++### h — Blue chips
++- **H-h1.** El evento es simétrico en σ (±2σ₄₈ del GARCH(1,1)): un +20% en 48 h en BTC es raro y no sirve como evento.
++- Regímenes:
++  - z del retorno de 24 h > 2;
++  - DVOL − vol realizada en el percentil 90;
++  - funding en el percentil 5 o 95;
++  - Fear & Greed ≤ 20 o ≥ 80.
++- Walk-forward de 4 semanas estable antes de aceptar. Es el grupo con más datos y el que más fácil se sobreajusta.
++
++### i — Establecidos sin grupo
++- **H-i1.** Reactivación: menciones 24 h > 5× la mediana de 28 días (criterio de pico de `lib_narrative`, SPIKE_RATIO) **y** volumen 24 h > 3× la mediana, tras más de 30 días sin evento.
++- Solo registro: alimenta el contrafactual y puede promover un activo a un grupo emisible.
++
++## 4. Automatización y patrones del enjambre
++
++| Patrón | Cómo entra en el método |
++|---|---|
++| #2 Método científico automatizado | Protocolo §1: preregistro → evento → baseline → métrica → controles → decisión |
++| #5 Blackboard | Las hipótesis leen la pizarra (`_merged`, `_index`, `_graph`, `_health`, `multichain/`); no consultan fuentes |
++| #7 Knowledge Graph | H-a2 (cluster de co-mención) y el contexto del dossier |
++| #8 Debate adversario | Refutador automático: placebo, permutación y submuestras antes de aceptar |
++| #12 Memoria episódica | `_episodes.jsonl`: cada hipótesis cerrada con su resultado y su decisión |
++| #18 Poda cognitiva | Una señal rechazada o inconclusa al n máximo se retira del score (P-13) |
++| #19 Normalización | Todas las comparaciones usan la forma canónica de `lib_normalize` |
++
++**Implementación propuesta [P]**
++- `method_runner.py`: diario; lee los preregistros, mide y escribe episodios.
++- `method_refuter.py`: corre los controles del paso 6.
++- Ninguno toca el score directamente: la promoción de una señal al score la decide Dirección a partir de los episodios.
++
++---
++
++## 5. Dossier v2 — "obra informativa" (D-041 T7)
++
++**Objetivo.** El dossier v1 (doc 24, `script_113`) es completo pero se lee como un log: tablas una tras otra. El v2 conserva todos los datos y cambia la forma: un texto editorial que se lee de corrido, con la compra primero (regla núcleo) y los números como respaldo, no como cuerpo.
++
++**Estructura**
++
++| Parte | Qué cuenta | De dónde sale (v1) |
++|---|---|---|
++| 1. Adquisición | Cómo se compra este activo, hoy, en esta chain: wallet, fondeo, DEX, los 8 pasos, el slippage que corresponde a su liquidez y cuánto mueve una orden de $100 / $1.000 / $10.000. Va siempre primero. | §1 (sin cambios de contenido) |
++| 2. Método | Por qué el sistema lo detectó, en prosa: "El scorer v7.2.1 le dio 72 sobre 100. El mayor aporte vino de…". Qué mide el evento del grupo y qué significa la probabilidad mostrada, con su n y su IC90. | §4 + §5 |
++| 3. Evidencia | Los datos que sostienen la detección: desglose del score, menciones en las últimas 24 h (cuántas, de qué fuentes, sorpresa de Poisson), vecinos en el grafo de co-mención, consistencia entre fuentes. | §2 + §5 + `_merged` + `_graph` |
++| 4. Contexto | Qué es el activo y de dónde viene: grupo (a–i), categoría, narrativa, historia del par, eventos parecidos del histórico del grupo y cómo terminaron (mediana e IQR). | §3 + §6 |
++| 5. Cierre | La ventana de la señal (hasta cuándo aplica), qué se va a medir y cuándo se sabe el resultado, y dónde verificar cada número (fuentes, blob, comando de recálculo). | §6 + §7 |
++
++**Reglas de estilo**
++- Prosa breve en castellano. Cada número con su fuente y su momento en la misma oración ("liquidez de $141.633 en DexScreener al detectar").
++- Una tabla por parte, como máximo. El resto, texto.
++- Nada se inventa: lo que falta se dice ("sin descripción publicada"), igual que en v1.
++- Sin juicios ni recomendaciones: el dossier informa; el lector decide (doc 22, principio de producto).
++- El grupo cambia el relato: una memecoin se cuenta por menciones y estructura; un blue chip por volatilidad y derivados (§2).
++
++**Implementación propuesta [P]**
++- `script_113.render_markdown_v2(dossier)` sobre el mismo dict de `build_dossier`, que no cambia.
++- Párrafos con plantillas por grupo (sin IA generativa en producción: reglas y texto fijo con datos insertados).
++- Convive con v1 detrás de un flag (`DOSSIER_STYLE=v2`) hasta que Dirección compare los dos sobre las mismas alertas.
++- Tests: los mismos campos obligatorios del Anexo A del doc 24, el orden de las 5 partes y la ausencia de juicios.
++- **Estado:** solo diseño en D-041 (P2).
