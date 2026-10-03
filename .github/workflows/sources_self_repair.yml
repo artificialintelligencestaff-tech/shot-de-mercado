@@ -1,0 +1,64 @@
+name: sources_self_repair
+
+# bot_self_repair (patrón #20; doc 34 §11) — cada 30 min (19/49: fuera del pipeline, early watch, script_115 y los
+# bots de fuentes). Solo reglas explícitas: auto_off de fuentes caídas, 1 rerun de workflows de bots de fuentes,
+# 1 dispatch por bot atrasado, reset de estados corruptos; lo demás lo escala en _INSTALADOS.md (AUTO:repair).
+# Nunca relanza producción (pipeline, early watch): esos solo se escalan. Sin IA generativa, sin envíos.
+
+on:
+  schedule:
+    - cron: '19,49 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sources-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Detect + repair
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python 04_Config/scripts/bot_self_repair.py
+
+      - name: Commit repair state
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          git add -A -- 02_Analisis/sources _servicios_open_source/_INSTALADOS.md
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "sources_self_repair: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear el estado del reparador tras 4 intentos"
+          exit 1

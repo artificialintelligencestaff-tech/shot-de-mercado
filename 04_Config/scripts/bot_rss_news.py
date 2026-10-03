@@ -98,17 +98,22 @@ def load_state(path):
         return {}
 
 
-def run(config, state, fetch=http_fetch, now=None, sleep=time.sleep, keywords=store.DEFAULT_KEYWORDS):
-    """Una pasada por los feeds. Devuelve (registros nuevos, estado actualizado)."""
+def run(config, state, fetch=http_fetch, now=None, sleep=time.sleep, keywords=store.DEFAULT_KEYWORDS, auto_off=None):
+    """Una pasada por los feeds. Devuelve (registros nuevos, estado actualizado).
+    `auto_off`: {feed: {"until": epoch}} de bot_self_repair; el feed se salta hasta `until` (reintenta después)."""
     now = now if now is not None else time.time()
     keep_s = float(config.get("dedup_hours") or 72) * 3600
     seen = {k: t for k, t in (state.get("seen") or {}).items() if now - t <= keep_s}
-    health = dict(state.get("feeds") or {})
+    configured = {f["name"] for f in config["feeds"] if f.get("enabled", True) is not False}
+    health = {k: v for k, v in (state.get("feeds") or {}).items() if k in configured}   # lo que se sacó, se va
     records, first = [], True
     for feed in config["feeds"]:
         name = feed["name"]
         if feed.get("enabled", True) is False:
-            health.pop(name, None)
+            continue
+        off = (auto_off or {}).get(name) or {}
+        if (off.get("until") or 0) > now:
+            health[name] = {**(health.get(name) or {}), "auto_off_until": int(off["until"])}
             continue
         if not first:
             sleep(float(feed.get("pause_s", config.get("pause_s", 1))))
@@ -149,7 +154,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
     config = load_config(args.config or config_path())
     state_file = store.sources_dir() / BOT / "_state.json"
-    records, state = run(config, load_state(state_file), fetch=http_fetch, keywords=store.load_keywords())
+    repair = load_state(store.sources_dir() / "_repair_state.json")
+    records, state = run(config, load_state(state_file), fetch=http_fetch, keywords=store.load_keywords(),
+                         auto_off=(repair.get("auto_off") or {}).get(BOT))
     ok = sum(1 for f in state["feeds"].values() if f["status"] == 200 and "parse_error" not in f)
     print(f"{BOT}: {len(records)} ítems nuevos · feeds OK {ok}/{len(state['feeds'])}")
     for name, f in sorted(state["feeds"].items()):
