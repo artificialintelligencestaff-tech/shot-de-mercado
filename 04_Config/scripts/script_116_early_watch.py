@@ -48,6 +48,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 import lib_early_signals as es  # noqa: E402
+import lib_sources_store as sources  # noqa: E402
 import lib_info_signals as inf  # noqa: E402
 import lib_scoring_young as ly  # noqa: E402
 
@@ -368,7 +369,7 @@ def young_signals(mint, entry, dx, state, now, info_ctx):
             inf.trending_match(name, symbol, info_ctx.get("trending")),
             inf.metadata_socials(meta),
             inf.dex_profile(mint, info_ctx.get("profiles"), info_ctx.get("boosts")),
-            inf.mentions(mint, symbol, info_ctx.get("items"), now),
+            inf.mentions(mint, symbol, young_mention_items(mint, symbol, info_ctx), now),
             inf.github_repo(repo)]
     snaps = (state.get("holders") or {}).get(mint) or []
     rug = snaps[-1] if snaps else None
@@ -421,6 +422,16 @@ def evaluate_young(mint, entry, dx, state, now, root, min_age_min, info_ctx):
 def github_link_cached(state, meta):
     repo = inf.github_link(meta) if meta else None
     return ((state.get("gh") or {}).get(repo) or {}).get("data") if repo else None
+
+
+def young_mention_items(mint, symbol, info_ctx):
+    """Menciones de script_115 + las del almacén de bots (doc 34: query(mint) y query($symbol)).
+    None solo si no hay ninguna de las dos fuentes (sin dependencia dura de _merged.jsonl)."""
+    base, rows = info_ctx.get("items"), info_ctx.get("sources") or []
+    extra = sources.mention_items(mint, symbol, rows) if rows else []
+    if base is None and not rows:
+        return None
+    return list(base or []) + extra
 
 
 def young_info_context(ctx, root, watch, now, get):
@@ -485,6 +496,7 @@ def young_info_context(ctx, root, watch, now, get):
     day = datetime.fromtimestamp(now, timezone.utc).strftime("%Y-%m-%d")
     inst = ctx.get("instance") or INSTANCE
     return {"trending": idx_doc.get("coingecko_trending"), "items": items_doc.get("items"),
+            "sources": sources.safe_load(now, root),
             "profiles": profiles, "boosts": boosts, "keywords": inf.keyword_index(launches),
             "log_path": f"{YOUNG_DIR_REL}/{inst}_{day}.jsonl", "instance": inst}
 

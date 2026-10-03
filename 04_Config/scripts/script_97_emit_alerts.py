@@ -723,6 +723,28 @@ def tradability_flags(token=None, cex_links=None):
     return lib_info_signals.tradability(dx, [(0, liq)] if liq is not None else None)
 
 
+_SOURCES_ROWS = None
+
+
+def source_mentions(mint, symbol, now=None, rows=None):
+    """Doc 34 / D-035: menciones del almacén de bots (lib_sources_store.query por mint y $symbol) para tokens
+    >= 60 min. Informativo: no suma puntos hasta que se implemente el bono de v7.2.2. Sin almacén: ceros."""
+    global _SOURCES_ROWS
+    here = str(_Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import lib_sources_store   # noqa: E402
+    now = now if now is not None else time.time()
+    if rows is None:
+        if _SOURCES_ROWS is None:
+            _SOURCES_ROWS = lib_sources_store.safe_load(now, PROJECT_ROOT)
+        rows = _SOURCES_ROWS
+    items = lib_sources_store.mention_items(mint, symbol, rows) if rows else []
+    return {"sources_mentions_1h": sum(1 for i in items if now - 3600 <= i["ts"] <= now),
+            "sources_mentions_24h": sum(1 for i in items if now - 86400 <= i["ts"] <= now),
+            "sources_feeds": sorted({i["f"] for i in items})}
+
+
 def _load_lib_scoring():
     """lib_scoring_multichain, cargada recién al emitir multi-chain (vive al lado de este script)."""
     here = str(_Path(__file__).resolve().parent)
@@ -1012,6 +1034,7 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
                   "multichain": True, "group": r["group"], "scoring_version": r["scoring_version"],
                   "chain": r.get("chain"), "coingecko_id": r.get("cg_id"), "trust_updates": []}
         record.update(flags)
+        record.update(source_mentions(r["address"] if onchain else r["key"], r.get("symbol")))  # D-035, informativo
         safe = re.sub(r"[^A-Za-z0-9]+", "_", r["key"])
         with open(os.path.join(ALERTS_DIR, f"alert_{safe}_{timestamp}.json"), "w", encoding="utf-8") as f:
             json.dump(r, f, indent=2, ensure_ascii=False)
@@ -1255,6 +1278,7 @@ def main(argv=None):
             "trust_updates": []
         }
         alert_record.update(tradability_flags(token))      # D-023-R3: flag informativo
+        alert_record.update(source_mentions(mint, symbol))  # D-035: menciones de bots, informativo (v7.2.2)
         if collisions:
             alert_record["symbol_collision"] = collisions
             print(f"[WARN] {symbol}: mismo símbolo que otros mints ya alertados {collisions}")
