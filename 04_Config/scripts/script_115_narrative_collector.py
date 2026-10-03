@@ -71,6 +71,9 @@ CASHTAG_RE = re.compile(r"(?<![\w$])\$([A-Za-z][A-Za-z0-9]{0,14})(?!\w)")
 SYMBOL_OK = re.compile(r"[A-Za-z][A-Za-z0-9]{1,14}")
 SAFE_KEY = re.compile(r"[1-9A-HJ-NP-Za-km-z]{32,44}|0x[0-9a-f]{40}")
 
+# Ranges of text covered by EVM addresses (to avoid BASE58 false positives inside 0x...)
+EVM_SPAN_RE = re.compile(r"(?<![0-9A-Za-z])0x[0-9a-fA-F]{40}(?![0-9a-fA-F])")
+
 
 # ---------------------------------------------------------------------------
 # Identificadores (lo único que se guarda de cada ítem)
@@ -85,9 +88,23 @@ def normalize_address(address):
 
 
 def extract_identifiers(text):
-    """Direcciones (base58 de 32-44 caracteres, 0x + 40 hex) y cashtags que aparecen en el texto."""
+    """Direcciones (base58 de 32-44 caracteres, 0x + 40 hex) y cashtags que aparecen en el texto.
+    Evita falsos positivos: no detecta base58 dentro de direcciones EVM (0x...)."""
     text = text or ""
-    addresses = set(BASE58_RE.findall(text)) | {a.lower() for a in EVM_RE.findall(text)}
+    # Primero: direcciones EVM (0x + 40 hex). Guardamos sus spans para excluirlas del base58.
+    evm_spans = [(m.start(), m.end()) for m in EVM_SPAN_RE.finditer(text)]
+    evm_addresses = [text[s:e] for s, e in evm_spans]
+
+    # Segundo: direcciones base58, excluyendo spans de EVM
+    base58_addresses = []
+    for m in BASE58_RE.finditer(text):
+        s, e = m.span()
+        # Verificar si este match está contenido en algún span EVM
+        inside_evm = any(es <= s and e <= ee for es, ee in evm_spans)
+        if not inside_evm:
+            base58_addresses.append(m.group())
+
+    addresses = set(base58_addresses) | {a.lower() for a in evm_addresses}
     cashtags = {c.upper() for c in CASHTAG_RE.findall(text)}
     return sorted(addresses), sorted(cashtags)
 
