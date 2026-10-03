@@ -23,6 +23,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import lib_audit as audit  # noqa: E402
 import lib_knowledge_graph as kg  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
@@ -115,13 +116,15 @@ def update_installed(path, bots_health):
 
 def run(root, now=None, write=True):
     now = now if now is not None else time.time()
+    t_start = time.time()
     base = store.sources_dir(root)
     registry = load_registry(root)
     prev_doc = read_json(base / "_health.json", {}) or {}
     prev = prev_doc.get("bots") or {}
     health = {n: bot_health(n, cfg, read_json(base / n / "_state.json"), prev.get(n), now)
               for n, cfg in registry.items()}
-    merged = store.merge(now, root) if write else len(store.collect(now, store.MERGE_HOURS, root))
+    stats = {}
+    merged = store.merge(now, root, stats=stats) if write else len(store.collect(now, store.MERGE_HOURS, root, stats))
     history = [h for h in prev_doc.get("history") or [] if now - h.get("ts", 0) <= HISTORY_S]
     history.append({"ts": int(now), "merged": merged, **{n: h["status"] for n, h in health.items()}})
     doc = {"version": VERSION, "generated_at": int(now), "merged_items": merged, "bots": health,
@@ -136,6 +139,12 @@ def run(root, now=None, write=True):
         if changed:
             installed = update_installed(Path(root) / "_servicios_open_source" / "_INSTALADOS.md", health)
     doc["pruned"], doc["installed_updated"], doc["graph"] = pruned, installed, graph
+    if write:                                # auto-monitoreo (patrón #15): sources/orchestrator/_audit.jsonl
+        active = {n: h for n, h in health.items() if h["status"] != "diseño"}
+        problems = sum(1 for h in active.values() if h["status"] in ("caído", "atrasado", "vacío", "sin_datos"))
+        line = audit.audit_line("orchestrator", now, stats.get("read", 0), merged, problems, len(active),
+                                time.time() - t_start)
+        doc["metrics"] = audit.record_run(base / "orchestrator", line, len(active) - problems, len(active))
     return doc
 
 

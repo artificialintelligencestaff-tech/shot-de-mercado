@@ -137,8 +137,9 @@ def dedup_key(r):
     return (r.get("src"), r.get("ts"), r.get("h"))
 
 
-def collect(now=None, hours=MERGE_HOURS, root=None):
-    """Todos los diarios de los bots dentro de la ventana, dedup global por (src, ts, h), más reciente primero."""
+def collect(now=None, hours=MERGE_HOURS, root=None, stats=None):
+    """Todos los diarios de los bots dentro de la ventana, dedup global por (src, ts, h), más reciente primero.
+    `stats` (dict opcional): 'read' = ítems src-1 leídos antes de ventana y dedup (auditoría del orquestador)."""
     now = now if now is not None else time.time()
     cutoff = now - hours * 3600
     days = {datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")
@@ -151,6 +152,8 @@ def collect(now=None, hours=MERGE_HOURS, root=None):
         for r in read_jsonl(path):
             if r.get("v") != SCHEMA:
                 continue
+            if stats is not None:
+                stats["read"] = stats.get("read", 0) + 1
             r = norm.record(r)            # diarios viejos o de otro bot: misma forma canónica al fusionar
             if _when(r) < cutoff or _when(r) > now + 600:
                 continue
@@ -173,10 +176,10 @@ def build_index(records):
     return idx
 
 
-def merge(now=None, root=None, hours=MERGE_HOURS):
+def merge(now=None, root=None, hours=MERGE_HOURS, stats=None):
     """Escribe _merged.jsonl y _index.json (dueño: bot_orchestrator). Devuelve la cantidad de ítems."""
     now = now if now is not None else time.time()
-    records = collect(now, hours, root)
+    records = collect(now, hours, root, stats)
     base = sources_dir(root)
     base.mkdir(parents=True, exist_ok=True)
     tmp = base / "_merged.jsonl.tmp"

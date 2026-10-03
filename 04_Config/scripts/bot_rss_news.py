@@ -21,6 +21,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import lib_audit as audit  # noqa: E402
 import lib_repetition as rep  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
@@ -154,6 +155,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     config = load_config(args.config or config_path())
     state_file = store.sources_dir() / BOT / "_state.json"
+    t_start = time.time()
     repair = load_state(store.sources_dir() / "_repair_state.json")
     records, state = run(config, load_state(state_file), fetch=http_fetch, keywords=store.load_keywords(),
                          auto_off=(repair.get("auto_off") or {}).get(BOT))
@@ -167,7 +169,19 @@ def main(argv=None):
     store.append_records(BOT, records, state["last_run"])
     state_file.parent.mkdir(parents=True, exist_ok=True)
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+    write_audit(state, len(records), time.time() - t_start)
     return 0
+
+
+def write_audit(state, items_new, duration_s, folder=None):
+    """Una línea en rss/_audit.jsonl + _metrics.json (patrón #15). Solo cuenta los feeds consultados en esta corrida."""
+    now = state["last_run"]
+    fetched = {k: f for k, f in state["feeds"].items() if f.get("checked_at") == now}
+    errors = sum(1 for f in fetched.values() if f.get("status") != 200 or f.get("parse_error"))
+    line = audit.audit_line(BOT, now, sum(f.get("items") or 0 for f in fetched.values()), items_new, errors,
+                            len(fetched), duration_s)
+    healthy = sum(1 for f in state["feeds"].values() if f.get("status") == 200 and not f.get("parse_error"))
+    return audit.record_run(folder or store.sources_dir() / BOT, line, healthy, len(state["feeds"]))
 
 
 if __name__ == "__main__":
