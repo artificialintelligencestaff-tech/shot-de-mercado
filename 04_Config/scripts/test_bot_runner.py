@@ -16,6 +16,16 @@ sys.path.insert(0, str(SCRIPTS))
 import bot_runner as br  # noqa: E402
 import lib_events as events  # noqa: E402
 
+try:
+    import bs4  # noqa: F401
+    HAS_BS4 = True
+except ImportError:
+    HAS_BS4 = False
+# html_list y telegram_preview necesitan beautifulsoup4. Sin él, esos tests se saltan con el motivo a la vista.
+# audit_gate corre con REQUIRE_TEST_DEPS=1: ahí faltar bs4 es una FALLA, nunca un salto silencioso (D-075).
+requires_bs4 = unittest.skipUnless(HAS_BS4 or os.environ.get("REQUIRE_TEST_DEPS"),
+                                   "beautifulsoup4 no instalado: pip install --require-hashes -r requirements-dev.txt")
+
 T0 = 1791000000
 MINT_A = "6BfTBNYJcZW9AnxRQ7aAx4Luf2K4BpmWpR7FWTPZpump"
 MINT_B = "7cnqaJLZaSD1s2PchXuYjauGSk6c8Nuj9Zcd1V5aMdKU"
@@ -114,6 +124,7 @@ class Runner(Base):
         self.assertTrue((self.root / "02_Analisis/sources/dexp_test/_audit.jsonl").exists())
         self.assertEqual(br.jsonpath(POOLS, "$.results[1].tokens[0]['symbol']"), ["CAT"])
 
+    @requires_bs4
     def test_html_list_con_selectores_css(self):
         r = self.recipe({"name": "btc_ann", "kind": "html_list", "cadencia_min": 60, "grupo": "f",
                          "url_base": "https://bitcointalk.org/index.php?board=159.0", "src_kind": "post",
@@ -126,18 +137,33 @@ class Runner(Base):
         self.assertEqual(recs[1]["c"], ["KITTY"])
         self.assertIn("presale", recs[2]["k"])
 
-    def test_rss_y_telegram_preview(self):
+    def test_rss_sin_dependencias(self):
         rss = self.recipe({"name": "rss_extra", "kind": "rss", "cadencia_min": 20, "grupo": "a",
                            "url_base": "https://news.example/feed.xml"})
-        tg = self.recipe({"name": "tg_pump", "kind": "telegram_preview", "cadencia_min": 30, "grupo": "a",
-                          "url_base": "https://t.me/s/pumpfun"})
-        http = FakeHTTP({"https://news.example": (200, RSS, rss["url_base"]),
-                         "https://t.me/s/pumpfun": (200, TG, tg["url_base"])})
-        br.run_recipe(rss, now=T0, fetch=http, root=self.root)
-        br.run_recipe(tg, now=T0, fetch=http, root=self.root)
+        br.run_recipe(rss, now=T0, fetch=FakeHTTP({"https://news.example": (200, RSS, rss["url_base"])}),
+                      root=self.root)
         (n,) = self.diary("rss_extra")
         self.assertEqual((n["kind"], n["url"], n["ts"]), ("news", "https://news.example/a", 1790998200))
         self.assertTrue({"solana", "memecoin", "pump.fun"} <= set(n["k"]))
+
+    def test_dependencia_faltante_no_se_disfraza_de_receta_vacia(self):
+        """D-075: sin bs4, collect() antes devolvía 0 ítems con status parse_error; ahora el ImportError sube."""
+        from unittest import mock
+        r = br.validate_recipe({"name": "btc_ann", "kind": "html_list", "cadencia_min": 60,
+                                "url_base": "https://bitcointalk.org/index.php?board=159.0",
+                                "extractores": {"items": "span > a", "id": "@href"}})
+        http = FakeHTTP({"https://bitcointalk.org": (200, BTC_HTML, r["url_base"])})
+        with mock.patch.dict(sys.modules, {"bs4": None}):
+            with self.assertRaises(ImportError):
+                br.collect(r, now=T0, fetch=http, root=self.root)
+        self.assertFalse((self.root / "02_Analisis/sources/btc_ann/_state.json").exists())    # no deja estado falso
+
+    @requires_bs4
+    def test_telegram_preview(self):
+        tg = self.recipe({"name": "tg_pump", "kind": "telegram_preview", "cadencia_min": 30, "grupo": "a",
+                          "url_base": "https://t.me/s/pumpfun"})
+        br.run_recipe(tg, now=T0, fetch=FakeHTTP({"https://t.me/s/pumpfun": (200, TG, tg["url_base"])}),
+                      root=self.root)
         (m,) = self.diary("tg_pump")
         self.assertEqual((m["kind"], m["id"], m["url"], m["m"]["views"]),
                          ("message", "pumpfun/101", "https://t.me/pumpfun/101", 1200))

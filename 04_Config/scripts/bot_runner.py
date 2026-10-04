@@ -346,6 +346,8 @@ def collect(recipe, now=None, fetch=http_fetch, root=None, sample_subjects=False
             continue
         try:
             items += parse_payload(recipe, body, final or url)
+        except ImportError:
+            raise                      # dependencia faltante (p. ej. bs4): error del entorno, no de la receta (D-075)
         except Exception as e:                                    # noqa: BLE001 — un parser roto es un error de la receta
             status, error = "parse_error", f"{type(e).__name__}: {e}"[:200]
     return items[: recipe["limite"]], {"status": status, "error": error, "calls": len(urls)}
