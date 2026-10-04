@@ -65,6 +65,7 @@ sources/rss/  sources/telegram/ sources/web/  sources/github/ sources/x/   sourc
 | `bot_web_scraper` | Plantilla YAML: Bitcointalk; DEXTools y Solscan desactivados (§1 #5) | 30 min (`11,41 * * * *`) | `sources/web/<fecha>.jsonl` | red; `beautifulsoup4` (MIT) | `sources_web.yml` |
 | `bot_github_trending` | `github.com/trending` (HTML) + Search API por topic: crypto, solana, defi, memecoin, depin, rwa | 6 h (`17 */6 * * *`) | `sources/github/<fecha>.jsonl` | red; `GITHUB_TOKEN` (30 req/min en búsqueda) | `sources_github.yml` |
 | `bot_x_nitter` | Pool de instancias de Nitter elegido desde `status.d420.de`; cuentas en YAML | 20 min (`9,29,49 * * * *`) | `sources/x/<fecha>.jsonl` | red; health check | `sources_x.yml` |
+| `bot_influencer_tracker` | 50 cuentas de X de `04_Config/influencers.yaml`: FxEmbed (primario) y syndication (respaldo), sin login (§18) | 30 min (`12,42 * * * *`) | `sources/x_influencers/<fecha>.jsonl` + eventos | red | `sources_x_influencers.yml` **[implementado, D-087]** |
 | `bot_forum_scraper` | API oficial de 4chan /biz/; Reddit: PullPush → Arctic Shift → RSSHub | 1 h (`25 * * * *`) | `sources/forums/<fecha>.jsonl` | red | `sources_forums.yml` |
 | `bot_orchestrator` | Lee `_bots.yaml`, el `_state.json` de cada bot y las corridas de Actions | 10 min (`*/10 * * * *`, real ~15; D-035) | `sources/_merged.jsonl`, `_index.json`, `_health.json`, bloque en `_INSTALADOS.md` | **todos los bots** + `lib_sources_store` | `sources_orchestrator.yml` **[implementado]** |
 | `lib_sources_store` (librería) | Todos los `sources/*/<fecha>*.jsonl` | la llama el orquestador; consulta bajo demanda | `_merged.jsonl`, `_index.json` | outputs de los bots | — **[implementado]** |
@@ -413,3 +414,89 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
 
 **Tests:** `test_d082_token_nacido.py` (2) y `test_d082_prelaunch_alerta.py` (1). Las suites existentes de 116 (26), 114 (19) y 97 siguen verdes.
 
+
+## 17. Patrimonio de datos (D-087)
+
+`02_Analisis/patrimonio/` es el **índice de qué hay dónde**. No es una mudanza: cada bot sigue escribiendo en su ruta (un dueño por archivo) y `_inventario.json` la apunta. Mover datos rompería a productores y consumidores en producción.
+
+**Árbol:**
+
+```
+02_Analisis/patrimonio/
+  README.md          reglas
+  _inventario.json   índice: una entrada por carpeta o archivo de primer nivel de 02_Analisis/
+  cuantitativo/      series nuevas sin dueño previo (p. ej. lead-lag por cuenta de X)
+  informativo/       snapshots diarios de portales sin bot (rwa/, depin/: fichas 07_portales)
+  calendario/        fuentes extra del calendario que no escriba bot_prelaunch_calendar
+  resultados/        resultados agregados (precisión por fuente, por cuenta, por narrativa)
+```
+
+| Categoría | Qué guarda | Rutas reales vivas |
+|---|---|---|
+| cuantitativo | precios, liquidez, volumen, scores, señales, datasets | `multichain/`, `early/`, `datasets/`, `shadow_v4/` |
+| informativo | fuentes src-1, eventos, narrativa, X, dossiers | `sources/` (incluye `x_influencers/`), `events/`, `narrative/`, `dossiers/` |
+| calendario | activos no nacidos y su seguimiento | `prelaunch/` |
+| resultados | alertas, operación, diagnósticos, hipótesis | `alerts/`, `operations/`, `diagnostics/`, `hypotheses/`, logs `_*.json` de los bots del pipeline |
+
+**Entrada del inventario:** `{ruta, categoria, estado, dueno, formato, que}` más, si aplica, `consumidores`, `retencion` y `doc`. Estados:
+- `vivo`: lo escribe un workflow activo;
+- `manual`: corridas a mano o bibliotecas sin workflow (`signals/`, `macro/`, `hypotheses/`);
+- `futuro`: ruta reservada que crea su dueño en la primera corrida (`events/`, `prelaunch/` y las 4 subcarpetas);
+- `legado`: investigación sin escritor.
+
+**Estado al 2026-10-04 [V]:** 60 entradas.
+
+| Categoría | Entradas | Archivos | Tamaño |
+|---|---|---|---|
+| cuantitativo | 24 | 163 | 34,4 MB |
+| informativo | 11 | 212 | 3,8 MB |
+| calendario | 5 | 7 | 0 MB |
+| resultados | 20 | 241 | 1,6 MB |
+
+**38 de las 60 entradas son legado** (detection_v3–v6, shadow_v2/v3/v5, deep_dive_*, panorama…). Son candidatas a archivar por la regla "lo que no sirve al fin se elimina": [P] decisión de Dirección. Se conservan como evidencia hasta entonces.
+
+**Guardia.** `lib_patrimonio.check()` falla si una entrada no cumple el esquema, si una ruta vivo/manual/legado no existe, o si una carpeta o archivo de primer nivel de `02_Analisis/` no figura en el inventario. `test_lib_patrimonio` corre en `audit_gate tests`: una ruta nueva de un bot se anota en el mismo PR. `python 04_Config/scripts/lib_patrimonio.py` imprime el resumen.
+
+## 18. bot_influencer_tracker — cuentas de X (D-087)
+
+`bot_influencer_tracker.py` + `sources_x_influencers.yml` (cada 30 min, minutos :12 y :42; concurrency `sources-x-influencers-write`). Lee las cuentas de `04_Config/influencers.yaml` (`{cuenta, categoria, prioridad}`): 50 activas y 16 candidatas apagadas, todas verificadas el 2026-10-04.
+
+**Mecanismos sin login (medidos el 2026-10-04) [V]:**
+- **Primario: FxEmbed** `api.fxtwitter.com/2/profile/<cuenta>/statuses`. Trae ~20 publicaciones frescas para casi todas las cuentas activas, con likes, reposts, respuestas y vistas. En ~120 requests no apareció ningún límite.
+- **Respaldo: syndication** (el widget de inserción). Límite de 30 requests cada 15 min por cliente. De 8 cuentas probadas, solo 2 vinieron frescas: 3 congeladas (la publicación más nueva era de hace ~330 días) y 3 vacías. Por eso no puede ser el único mecanismo, como suponía la ficha de D-079.
+- El siguiente mecanismo se usa si el anterior falla, viene vacío o trae solo publicaciones de más de `stale_dias` (7).
+
+**Flujo por corrida:**
+1. Elige las cuentas al día. Una cuenta `vivo` se consulta en todas las corridas; `lento`, cada 6 h; `congelado` y `vacio`, cada 24 h. Primero van las de prioridad 1.
+2. Pide las publicaciones, con 1 s entre requests reales.
+3. Registra las publicaciones de las últimas 48 h que no estén en `seen`.
+4. Emite eventos para las de las últimas 2 h.
+
+**Salida:**
+- **Diario:** `sources/x_influencers/<fecha>.jsonl` (src-1, kind `tweet`).
+  - `src` = la cuenta.
+  - El texto se usa para extraer y hashear y no se guarda.
+  - `m` lleva categoría, prioridad, mecanismo, repost, métricas, URLs (sin t.co) y `tok` (contratos sacados de URLs de token, de "CA:" o de sufijos `pump`/`bonk`; las wallets de exploradores no cuentan).
+- **Estado:** `sources/x_influencers/_state.json` con:
+  - `seen` (72 h);
+  - `rate_limit` por mecanismo;
+  - `sources`, la salud por cuenta: estado HTTP, mecanismo, frescura, fallas seguidas, `next_check` y `auto_off_until` tras 3 fallas (6 h).
+- **Eventos** (`events/x_influencers/`, lib_events):
+
+| Tipo | Subject | Severidad | TTL / ventana |
+|---|---|---|---|
+| `tweet_influencer` | id de la publicación | 2 si prioridad 1 y nombra un cashtag o contrato; 1 si prioridad ≤ 2; 0 si no | 6 h / 1 día |
+| `mencion_token` | `$CASHTAG` o contrato | 0 para los mayores (BTC, ETH, SOL…); 1 + (≥ 2 cuentas o prioridad 1) + (≥ 3 cuentas), máximo 3 | 3 h / 1 h |
+| `keyword_narrativa` | palabra clave de `keywords.yaml` | 0 con 1 cuenta, 1 con 2–3, 2 con ≥ 4 | 4 h / 1 h |
+
+**Límites de tasa:**
+- Un 429 guarda el `x-rate-limit-reset` (o 15 min) y ese mecanismo no se vuelve a usar hasta entonces.
+- Un `x-rate-limit-remaining` ≤ 1 corta el mecanismo sin esperar el 429.
+- Syndication tiene un cupo de 20 por corrida.
+- Si todos los mecanismos están limitados, la corrida termina y las cuentas pendientes quedan sin falla para la próxima.
+
+**Efecto en producción [V].** Los registros entran al almacén fusionado (§4, §6), como RSS y Telegram, así que por diseño (D-035) suman menciones por mint y `$símbolo` al componente informacional del scorer joven de script_116 y a las menciones informativas de script_97. Es la vía prevista para todo bot de fuentes; no se tocó código de scorers.
+
+**Registro.** `x_influencers` en `_bots.yaml` (cadencia 30 min, atrasado a los 90): lo vigilan el orquestador y self_repair.
+
+**Tests:** `test_bot_influencer_tracker.py` (8): parsing de los dos mecanismos y extracción, dedup, falla aislada con auto_off, rate limit, frescura con respaldo, eventos, configuración real, corrida completa con escritura.

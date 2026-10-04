@@ -1,0 +1,87 @@
+{
+ "version": "patrimonio-1",
+ "actualizado": "2026-10-04",
+ "directiva": "D-087",
+ "regla": "Índice de qué hay dónde. No se mueve nada: cada bot sigue escribiendo en su ruta (un dueño por archivo) y esta tabla lo apunta. Las subcarpetas de patrimonio/ alojan solo datos nuevos sin dueño previo. Toda carpeta o archivo de primer nivel de 02_Analisis/ tiene que figurar acá (lo verifica test_lib_patrimonio).",
+ "categorias": {
+  "cuantitativo": "números medidos: precios, liquidez, volumen, scores, señales y datasets",
+  "informativo": "lo que se dice y se sabe de un activo: fuentes src-1, eventos, narrativa, cuentas de X, dossiers",
+  "calendario": "activos no nacidos: anuncios, preventas, fechas de TGE y listing, seguimiento post-nacimiento",
+  "resultados": "lo que el sistema hizo y cómo le fue: alertas, resultados medidos, hipótesis, operación y auditorías"
+ },
+ "estados": {
+  "vivo": "lo escribe un workflow activo",
+  "manual": "lo escriben corridas a mano o bibliotecas sin workflow propio",
+  "futuro": "ruta reservada: la crea el dueño en su primera corrida",
+  "legado": "artefacto de investigación sin escritor activo (se conserva como evidencia; candidato a archivar)"
+ },
+ "entradas": [
+  {"ruta": "02_Analisis/patrimonio/cuantitativo/", "categoria": "cuantitativo", "estado": "futuro", "dueno": "a definir por directiva", "formato": "json/jsonl", "que": "series nuevas sin dueño previo (p. ej. lead-lag medido por cuenta de X)"},
+  {"ruta": "02_Analisis/patrimonio/informativo/", "categoria": "informativo", "estado": "futuro", "dueno": "a definir por directiva", "formato": "json", "que": "snapshots diarios de portales (rwa/, depin/: fichas 07_portales de D-087)"},
+  {"ruta": "02_Analisis/patrimonio/calendario/", "categoria": "calendario", "estado": "futuro", "dueno": "a definir por directiva", "formato": "json", "que": "fuentes extra del calendario que no escriba bot_prelaunch_calendar"},
+  {"ruta": "02_Analisis/patrimonio/resultados/", "categoria": "resultados", "estado": "futuro", "dueno": "a definir por directiva", "formato": "json/jsonl", "que": "resultados agregados por categoría (precisión por fuente, por cuenta, por narrativa)"},
+
+  {"ruta": "02_Analisis/multichain/", "categoria": "cuantitativo", "estado": "vivo", "dueno": "multichain_scanner.yml (script_114)", "formato": "json/jsonl", "que": "scan por red, scores multichain, perps, premarket, categorías, protocolos, gobernanza, historial", "consumidores": ["script_97 (alertas multichain)"], "doc": "27"},
+  {"ruta": "02_Analisis/early/", "categoria": "cuantitativo", "estado": "vivo", "dueno": "early_watch.yml + early_watch_b.yml (script_116); early_review.yml (_gate.json)", "formato": "json", "que": "watchlist y señales del early watch por instancia, scorer de jóvenes, alertas tempranas", "doc": "31, 32"},
+  {"ruta": "02_Analisis/datasets/", "categoria": "cuantitativo", "estado": "vivo", "dueno": "datasets_build.yml (dataset_builder); lib_persist (historical_alerts.jsonl)", "formato": "json/jsonl", "que": "índices Binance y memechain, histórico de alertas para backtest"},
+  {"ruta": "02_Analisis/shadow_v4/", "categoria": "cuantitativo", "estado": "vivo", "dueno": "pipeline_t0.yml (script_82)", "formato": "json", "que": "candidatos acumulados del pipeline T0"},
+  {"ruta": "02_Analisis/signals/", "categoria": "cuantitativo", "estado": "manual", "dueno": "script_112_signal_aggregator", "formato": "json", "que": "señales agregadas por cadena y mint (schema 1.1)"},
+  {"ruta": "02_Analisis/macro/", "categoria": "cuantitativo", "estado": "manual", "dueno": "script_110_macro_context", "formato": "json", "que": "contexto macro de DefiLlama"},
+
+  {"ruta": "02_Analisis/sources/", "categoria": "informativo", "estado": "vivo", "dueno": "bots de fuentes: rss, telegram a/b, runner (recetas), x_influencers (D-087); bot_orchestrator (_merged, _index, _health); bot_self_repair (_repair_*)", "formato": "jsonl src-1", "que": "diarios src-1 por bot (sin texto), almacén fusionado de 48 h, salud y reparación", "consumidores": ["script_116 (menciones del scorer joven)", "script_97 (menciones informativas)"], "doc": "34"},
+  {"ruta": "02_Analisis/events/", "categoria": "informativo", "estado": "futuro", "dueno": "lib_events: un escritor por subcarpeta (early_watch_<inst>, multichain_scanner, prelaunch_calendar, runner_*, x_influencers)", "formato": "jsonl", "que": "eventos tipados con TTL (token_nacido, mencion_token, keyword_narrativa…) y cursores de consumidores", "retencion": "8 días", "doc": "34 §13, §16"},
+  {"ruta": "02_Analisis/narrative/", "categoria": "informativo", "estado": "vivo", "dueno": "narrative_collector.yml (script_115)", "formato": "json", "que": "ítems de narrativa, índice de palabras clave y fichas por mint", "doc": "26"},
+  {"ruta": "02_Analisis/dossiers/", "categoria": "informativo", "estado": "vivo", "dueno": "script_113 (lo carga script_97 al emitir)", "formato": "json", "que": "dossier por activo alertado (solana/, multichain/)", "doc": "24"},
+
+  {"ruta": "02_Analisis/prelaunch/", "categoria": "calendario", "estado": "futuro", "dueno": "sources_prelaunch.yml (bot_prelaunch_calendar)", "formato": "json", "que": "calendario de activos no nacidos (_calendar.json): anunciado → confirmado → nacido → seguimiento → purgado", "consumidores": ["script_97 (línea PRE-LANZAMIENTO, D-082)"], "doc": "34 §15-16"},
+  {"ruta": "02_Analisis/pre_launch/", "categoria": "calendario", "estado": "legado", "dueno": "script_99 + prelaunch.yml (deprecados en D-079)", "formato": "json", "que": "acumulado del calendario viejo"},
+  {"ruta": "02_Analisis/airdrops_parsed/", "categoria": "calendario", "estado": "legado", "dueno": "investigación 2026-09-20", "formato": "json", "que": "airdrops parseados (API y Selenium)"},
+  {"ruta": "02_Analisis/tge_parsed/", "categoria": "calendario", "estado": "legado", "dueno": "investigación 2026-09-20", "formato": "json", "que": "TGE parseados (Selenium)"},
+
+  {"ruta": "02_Analisis/alerts/", "categoria": "resultados", "estado": "vivo", "dueno": "pipeline_t0.yml (script_97: alert_*.json, _all_alerts.json); trust_update.yml (script_98: trust_*); monitor_shadow_bot.yml (_cycle_log.json)", "formato": "json", "que": "alertas emitidas, trust y log de ciclos", "doc": "09"},
+  {"ruta": "02_Analisis/operations/", "categoria": "resultados", "estado": "vivo", "dueno": "lib_persist.log_operation (early_watch, datasets, latency, emission_cycle, early_review)", "formato": "jsonl", "que": "una línea por corrida de cada operación"},
+  {"ruta": "02_Analisis/diagnostics/", "categoria": "resultados", "estado": "vivo", "dueno": "early_review, latency_analysis, monitor_shadow, probe_inventario, probe_narrative_sources (cada uno su archivo)", "formato": "json", "que": "diagnósticos de los workflows"},
+  {"ruta": "02_Analisis/hypotheses/", "categoria": "resultados", "estado": "manual", "dueno": "lib_scientific_method", "formato": "jsonl", "que": "registro de hipótesis y veredictos (_registry.jsonl)", "doc": "36"},
+  {"ruta": "02_Analisis/_autorepair_log.json", "categoria": "resultados", "estado": "vivo", "dueno": "autorepair_bot.yml", "formato": "json", "que": "log del autorreparador del pipeline"},
+  {"ruta": "02_Analisis/_daily_summary.json", "categoria": "resultados", "estado": "vivo", "dueno": "daily_summary_bot.yml", "formato": "json", "que": "resumen diario"},
+  {"ruta": "02_Analisis/_health_log.json", "categoria": "resultados", "estado": "vivo", "dueno": "health_check_bot.yml", "formato": "json", "que": "salud del pipeline"},
+  {"ruta": "02_Analisis/_cycle_log.json", "categoria": "resultados", "estado": "legado", "dueno": "pipeline viejo (último commit 2026-09-24)", "formato": "json", "que": "log de ciclos anterior al de alerts/"},
+  {"ruta": "02_Analisis/_precision_log.json", "categoria": "resultados", "estado": "legado", "dueno": "script_98 viejo (último commit 2026-09-24)", "formato": "json", "que": "precisión anterior al de alerts/"},
+  {"ruta": "02_Analisis/_state_manifest.json", "categoria": "resultados", "estado": "legado", "dueno": "sin escritor en el código actual", "formato": "json", "que": "manifiesto de estado de 2026-09-24"},
+  {"ruta": "02_Analisis/_contracts/", "categoria": "resultados", "estado": "legado", "dueno": "sin escritor en el código actual", "formato": "json", "que": "contrato de salida de script_98"},
+  {"ruta": "02_Analisis/_evidence/", "categoria": "resultados", "estado": "legado", "dueno": "corridas de 2026-09-24", "formato": "json", "que": "evidencia de corridas de script_98"},
+
+  {"ruta": "02_Analisis/detection_v3/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "detección v3"},
+  {"ruta": "02_Analisis/detection_v4/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "detección v4"},
+  {"ruta": "02_Analisis/detection_v5/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "detección v5"},
+  {"ruta": "02_Analisis/detection_v6/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "detección v6 (parciales)"},
+  {"ruta": "02_Analisis/shadow_mode/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "candidatos en modo sombra"},
+  {"ruta": "02_Analisis/shadow_v2/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "modo sombra v2"},
+  {"ruta": "02_Analisis/shadow_v3/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json/sqlite", "que": "modo sombra v3 (caché)"},
+  {"ruta": "02_Analisis/shadow_v5/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-24", "formato": "json/sqlite", "que": "modo sombra v5"},
+  {"ruta": "02_Analisis/early_detection/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-18/20", "formato": "json", "que": "filtros adaptativos de detección temprana"},
+  {"ruta": "02_Analisis/early_radar/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "radar temprano"},
+  {"ruta": "02_Analisis/enriched_candidates/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-20", "formato": "json", "que": "candidatos enriquecidos"},
+  {"ruta": "02_Analisis/dual_scoring/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "scoring dual"},
+  {"ruta": "02_Analisis/holder_analysis/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-18", "formato": "json", "que": "análisis de holders"},
+  {"ruta": "02_Analisis/volume_anomaly/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-18", "formato": "json", "que": "anomalías de volumen"},
+  {"ruta": "02_Analisis/tracking/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "seguimiento de precio y degradación"},
+  {"ruta": "02_Analisis/risk_check/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "chequeo de riesgo (cryptoguard)"},
+  {"ruta": "02_Analisis/riesgo/", "categoria": "cuantitativo", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "herramientas de riesgo y tamaño de posición"},
+
+  {"ruta": "02_Analisis/narrativas/", "categoria": "informativo", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "narrativescope y tokens de agentes IA"},
+  {"ruta": "02_Analisis/crypto_signals/", "categoria": "informativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "señales de un daemon externo"},
+  {"ruta": "02_Analisis/cryptowhale_insights/", "categoria": "informativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "insights de ballenas"},
+  {"ruta": "02_Analisis/token_intel/", "categoria": "informativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "inteligencia por token"},
+  {"ruta": "02_Analisis/inspect_threews/", "categoria": "informativo", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "inspección puntual"},
+  {"ruta": "02_Analisis/mcp_stdio/", "categoria": "informativo", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "herramientas MCP probadas"},
+
+  {"ruta": "02_Analisis/auditorias/", "categoria": "resultados", "estado": "legado", "dueno": "investigación 2026-09-16", "formato": "json", "que": "deep dive de movers y auditoría histórica"},
+  {"ruta": "02_Analisis/casos_historicos/", "categoria": "resultados", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "casos históricos"},
+  {"ruta": "02_Analisis/deep_dive_deficlaw/", "categoria": "resultados", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "deep dive puntual"},
+  {"ruta": "02_Analisis/deep_dive_verified/", "categoria": "resultados", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "deep dive verificado"},
+  {"ruta": "02_Analisis/panorama/", "categoria": "resultados", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "panorama y candidatos"},
+  {"ruta": "02_Analisis/validation_v7/", "categoria": "resultados", "estado": "legado", "dueno": "investigación 2026-09-23", "formato": "json", "que": "validación de v7"},
+  {"ruta": "02_Analisis/verificacion_paquetes/", "categoria": "resultados", "estado": "legado", "dueno": "investigación 2026-09-17", "formato": "json", "que": "verificación de paquetes y registries (supply chain)"}
+ ]
+}
