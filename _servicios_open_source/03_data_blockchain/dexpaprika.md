@@ -13,3 +13,30 @@
 - Señal de "nacimiento" por red y por DEX: conteo de pools nuevos por hora → baseline Poisson (doc 26) por cadena. [H]
 **Riesgos técnicos:** no publica un límite de requests claro; usar ≤1 req/s y backoff ante 429. [I] El endpoint cambió en 2026 (410): fijar la ruta en un solo módulo. [V]
 **Recomendación:** integrar como fuente de respaldo del early watch (pools nuevos por red) en un bot de fuentes nuevo `bot_dex_pools` con salida src-1. Prioridad P1. Sin SDK.
+
+## Receta (bot_genesis, D-067)
+
+Pools recién creados en Solana, sin key [V 2026-10-03]. Respaldo del early watch y base del conteo de nacimientos
+por red. `tokens[*]` trae solo `id` y `chain` (sin símbolo) [V].
+
+```yaml
+recipe:
+  kind: json_api
+  url_base: https://api.dexpaprika.com/networks/solana/pools/search?limit=50&order_by=created_at&sort=desc
+  cadencia_min: 20
+  src_kind: token
+  grupo: a
+  limite: 50
+  extractores:
+    - items: "$.results[*]"
+    - id: "$.id"
+    - title: "$.dex_name"
+    - ts: "$.created_at"
+    - text: "$.tokens[*].id"
+    - meta.dex: "$.dex_id"
+    - meta.liquidity_usd: "$.liquidity_usd"
+    - meta.volume_usd_24h: "$.volume_usd_24h"
+    - meta.transactions_24h: "$.transactions_24h"
+    - meta.price_change_5m: "$.price_change_percentage_5m"
+    - meta.price_change_1h: "$.price_change_percentage_1h"
+```

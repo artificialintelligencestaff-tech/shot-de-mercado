@@ -32,6 +32,18 @@ Estructura de investigación de servicios open source gratuitos para el pipeline
 
 Fichas de D-055: endpoints probados en vivo el 2026-10-03 (rótulo [V]). Estado y descartes en `_PENDIENTES.md`.
 
+**Fichas con bloque `recipe:` (D-067).** `bot_genesis` las convierte en recetas de `04_Config/recipes/` y las valida una vez por día. Resultado de la validación en vivo del 2026-10-03:
+
+| Ficha | Kind | Cadencia | Validación |
+|---|---|---|---|
+| `dexpaprika.md` | json_api (pools nuevos de Solana) | 20 min | habilitada, 50 ítems |
+| `pumpfun_datos.md` | json_api (lanzamientos) | 10 min | habilitada, 50 ítems |
+| `bitcointalk_ann.md` | html_list (tablero ANN) | 60 min | habilitada, 40 ítems |
+| `goplus_security.md` | json_api por sujeto (`pump_naciente`) | 30 min | habilitada, 5 ítems de prueba; corre en `sin_sujetos` hasta que algún bot emita el evento |
+| `helius_free.md` | json_api con `HELIUS_API_KEY` | 15 min | probation: falta el secret (lo crea Dirección) |
+
+Para agregar un bot sin código: sumar un bloque `recipe:` a una ficha (esquema en `04_Config/recipes/README.md`).
+
 ## Protocolo
 
 1. **YIN investiga** → crea `.md` en la carpeta correspondiente

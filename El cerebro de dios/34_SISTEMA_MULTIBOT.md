@@ -330,3 +330,25 @@ fallback_sources:
 - DEXTools y Solscan: confirmar si son imposibles sin navegador (§1 #5).
 - Frescura de PullPush y Arctic Shift.
 - Secrets OAuth de Reddit, si Dirección los crea.
+
+## 14. audit_gate — auditoría CI determinista (D-067; dependencias D-075)
+
+`.github/workflows/audit_gate.yml` corre en cada pull request a `main`. No usa LLM ni secretos y es de solo lectura. La lógica vive en `04_Config/scripts/audit_gate.py`, para poder testearla y correrla en local.
+
+| Check | Comando | Falla si |
+|---|---|---|
+| tests | `python 04_Config/scripts/audit_gate.py tests` | algún archivo `test_*.py` sale con código ≠ 0 o no imprime `OK` |
+| doc35 | `audit_gate.py doc35 --rev HEAD` | el SHA-256 de una fila del doc 35 no coincide con el **blob** de git (LF) |
+| prohibited | `audit_gate.py prohibited --base <sha>` | una línea agregada trae `--force` / `reset --hard` en un comando, `TELEGRAM_CHAT_ID` en código, un secreto con forma conocida o un `.env` |
+| touched / bundle | `audit_gate.py touched` / `bundle` | nunca (informativo): workflows y producción tocados, `audit_bundle.md` como artifact |
+
+**Dependencias (D-075) [V].** Antes de la batería, `tests` ejecuta `install_deps()`:
+1. Instala el primer archivo que exista entre `requirements-dev.txt` y `requirements.txt` (en la raíz). Un archivo con `--hash=` se instala con `--require-hashes --no-deps`. Que no exista ninguno no es error.
+2. Si después sigue faltando bs4, instala `04_Config/requirements/sources_telegram.txt` (fijado con hash).
+3. Si alguna instalación falla, la batería **no corre**: un entorno incompleto daba fallas engañosas.
+4. Corre los tests con `REQUIRE_TEST_DEPS=1`. Con esa variable, un test que depende de bs4 falla si bs4 falta, en vez de saltarse. En local, sin la variable, se salta con el motivo a la vista.
+5. `--no-install` saltea la instalación.
+
+**Origen.** Las 2 fallas de `test_bot_runner` en el entorno de YIN venían de que bs4 no estaba instalado, no de un bug del parser ni de los mocks. `bot_runner.collect()` atrapaba el `ImportError` como `parse_error` con 0 ítems; ahora el `ImportError` sube.
+
+**Bloqueo real del merge.** El workflow marca el check en rojo, pero para que eso **bloquee** el merge, la protección de rama de `main` tiene que exigir los checks `audit_gate / tests`, `audit_gate / doc35` y `audit_gate / prohibited`. Es una configuración del repo: [P] Dirección.
