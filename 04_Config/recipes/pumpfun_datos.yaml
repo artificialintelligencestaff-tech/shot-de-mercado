@@ -1,0 +1,21 @@
+# generado por bot_genesis desde _servicios_open_source/04_scrapers/pumpfun_datos.md — se regenera; para editar, cambiar la ficha
+kind: json_api
+url_base: https://frontend-api-v3.pump.fun/coins?offset=0&limit=50&sort=created_timestamp&order=DESC&includeNsfw=false
+cadencia_min: 10
+src_kind: token
+grupo: a
+limite: 50
+extractores:
+- items: $[*]
+- id: $.mint
+- title: $.name
+- ts: $.created_timestamp
+- author: $.creator
+- text: $.mint
+- meta.symbol: $.symbol
+- meta.usd_market_cap: $.usd_market_cap
+- meta.reply_count: $.reply_count
+- meta.complete: $.complete
+- meta.is_currently_live: $.is_currently_live
+- meta.twitter: $.twitter
+name: pumpfun_datos

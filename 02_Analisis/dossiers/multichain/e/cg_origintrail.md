@@ -1,6 +1,6 @@
 # OriginTrail (TRAC) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.434782 · mcap $195,219,147
-Detectado 01/10/2026 17:56 UTC · score 89 (scoring mc-e-0.2, cobertura 0.60)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.45291 · mcap $202,575,649
+Detectado 04/10/2026 04:14 UTC · score 68 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $45,551,520 |
-| Cambio 24 h / 7 d | 4.61606% / 17.2012% |
+| Volumen 24 h | $13,389,800 |
+| Cambio 24 h / 7 d | -6.93639% / 22.7962% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,17 +35,17 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.2333 vs mediana 0.0523 | +1.00 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0661 vs mediana 0.0412 | +0.43 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
-| Dilución FDV/mcap | n/d | n/d | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +1.47 pp | +0.29 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +16.08 pp | +0.80 | 15 | CoinGecko |
+| Dilución FDV/mcap | 1.12 | -0.10 | 20 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | +0.72 pp | +0.14 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +22.97 pp | +1.00 | 15 | CoinGecko |
 
-**Total: 89** (umbral 56, cobertura 0.60)
+**Total: 68** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/10/2026 17:56 UTC.
+- < 48 h desde 04/10/2026 04:14 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
-- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.2
+- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.3

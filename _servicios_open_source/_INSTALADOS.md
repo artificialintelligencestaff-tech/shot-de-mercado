@@ -13,7 +13,7 @@
 |---|---|---|---|
 | `forums` | diseño | — | —/— |
 | `github` | diseño | — | —/— |
-| `rss` | atrasado | 25 | 11/11 |
+| `rss` | atrasado | 1 | 7/11 |
 | `telegram` | atrasado | 0 | 15/15 |
 | `telegram_b` | sin_datos | — | —/— |
 | `web` | diseño | — | —/— |
@@ -23,5 +23,6 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-10-04 `rss` atraso repetido en 24 h — última corrida: 2026-10-03 19:44 UTC
+- [P] 2026-10-04 `rss` atraso repetido en 24 h — última corrida: 2026-10-04 04:30 UTC
+- [P] 2026-10-04 `telegram` atraso repetido en 24 h — última corrida: 2026-10-04 06:06 UTC
 <!-- /AUTO:repair -->
