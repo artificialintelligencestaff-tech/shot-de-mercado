@@ -43,7 +43,7 @@ Estados:
 | `.github/workflows/early_watch.yml` | Instancia a del early watch (:07/:37, loop de 40 min) | producción | `6bef65848aa3322768aa3e5b2e64e8a5e4374b741b6a2c242db64e0bacb4a970` |
 | `.github/workflows/early_watch_b.yml` | Instancia b del early watch (:22/:52) | producción | `4b4f037ce80cdbe76411154bb4ecd885cdb071cba4d6faa73bd9063c52752e4a` |
 | `.github/workflows/latency_analysis.yml` | Mide el desfase de cron y la latencia de detección | producción | `3b71037ac5793ef7f4a73d5a735642537fbd3a1025a3dc4a8d61e5e5b7c37d20` |
-| `.github/workflows/multichain_scanner.yml` | Corre script_114 (scanner multi-chain) | producción | `60647848c621fcf5bacca471ec975f118dee1734efd9bd7381573db47f7e006d` |
+| `.github/workflows/multichain_scanner.yml` | Corre script_114 (scanner multi-chain) | producción | `758fa9e70633925274747c8f7481d4dccf3ed85f11fca5db7a0435c31e358b5c` |
 | `.github/workflows/narrative_collector.yml` | Corre script_115 cada 20 min | producción | `09f0bbf4122036a11ea9d9e860925dcef47cece641338ac5eee177c24940d06c` |
 | `.github/workflows/pipeline_t0.yml` | Pipeline principal (82 → 97 → 98); hand-off con early watch | producción | `45cf37f7d450b15793ab80b0a37708a4acb23a86cc888709304377dc8174de95` |
 | `.github/workflows/probe_inventario.yml` | Sonda del inventario de fuentes | producción | `0196271d691cef0112f5a416a0879d4f0d2b29f58557c650bb967f07702b71fe` |
@@ -60,14 +60,14 @@ Estados:
 | `04_Config/scripts/lib_persist.py` | Persistencia: dataset propio y bitácora de operaciones | producción | `cea9a34e13391b95af5591d6ee0120a00839f5ff86faffc9654d5b7d27f4cc4a` |
 | `04_Config/scripts/lib_scoring_multichain.py` | Scoring por tipo de activo (grupos b–i) | producción | `f216f81bb76e99adb7454b4b07afca4c74aa7ef076b66c09392ff4fed99098a3` |
 | `04_Config/scripts/lib_scoring_young.py` | Scorer joven young-0.4 (<60 min): pesos continuos por edad | producción | `e74f08934d1f0d2532447504b5dadfb92e0399c37bf881f73ff046cc943696b0` |
-| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `abb11c18064117c9b41ba28e33b24bd4cac5041528e072fc49f277307e08dd18` |
+| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `4bd153e6a866ad620fca857c079e9c6283988a1b2cac44fd87f6187146b4ef9e` |
 | `04_Config/scripts/probe_inventario.py` | Sonda de disponibilidad de fuentes | producción | `c0446affa69deaa34c6d8a9cdcddbaba711ae82b66bf716114d68003397961bf` |
 | `04_Config/scripts/script_113_dossier_builder.py` | Dossier por activo (ruta de compra primero) | producción | `e2a6e6c8cb3c07ba7b0a5635876d0c677a38c6a06ab8cdf49449dec4d4fe1e4a` |
-| `04_Config/scripts/script_114_multichain_scanner.py` | Scanner multi-chain v0.2 | producción | `08cd30be1827abfac97333ac770fd05e25c4c42a010c5d5967cd254ca10eb54c` |
+| `04_Config/scripts/script_114_multichain_scanner.py` | Scanner multi-chain v0.2 | producción | `b6a7e96512d6975604d87b713c569ca4f3961034b0c79b9ec66ee8fdb666ecf3` |
 | `04_Config/scripts/script_115_narrative_collector.py` | Colector de menciones (solo identificadores) | producción | `2bc1d7310b927f183d77df05a992322e3f59a70364b0edc726e3326374f4ab6c` |
-| `04_Config/scripts/script_116_early_watch.py` | Early watch: PumpPortal WS + scorer joven + claims por mint; usa query() | producción (cambio D-035 en rama) | `d68dd0efce72b3e8cc57bb44adfb05bfce0d15a10b881022bde275096b45c7d0` |
+| `04_Config/scripts/script_116_early_watch.py` | Early watch: PumpPortal WS + scorer joven + claims por mint; usa query() | producción (cambio D-035 en rama) | `a36d2744714b9efce7af0dafddd67f285b6a0127f90b1924ac030828efd1f150` |
 | `04_Config/scripts/script_82_final_detection.py` | Detección final v7.2.1 (grupo i incluido) | producción | `b35c7d14fd2f37889c19e6a557a72e3af7186a5bf9e0158760fc37675e41c5ab` |
-| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `9cd3e8607931f5f0531b604207dce15e0b5eb9bfce79bbb877e6d14d31db88a2` |
+| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `6f25ea7974c0ac84e47bbb3f1288a9d5d2bea17decd684fcb51a1bc8fc499e67` |
 | `04_Config/scripts/script_98_trust_scheduler.py` | Seguimiento de alertas (trust updates) | producción | `74288d4eb3ced1588ef0af4bb2a87e3ffaa3965455d22a54c032ccc20158f309` |
 | `04_Config/scripts/test_datasets_persist.py` | Tests de datasets_persist | test | `d957c7f249d3651defae3aa474be1c848d60ae12f7720e25c741638a77986512` |
 | `04_Config/scripts/test_early_review.py` | Tests de early_review | test | `0c304d3895d4230956e669e03720aeca931753afbfcf8c6427b329f7d2b04d53` |
@@ -93,7 +93,7 @@ Estados:
 | `04_Config/sources/_bots.yaml` | Registro de bots: workflow, cadencia, stale, respaldo | rama | `c88c8d9d307a2b93f441b81f2f65c6893b2cf1de852aeb16643043377cc374fa` |
 | `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `37ba02cf8f82cbacce9bf6701a7a82cfa3192174abd46e0f6cf51c1e1d3d8e6f` |
 | `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `ff45ece2cd810477dc60483b933b24b753a755d00eccb0774e9ee2021ebb5d54` |
-| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `e5dc754ce89660b1f3e2e4b6a6282d52cb6ce9e4b019eeb357faeabb7a10baac` |
+| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `e2596acd9a1b50add6e0b71e004fae4ba468204f673c2c25299c7e2a13200198` |
 | `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `db128d3ad8b27469ce0a16232f2f94c41cb4af6acb8026c3ae89f13cf87e4c21` |
 | `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `b55d49cef4bcccf1b53ea0e8989621b303dc4574e8ae455436a5de20e45218b2` |
 | `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `3816a9a8cadc8e6ed102570fcefe9552e403138b00c486cd2c51ecfcd2cefc23` |
@@ -102,7 +102,7 @@ Estados:
 | `El cerebro de dios/31_DETECCION_TEMPRANA.md` | Early watch: diseño, hand-off, claims, gate | doc | `e9385fe9a3d5f9f18af4ce4d22e684af3b112e729fd745477ae61fdd29ba47d3` |
 | `El cerebro de dios/32_SCORER_JOVENES.md` | Scorer joven v0.5, H-0, v7.2.2 aprobado, arquitectura Yin-Claude | doc | `af3fd1533292401ad0797a1e35a70aca2b893cc45a6a2aa531cc6fb82a3139a9` |
 | `El cerebro de dios/33_ARQUITECTURA_MULTIBOT.md` | Investigación de fuentes (RSS, MCP, Reddit, Nitter) | doc (diseño reemplazado por 34) | `50131aa522f8c1a81be690f4091da85854b9b3bc4a1425eb328a167e7398090c` |
-| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: 7 bots + store + self-repair + coparticipación | diseño | `a5da664c3bb87b01b400ebdbb8304870ea786a297f786213c80bd921f1b980f4` |
+| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: 7 bots + store + self-repair + coparticipación | diseño | `5a1a2531ddc327600a6e5cbcef9cf7f9ce1f3d84cc1593ee9488048639217c75` |
 
 ## 2. Lógica por archivo
 
