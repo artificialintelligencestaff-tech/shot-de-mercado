@@ -1,0 +1,20 @@
+# bot_prelaunch_calendar (D-079; diseño D-078 de Claude1): calendario de activos NO nacidos (anunciados, sin token
+# en cadena ni spot). Corre cada 6 h (sources_prelaunch.yml). Fuentes verificadas en vivo el 2026-10-03 [V].
+# Sumar o apagar una fuente = cambiar `enabled`. Umbrales marcados [H]: sin calibrar.
+bot: prelaunch_calendar
+purge_born_hours: 72          # seguimiento después de nacer; luego pasa a memoria episódica
+purge_unborn_days: 30         # anunciado sin nacer: se purga con motivo "no_nacido"
+purged_memory_days: 90        # un activo purgado no vuelve a entrar al calendario en esta ventana
+min_sources_confirm: 2        # fuentes independientes para pasar de anunciado a confirmado (y para el emparejamiento por símbolo)
+liq_born_usd: 100000          # [H] un par DEX con esta liquidez = el token ya nació
+pause_s: 1
+# Perps sin spot que NO son preventa (verificado 2026-10-03): BSV no tiene spot en Bybit/OKX/Binance ni DEX, pero
+# existe desde 2018.
+excluir: [BSV]
+sources:
+  hyperliquid: {enabled: true}     # perps vivos sin spot en Bybit/OKX/Binance/Hyperliquid ni DEX = "hyperps" [H]
+  aevo: {enabled: true}            # perps cripto activos con el mismo filtro (Aevo no marca la preventa en la API)
+  polymarket: {enabled: true}      # eventos abiertos "<X> FDV one day after launch"
+  bybit: {enabled: true}           # anuncios new_crypto: "Bybit to List X (X)", "New listing: XUSDT Perpetual"
+  binance: {enabled: true}         # CMS catálogo 48: "Binance Will List X (X)", HODLer Airdrops, Launchpool. Desde runners US puede dar 451 [P]
+  bitcointalk: {enabled: true}     # board 159 (ANN): solo títulos con ticker; calidad baja, rara vez confirma solo
