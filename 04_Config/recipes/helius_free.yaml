@@ -1,0 +1,18 @@
+# generado por bot_genesis desde _servicios_open_source/03_data_blockchain/helius_free.md — se regenera; para editar, cambiar la ficha
+kind: json_api
+url_base: https://api.helius.xyz/v0/addresses/6EF8rrecthR5Dkzon8Nwu78hRvfCx9DgSHeSDkPRv8vD6P/transactions?api-key={secreto}&type=CREATE&limit=50
+secreto: HELIUS_API_KEY
+cadencia_min: 15
+src_kind: token
+grupo: a
+limite: 50
+extractores:
+- items: $[*]
+- id: $.signature
+- ts: $.timestamp
+- text:
+  - $.tokenTransfers[*].mint
+  - $.description
+- meta.type: $.type
+- meta.source: $.source
+name: helius_free

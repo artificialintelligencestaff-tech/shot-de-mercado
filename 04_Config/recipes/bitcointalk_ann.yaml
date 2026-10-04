@@ -1,0 +1,14 @@
+# generado por bot_genesis desde _servicios_open_source/04_scrapers/bitcointalk_ann.md — se regenera; para editar, cambiar la ficha
+kind: html_list
+url_base: https://bitcointalk.org/index.php?board=159.0
+cadencia_min: 60
+src_kind: post
+grupo: f
+limite: 40
+dedup_h: 2160
+extractores:
+- items: span[id^=msg_] > a
+- id: '@href'
+- url: '@href'
+- title: .
+name: bitcointalk_ann
