@@ -1,0 +1,84 @@
+{
+  "key": "cg:bitcoin",
+  "group": "h",
+  "group_rule": "1: blue chip",
+  "scoring_version": "mc-h-0.3",
+  "score": 64,
+  "confidence": 1.0,
+  "reasons": [
+    "Retorno 24 h / σ GARCH: +1.55% / σ 1.72% = z +0.89 → s=+0.45 (w 30)",
+    "Bollinger(20,2) con squeeze: ancho en percentil 0.68 · precio dentro de bandas → s=+0.00 (w 20)",
+    "Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia]: +11.0% anualizado → s=+0.00 (w 20)",
+    "Fear & Greed (contrarian en extremos): 65 → s=+0.00 (w 15)",
+    "Tendencia (MA20 ± ATR14): precio 86,013.00 · MA20 82,858.64 · ATR 2,290.01 → s=+1.00 (w 15)",
+    "Energía M = 1: DVOL (Deribit) sin colectar"
+  ],
+  "components": [
+    {
+      "name": "Retorno 24 h / σ GARCH",
+      "s": 0.4465,
+      "w": 30,
+      "value": "+1.55% / σ 1.72% = z +0.89",
+      "source": "Binance klines + CoinGecko"
+    },
+    {
+      "name": "Bollinger(20,2) con squeeze",
+      "s": 0,
+      "w": 20,
+      "value": "ancho en percentil 0.68 · precio dentro de bandas",
+      "source": "Binance klines"
+    },
+    {
+      "name": "Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia]",
+      "s": 0,
+      "w": 20,
+      "value": "+11.0% anualizado",
+      "source": "Hyperliquid"
+    },
+    {
+      "name": "Fear & Greed (contrarian en extremos)",
+      "s": 0,
+      "w": 15,
+      "value": "65",
+      "source": "alternative.me"
+    },
+    {
+      "name": "Tendencia (MA20 ± ATR14)",
+      "s": 1.0,
+      "w": 15,
+      "value": "precio 86,013.00 · MA20 82,858.64 · ATR 2,290.01",
+      "source": "Binance klines"
+    }
+  ],
+  "event": "tocar +2σ₄₈ antes de −2σ₄₈ (σ del GARCH(1,1))",
+  "threshold": 56,
+  "emittable": true,
+  "status_reason": "emitible",
+  "extra": {
+    "garch": {
+      "alpha": 0.16,
+      "beta": 0.7,
+      "omega": 7.7e-05,
+      "sigma_long": 0.023439,
+      "sigma_last": 0.017622,
+      "sigma_next": 0.017191,
+      "loglik": 1206.729313,
+      "n": 365
+    },
+    "barrier_pct": 4.862
+  },
+  "symbol": "BTC",
+  "name": "Bitcoin",
+  "chain": "bitcoin",
+  "cg_id": "bitcoin",
+  "address": null,
+  "price_usd": 86013.0,
+  "mcap_usd": 1728221084880.0,
+  "volume_24h_usd": 15045085055.0,
+  "liquidity_usd": null,
+  "change_24h": 1.54713,
+  "change_7d": 1.283,
+  "pool_address": null,
+  "pool_created_at": null,
+  "category": "layer-1"
+}

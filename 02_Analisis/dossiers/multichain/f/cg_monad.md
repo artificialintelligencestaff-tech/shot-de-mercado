@@ -1,6 +1,6 @@
 # Monad (MON) — dossier multi-chain
-🎴 Grupo f (6: L1/L2 o token nativo de una chain) · chain monad · precio $0.0343999 · mcap $406,763,011
-Detectado 01/10/2026 18:15 UTC · score 64 (scoring mc-f-0.2, cobertura 1.00)
+🎴 Grupo f (6: L1/L2 o token nativo de una chain) · chain monad · precio $0.03389863 · mcap $401,103,096
+Detectado 04/10/2026 21:57 UTC · score 67 (scoring mc-f-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | monad |
 | Categoría | n/d |
-| Volumen 24 h | $174,242,604 |
-| Cambio 24 h / 7 d | 20.53974% / 32.5596% |
+| Volumen 24 h | $50,695,600 |
+| Cambio 24 h / 7 d | 0.33378% / 19.4126% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,17 +35,17 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Momentum de TVL (g₇) | +0.0268 | +0.27 | 25 | DefiLlama historicalChainTvl |
-| Aceleración de TVL (a₇) | +0.0204 | +0.41 | 15 | DefiLlama historicalChainTvl |
-| Actividad DEX/TVL (ranking entre chains) | 0.058 · percentil 0.43 | -0.14 | 20 | DefiLlama overview/dexs |
-| Fees/TVL anualizado (ranking entre chains) | 7.35% · percentil 0.29 | -0.43 | 15 | DefiLlama overview/fees |
-| Momentum relativo vs ETH (7d) | +32.56% − ETH -0.18% = +32.74 pp | +1.00 | 25 | CoinGecko |
+| Momentum de TVL (g₇) | +0.0242 | +0.24 | 25 | DefiLlama historicalChainTvl |
+| Aceleración de TVL (a₇) | +0.0445 | +0.89 | 15 | DefiLlama historicalChainTvl |
+| Actividad DEX/TVL (ranking entre chains) | 0.030 · percentil 0.43 | -0.14 | 20 | DefiLlama overview/dexs |
+| Fees/TVL anualizado (ranking entre chains) | 7.54% · percentil 0.29 | -0.43 | 15 | DefiLlama overview/fees |
+| Momentum relativo vs ETH (7d) | +19.41% − ETH +0.52% = +18.89 pp | +0.94 | 25 | CoinGecko |
 
-**Total: 64** (umbral 56, cobertura 1.00)
+**Total: 67** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/10/2026 18:15 UTC.
+- < 48 h desde 04/10/2026 21:57 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
-- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.2
+- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.3
