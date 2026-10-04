@@ -40,6 +40,7 @@ DATA_MAX_BYTES = 4096
 NAME_RE = re.compile(r"^[a-z0-9_]{1,40}$")
 ID_RE = re.compile(r"^[0-9a-f]{16}$")
 # TTL de pump_naciente, feed_caido y narrativa_emergente: D-067. El resto y todas las ventanas: [H].
+# Tipos del calendario de preventa: D-079.
 TYPES = {
     "feed_caido":          {"ttl_s": 7200,   "bucket_s": 7200},
     "feed_recuperado":     {"ttl_s": 7200,   "bucket_s": 7200},
@@ -51,6 +52,12 @@ TYPES = {
     "alerta_emitida":      {"ttl_s": 172800, "bucket_s": 3600},      # vive las 48 h de la ventana del evento
     "resultado_medido":    {"ttl_s": 604800, "bucket_s": 86400},
     "hipotesis_evaluada":  {"ttl_s": 604800, "bucket_s": 86400},
+    # Calendario de activos no nacidos (D-079). token_nacido lo emitirán early_watch y multichain_scanner.
+    "token_nacido":        {"ttl_s": 21600,  "bucket_s": 86400},     # un token nace una vez
+    "token_anunciado":     {"ttl_s": 604800, "bucket_s": 2592000},   # ventana de 30 días: un anuncio por activo
+    "token_confirmado":    {"ttl_s": 604800, "bucket_s": 2592000},
+    "prelaunch_nacido":    {"ttl_s": 259200, "bucket_s": 2592000},   # vive las 72 h de seguimiento
+    "token_purgado":       {"ttl_s": 86400,  "bucket_s": 2592000},
 }
 
 

@@ -1,8 +1,10 @@
 name: prelaunch
 
+# DEPRECADO (D-079, 2026-10-03). Reemplazo: sources_prelaunch.yml + bot_prelaunch_calendar.py (calendario de activos
+# no nacidos, eventos lib_events, commit de rutas explícitas). Se conserva como histórico: sin cron y con el job
+# desactivado (`if: false`), así ni una ejecución manual corre script_99 ni su `git add -A`.
+
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,6 +16,7 @@ concurrency:
 
 jobs:
   prelaunch:
+    if: ${{ false }}           # deprecado (D-079): ver sources_prelaunch.yml
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 

@@ -6,7 +6,7 @@ Un episodio es un hecho cerrado: qué pasó, con qué, en qué contexto y cómo 
 re-probar lo ya descartado y la que permite preguntar "¿esto ya pasó antes?".
 
   {"v":1, "id", "ts", "timestamp", "tipo", "entidad", "contexto", "resultado", "tags", "writer"}
-  tipo ∈ alerta_emitida · feed_caido · bot_reparado · hipotesis_evaluada
+  tipo ∈ alerta_emitida · feed_caido · bot_reparado · hipotesis_evaluada · prelaunch_cerrado (D-079)
 
 Persistencia: 02_Analisis/sources/_episodes.jsonl (append-only). Un escritor de producción (un workflow) escribe en
 su propio fragmento _episodes_<writer>.jsonl: dos workflows que agregan líneas al MISMO archivo chocan en el
@@ -33,7 +33,8 @@ ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
 SOURCES_REL = "02_Analisis/sources"
 MAIN_NAME = "_episodes.jsonl"
 SCHEMA = 1
-TIPOS = ("alerta_emitida", "feed_caido", "bot_reparado", "hipotesis_evaluada")
+TIPOS = ("alerta_emitida", "feed_caido", "bot_reparado", "hipotesis_evaluada",
+         "prelaunch_cerrado")                  # D-079: activo de preventa que sale del calendario
 WRITER_RE = re.compile(r"^[a-z0-9_]{1,32}$")
 ENTITY_MAX = 200
 DEDUP_TAIL = 2000             # el dedup mira las últimas N líneas del archivo destino

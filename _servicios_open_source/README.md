@@ -18,6 +18,9 @@ Estructura de investigación de servicios open source gratuitos para el pipeline
 | Cat | Ficha | Key | Prioridad |
 |-----|-------|-----|-----------|
 | 01 | `cryptopanic.md`, `coindesk_rss_aggregator.md`, `cryptocontrol.md` | — | — |
+| 02 | `x_syndication_timeline.md` | no (sin login) | P1 |
+| 02 | `fxembed_api.md` | no (sin login) | P1 |
+| 02 | `react_tweet_syndication.md` | no (sin login) | P2 |
 | 03 | `goplus_security.md` | no | P1 |
 | 03 | `dexpaprika.md` | no | P1 |
 | 03 | `helius_free.md` | gratuita | P2 |
