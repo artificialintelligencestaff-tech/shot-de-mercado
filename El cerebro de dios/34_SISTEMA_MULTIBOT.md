@@ -441,8 +441,9 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
 **Entrada del inventario:** `{ruta, categoria, estado, dueno, formato, que}` más, si aplica, `consumidores`, `retencion` y `doc`. Estados:
 - `vivo`: lo escribe un workflow activo;
 - `manual`: corridas a mano o bibliotecas sin workflow (`signals/`, `macro/`, `hypotheses/`);
-- `futuro`: ruta reservada que crea su dueño en la primera corrida (`events/`, `prelaunch/` y las 4 subcarpetas);
-- `legado`: investigación sin escritor.
+- `futuro`: ruta reservada que crea su dueño en la primera corrida (las 4 subcarpetas de `patrimonio/`);
+- `legado`: sin escritor, todavía en su lugar;
+- `archivado`: movido a `02_Analisis/_archivo_2026_Q3/` (D-089-R), con `archivado.desde`.
 
 **Estado al 2026-10-04 [V]:** 60 entradas.
 
@@ -453,7 +454,15 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
 | calendario | 5 | 7 | 0 MB |
 | resultados | 20 | 241 | 1,6 MB |
 
-**38 de las 60 entradas son legado** (detection_v3–v6, shadow_v2/v3/v5, deep_dive_*, panorama…). Son candidatas a archivar por la regla "lo que no sirve al fin se elimina": [P] decisión de Dirección. Se conservan como evidencia hasta entonces.
+**Archivo (D-089-R, 2026-10-04).** Las 38 entradas `legado` (detection_v3–v6, shadow_v2/v3/v5, deep_dive_*, panorama…) se movieron con `git mv` a `02_Analisis/_archivo_2026_Q3/`: 91 archivos, 1,1 MB, con la historia conservada (`git log --follow`).
+- El README del archivo dice qué es cada una, quién la escribía y por qué se archivó: sin escritor activo y sin lector en producción. El criterio es el aporte al fin, no la fecha.
+- En el inventario conservan su categoría, con `estado: archivado` y `archivado.desde`. No se borró nada.
+- `events/` y `prelaunch/` pasaron de `futuro` a `vivo`, porque ya existen en main.
+
+**Única lectura en producción encontrada:** `script_97.load_multichain_extras()` lee `pre_launch/_prelaunch_accumulated.json`, el insumo del grupo b de `lib_scoring_multichain`.
+- Antes de moverlo, ese archivo tenía las tres listas vacías; el grupo b es solo de registro (`REGISTER_ONLY`) y su escritor (script_99) está deprecado desde D-079.
+- Sin el archivo, `_read_json_file` devuelve `None`: el mismo resultado que con listas vacías.
+- [P] Si Dirección quiere el grupo b vivo, la fuente natural es `prelaunch/_calendar.json`, pero eso es un cambio en script_97 que hay que autorizar.
 
 **Guardia.** `lib_patrimonio.check()` falla si una entrada no cumple el esquema, si una ruta vivo/manual/legado no existe, o si una carpeta o archivo de primer nivel de `02_Analisis/` no figura en el inventario. `test_lib_patrimonio` corre en `audit_gate tests`: una ruta nueva de un bot se anota en el mismo PR. `python 04_Config/scripts/lib_patrimonio.py` imprime el resumen.
 

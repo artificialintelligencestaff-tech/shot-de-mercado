@@ -29,6 +29,14 @@ class TestPatrimonio(unittest.TestCase):
                          "02_Analisis/alerts/"} <= rutas)
         res = pat.resumen(REPO, doc)
         self.assertEqual(sum(r["entradas"] for r in res.values()), len(doc["entradas"]))
+        arch = [e for e in doc["entradas"] if e["estado"] == "archivado"]           # D-089-R: 38 archivadas
+        self.assertEqual(len(arch), 38)
+        self.assertTrue(all(e["ruta"].startswith("02_Analisis/_archivo_2026_Q3/") and e["archivado"]["desde"]
+                            for e in arch))
+        self.assertFalse([e for e in doc["entradas"] if e["estado"] == "legado"])
+        self.assertTrue((REPO / "02_Analisis" / "_archivo_2026_Q3" / "README.md").is_file())
+        for e in arch:                                                              # nada quedó en el origen
+            self.assertFalse((REPO / e["archivado"]["desde"]).exists(), e["archivado"]["desde"])
 
     def test_2_check_detecta_problemas(self):
         tmp = Path(tempfile.mkdtemp(prefix="patrimonio_"))

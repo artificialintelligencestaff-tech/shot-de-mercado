@@ -21,7 +21,7 @@ ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
 ANALISIS_REL = "02_Analisis"
 INVENTARIO_REL = "02_Analisis/patrimonio/_inventario.json"
 CATEGORIAS = ("cuantitativo", "informativo", "calendario", "resultados")
-ESTADOS = ("vivo", "manual", "futuro", "legado")
+ESTADOS = ("vivo", "manual", "futuro", "legado", "archivado")   # archivado: 02_Analisis/_archivo_*/ (D-089-R)
 CAMPOS = ("ruta", "categoria", "estado", "dueno", "formato", "que")
 IGNORADOS = re.compile(r"^\.|\.bak\d*$|\.corrupt-")
 

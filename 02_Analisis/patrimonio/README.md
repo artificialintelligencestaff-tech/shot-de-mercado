@@ -18,4 +18,7 @@ Reglas:
 - Toda carpeta o archivo nuevo de primer nivel en `02_Analisis/` se anota en `_inventario.json` en el mismo
   cambio; si no, `test_lib_patrimonio` falla y `audit_gate tests` lo frena.
 - Estados: `vivo` (workflow activo), `manual` (corridas a mano), `futuro` (ruta reservada), `legado`
-  (investigación sin escritor; se conserva como evidencia y es candidata a archivar).
+  (sin escritor, todavía en su lugar) y `archivado` (movido a `02_Analisis/_archivo_2026_Q3/`).
+- **Archivo (D-089-R).** Las 38 entradas `legado` de D-087 se movieron con `git mv` a `_archivo_2026_Q3/` (91 archivos,
+  historia conservada); su README dice qué es cada una, quién la escribía y por qué se archivó. En el inventario
+  conservan su categoría, con `estado: archivado` y `archivado.desde` (ruta original). No se borró nada.
