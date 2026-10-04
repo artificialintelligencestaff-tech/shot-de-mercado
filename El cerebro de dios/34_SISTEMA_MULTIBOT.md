@@ -352,3 +352,39 @@ fallback_sources:
 **Origen.** Las 2 fallas de `test_bot_runner` en el entorno de YIN venían de que bs4 no estaba instalado, no de un bug del parser ni de los mocks. `bot_runner.collect()` atrapaba el `ImportError` como `parse_error` con 0 ítems; ahora el `ImportError` sube.
 
 **Bloqueo real del merge.** El workflow marca el check en rojo, pero para que eso **bloquee** el merge, la protección de rama de `main` tiene que exigir los checks `audit_gate / tests`, `audit_gate / doc35` y `audit_gate / prohibited`. Es una configuración del repo: [P] Dirección.
+
+## 15. Calendario de activos no nacidos (D-079; diseño D-078)
+
+`bot_prelaunch_calendar.py` + `sources_prelaunch.yml` (cada 6 h). Sigue activos **anunciados pero no nacidos** hasta que nacen y mide `delta_preventa_apertura_pct`, una señal medible para el doc 36.
+
+| Estado | Entra cuando | Sale cuando |
+|---|---|---|
+| anunciado | lo ve 1 fuente | ≥ 2 fuentes → confirmado · 30 d sin nacer → purgado `no_nacido` |
+| confirmado | ≥ 2 fuentes independientes coinciden | nace → seguimiento · 30 d → `no_nacido` |
+| seguimiento | nació (emite `prelaunch_nacido`; `prelaunch_known: true`) | 72 h → memoria episódica `prelaunch_cerrado` |
+
+**Fuentes** (verificadas en vivo el 2026-10-03; las 6 respondieron 200 desde fuera de EE. UU.) [V]:
+- Hyperliquid `metaAndAssetCtxs`, Aevo `/markets`, Polymarket `public-search` («FDV one day after launch»), Bybit `announcements` (new_crypto), Bitcointalk board 159.
+- Binance CMS (catálogo 48). Desde runners de EE. UU. puede dar 451: se registra con la nota «[P] bloqueado desde runners US» y la corrida sigue.
+
+**"No nacido" [H].** Ni Hyperliquid ni Aevo marcan la preventa en la API.
+- Regla: el símbolo no tiene spot en Bybit, OKX, Binance ni Hyperliquid, **ni** un par DEX con ≥ 100 000 USD de liquidez (DexScreener, también por nombre del token).
+- Origen de la regla: la doc de Hyperliquid dice que una hyperp pasa a perp normal cuando el token lista spot en Binance, OKX o Bybit.
+- Hoy no hay perps de preventa vivos [V]. El calendario real del 2026-10-03 tiene Jumper (Polymarket) y BLOZ (Bitcointalk).
+
+**Emparejamiento al nacer.**
+- **Por contrato:** coincidencia exacta. Es alertable.
+- **Por símbolo + nombre + chain:** exige ≥ 2 fuentes. Queda como candidato, **no alertable**.
+- Los nacimientos llegan por dos vías: el evento `token_nacido` y la observación propia (el símbolo aparece en spot o en DEX).
+- [P] `token_nacido` lo tienen que emitir `script_116` y `script_114`, que son producción: hay que consultar antes de tocarlos.
+
+**Archivos** (un dueño por archivo): `02_Analisis/prelaunch/_calendar.json` y `_state.json`, `events/prelaunch_calendar/`, `events/_cursors/prelaunch_calendar.json` y `sources/_episodes_prelaunch.jsonl`. El workflow commitea esas rutas explícitas y nunca usa `git add -A`.
+
+**Deprecado: `script_99_prelaunch.py` + `prelaunch.yml`.**
+- Se conservan como histórico: el workflow quedó sin cron y con el job en `if: false`; el script lleva una cabecera DEPRECADO.
+- Motivos del reemplazo:
+  - mandaba mensajes al grupo sin método de emparejamiento;
+  - sus fuentes (Metaplex, Clawnch) no estaban verificadas;
+  - commiteaba con `git add -A` y compartía el grupo de concurrencia `repo-write-main` con otros workflows.
+- Reemplazo: el calendario de arriba, que **no envía** mensajes. Si un nacimiento alertable merece aviso, lo decide el emisor (script_97) a partir de `prelaunch_nacido`; eso queda [P] para Dirección.
+

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# DEPRECADO (D-079, 2026-10-03): reemplazado por bot_prelaunch_calendar.py (sources_prelaunch.yml). prelaunch.yml quedó
+# sin cron y con el job desactivado. Se conserva como histórico; no lo corre ningún workflow.
 import json
 import os
 import requests
