@@ -53,7 +53,7 @@ TYPES = {
     "resultado_medido":    {"ttl_s": 604800, "bucket_s": 86400},
     "hipotesis_evaluada":  {"ttl_s": 604800, "bucket_s": 86400},
     # Calendario de activos no nacidos (D-079). token_nacido lo emitirán early_watch y multichain_scanner.
-    "token_nacido":        {"ttl_s": 21600,  "bucket_s": 86400},     # un token nace una vez
+    "token_nacido":        {"ttl_s": 86400,  "bucket_s": 86400},     # un token nace una vez; 24 h > cadencia 6 h del calendario
     "token_anunciado":     {"ttl_s": 604800, "bucket_s": 2592000},   # ventana de 30 días: un anuncio por activo
     "token_confirmado":    {"ttl_s": 604800, "bucket_s": 2592000},
     "prelaunch_nacido":    {"ttl_s": 259200, "bucket_s": 2592000},   # vive las 72 h de seguimiento
@@ -171,6 +171,28 @@ def write_event(type, subject, severity=1, data=None, writer=None, parent=None, 
         f.write(json.dumps(ev, ensure_ascii=False, sort_keys=True) + "\n")
     prune(ev["writer"], ev["ts"], root)
     return ev
+
+
+def write_events(items, writer=None, now=None, root=None):
+    """Lote: [(type, subject, severity, data), ...] con los ids conocidos cargados UNA vez (un poll del early watch
+    puede traer cientos de candidatos). Devuelve los eventos nuevos escritos."""
+    evs = [make_event(t, s, sev, d, writer, None, None, now) for t, s, sev, d in items]
+    if not evs:
+        return []
+    days = {_day(e["bucket"]) for e in evs} | {_day(e["ts"]) for e in evs}
+    known, new = _known_ids(root, days), []
+    for e in evs:
+        if e["id"] not in known:
+            known.add(e["id"])
+            new.append(e)
+    if new:
+        path = events_dir(root) / new[0]["writer"] / f"{_day(new[0]['ts'])}.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8", newline="\n") as f:
+            for e in new:
+                f.write(json.dumps(e, ensure_ascii=False, sort_keys=True) + "\n")
+        prune(new[0]["writer"], new[0]["ts"], root)
+    return new
 
 
 def alive(ev, now):
