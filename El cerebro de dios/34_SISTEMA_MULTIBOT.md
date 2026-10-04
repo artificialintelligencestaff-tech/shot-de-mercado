@@ -371,7 +371,7 @@ fallback_sources:
   - **CoinMarketCap:** calendario ICO por `__NEXT_DATA__`; toma las ventas `ongoing` y `upcoming` con `icoPriceUsd`, etapa, fechas, meta y launchpad. Tiene poca cobertura: hoy, 1 venta (CON a $0,007).
   - **ICO Drops:** la lista "upcoming" (50 proyectos, con ronda, valuación previa y fecha) no trae ticker ni precio. Por eso se pide la página de cada proyecto nuevo, hasta `detalle_max` (15) por corrida, con caché de 7 días en `_state.json` (`icodrops_cache`). De ahí sale el ticker del título y el primer "Price" de una ronda.
   - Sin venta pública no hay precio; sin ticker publicado, el activo entra por nombre (`name:…`).
-  - En la corrida de prueba: 50 filas, 9 con precio de venta (CHIMP $1,5, CLIX $0,1, SPWAY $0,12, GNOT $0,0645…).
+  - Pidiendo todas las páginas de detalle: 50 filas, 38 con ticker y 35 con precio de venta (CHIMP $1,5, CLIX $0,1, SPWAY $0,12, GNOT $0,0645…). Con el tope de 15 por corrida, la cobertura se completa en unas 4 corridas (un día).
 - **Precio de preventa:** manda el último precio de un perp (Hyperliquid/Aevo, `precio_preventa_fuente`). Si no hay perp, se usa el precio de la venta (CMC/ICO Drops), que además queda en `precio_venta`. Es el precio que muestra la línea PRE-LANZAMIENTO de script_97 (§16) y la base del `delta_preventa_apertura_pct`.
 - **Colisión de ticker [V]:** CRED (Credible) y CON (ConConAI) no entran, porque ya hay pares DEX con ese símbolo y ≥ 100 000 USD de liquidez, y el filtro de "ya nacido" los toma como nacidos. Es el mismo criterio de antes para todas las fuentes [H].
 
