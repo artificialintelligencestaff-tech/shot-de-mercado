@@ -1,6 +1,6 @@
 # Solana (SOL) — dossier multi-chain
-🎴 Grupo h (1: blue chip) · chain solana · precio $118.65 · mcap $69,792,310,521
-Detectado 01/10/2026 19:12 UTC · score 58 (scoring mc-h-0.2, cobertura 1.00)
+🎴 Grupo h (1: blue chip) · chain solana · precio $121.49 · mcap $71,472,290,145
+Detectado 04/10/2026 22:12 UTC · score 62 (scoring mc-h-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | solana |
 | Categoría | layer-1 |
-| Volumen 24 h | $3,533,188,832 |
-| Cambio 24 h / 7 d | 0.27419% / 1.0791% |
+| Volumen 24 h | $1,938,013,718 |
+| Cambio 24 h / 7 d | 1.4842% / -1.3979% |
 
 ## 🔬 Método
 - Evento medido: tocar +2σ₄₈ antes de −2σ₄₈ (σ del GARCH(1,1)).
@@ -35,19 +35,19 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Retorno 24 h / σ GARCH | +0.27% / σ 2.88% = z +0.09 | +0.05 | 30 | Binance klines + CoinGecko |
-| Bollinger(20,2) con squeeze | ancho en percentil 0.77 · precio dentro de bandas | +0.00 | 20 | Binance klines |
-| Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia] | +4.8% anualizado | +0.00 | 20 | Hyperliquid |
-| Fear & Greed (contrarian en extremos) | 74 | +0.00 | 15 | alternative.me |
-| Tendencia (MA20 ± ATR14) | precio 118.65 · MA20 112.28 · ATR 5.84 | +1.00 | 15 | Binance klines |
+| Retorno 24 h / σ GARCH | +1.48% / σ 2.68% = z +0.55 | +0.27 | 30 | Binance klines + CoinGecko |
+| Bollinger(20,2) con squeeze | ancho en percentil 0.72 · precio dentro de bandas | +0.00 | 20 | Binance klines |
+| Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia] | +11.0% anualizado | +0.00 | 20 | Hyperliquid |
+| Fear & Greed (contrarian en extremos) | 65 | +0.00 | 15 | alternative.me |
+| Tendencia (MA20 ± ATR14) | precio 121.49 · MA20 115.08 · ATR 5.13 | +1.00 | 15 | Binance klines |
 
-- GARCH(1,1): α=0.14, β=0.72, σ próximo día 2.88% · barreras ±2σ₄₈ = ±8.16%
+- GARCH(1,1): α=0.14, β=0.71, σ próximo día 2.68% · barreras ±2σ₄₈ = ±7.58%
 
-**Total: 58** (umbral 56, cobertura 1.00)
+**Total: 62** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/10/2026 19:12 UTC.
+- < 48 h desde 04/10/2026 22:12 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
-- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.2
+- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.3
