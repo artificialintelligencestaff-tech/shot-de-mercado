@@ -60,6 +60,39 @@ TOKEN_URL_RE = re.compile(
     r"gmgn\.ai/[a-z]+/token/|(?:etherscan\.io|basescan\.org|bscscan\.com)/token/|jup\.ag/swap/[^/?#\s]*-)" + ADDR)
 CA_RE = re.compile(r"(?<![A-Za-z])(?:CA|contract(?: address)?|token address|mint)\s*[:：]?\s*" + ADDR, re.IGNORECASE)
 VANITY = ("pump", "bonk")              # sufijos de los launchpads de Solana: la dirección es un mint
+# Métrica de aporte ampliada (D-091) [H]: formas de ticker, keywords sectoriales y anuncios.
+TICKER_PAREN_RE = re.compile(r"\(\$?([A-Z][A-Z0-9]{1,9})\)")
+HASHTAG_TICKER_RE = re.compile(r"(?<![\w#])#([A-Z][A-Z0-9]{1,9})(?![\w])")       # #HYPE sí; #Hyperliquid es un nombre
+BARE_TICKER_RE = re.compile(r"(?<![\w$#(])([A-Z][A-Z0-9]{2,9})(?![\w)])")
+ANNOUNCE_RE = re.compile(r"\b(?:will list|lists?|listing|listed|launch(?:es|ed|ing)?|TGE)\b", re.IGNORECASE)
+SECTOR_RES = {"depin": re.compile(r"\bdepin\b", re.IGNORECASE),
+              "rwa": re.compile(r"\brwas?\b|real[- ]world assets?|tokeni[sz](?:ed|ation)", re.IGNORECASE),
+              "l2": re.compile(r"\bl2s?\b|\blayer[- ]?2\b|\brollups?\b", re.IGNORECASE),
+              "memecoin": re.compile(r"\bmeme ?coins?\b", re.IGNORECASE),
+              "ai": re.compile(r"\bAI\b|(?i:\bai agents?\b|artificial intelligence)"),   # "ai" en minúscula: ruido
+              "defi": re.compile(r"\bdefi\b", re.IGNORECASE)}
+# Siglas que parecen tickers y no lo son (o son el sector mismo).
+TICKER_STOP = {"TGE", "UTC", "GMT", "AMA", "CEO", "CTO", "COO", "API", "NFT", "NFTS", "DEX", "CEX", "AI", "US", "USA",
+               "UK", "EU", "ETF", "ETFS", "ID", "OTC", "IDO", "ICO", "IEO", "KYC", "APR", "APY", "TVL", "FDV", "ATH",
+               "ATL", "DAO", "DAOS", "DEFI", "RWA", "RWAS", "DEPIN", "GM", "GN", "LFG", "IMO", "FYI", "BREAKING", "NEW",
+               "NOW", "LIVE", "SPOT", "PERP", "PERPS", "USD", "EUR", "JUST", "THE", "AND", "FOR", "WITH", "FROM",
+               "THIS", "THAT", "CA", "OG", "PM", "AM", "L1", "L2", "EVM", "SVM", "ZK", "TPS", "VC", "VCS", "P2P",
+               "FAQ", "IPO", "SEC", "CFTC", "FED", "CPI", "GDP", "FOMC", "ATM", "WEB3", "RT", "DM", "DMS", "PSA",
+               "TBA", "TBD", "ETA", "KOL", "KOLS", "OI", "PNL", "ROI", "MEV", "LP", "LPS", "TX", "TXS", "AUM", "YOY",
+               "QOQ", "MOM", "HODL", "NGMI", "WAGMI", "ALPHA", "BETA", "UPDATE", "NEWS", "THREAD", "WEEK", "TODAY",
+               "OKX", "BYBIT", "BINANCE", "KRAKEN", "BITGET", "KUCOIN", "HTX", "UPBIT", "COINBASE", "TOP10", "TOP"}
+# Formas de nombre que no se buscan: palabras comunes, nombres de los mayores (bitcoin → BCH por "Bitcoin Cash") y
+# genéricos de la jerga ("touch grass"). Medido con los 233 nombres vigentes del 2026-10-04 [H].
+NAME_STOP = {"world", "global", "super", "smart", "first", "golden", "magic", "power", "human", "story", "artificial",
+             "digital", "crypto", "token", "united", "metal", "light", "green", "black", "white", "royal", "virtual",
+             "liquid", "stable", "frax", "based", "pudgy", "official", "trust", "wrapped", "staked", "bridged",
+             "bitcoin", "ethereum", "solana", "binance", "ripple", "dogecoin", "tether", "circle", "blockchain", "block",
+             "chain", "internet", "link", "agency", "soon", "paid", "genius", "terminal", "surplus", "mirror", "socket",
+             "rain", "chip", "tread", "flying", "derive", "spec", "pros", "prom", "fuse", "vibe", "pear", "mango",
+             "boar", "holo", "lighter", "hooked", "stocker", "stonk", "compound", "curve", "convex", "quant", "theta",
+             "near", "aster", "asteroid", "janus", "invesco", "kinesis", "spiko", "provenance", "aeon", "aero", "apex",
+             "mantle", "merlin", "metronome", "stacks", "stellar", "indigo", "grass", "golem", "origin", "edel",
+             "velo", "iota", "olympus", "orderly", "cronos", "cosmos", "jarvis", "selenium", "splice", "tako"}
 DAY = 86400
 LENTO_DIAS = 30
 RATE_DEFAULT_S = 900                   # 429 sin cabecera de reset: 15 min (ventana medida de syndication)
@@ -67,7 +100,8 @@ URLS_MAX = 5
 LIST_MAX = 10
 EXTRACTO_CHARS = 200
 SHINGLE = 5                            # n-gramas de caracteres para comparar extractos
-EVAL_DEFAULTS = {"ventana_dias": 30, "dias_sin_post": 30, "posts_min_sin_aporte": 10, "marginal_ratio": 0.10}
+EVAL_DEFAULTS = {"ventana_dias": 30, "dias_sin_post": 30, "dias_revision_yang": 60, "posts_min_sin_aporte": 10,
+                 "marginal_ratio": 0.10}
 DEFAULTS = {"max_age_h": 720, "event_max_age_h": 2, "dedup_hours": 72, "historia_dias": 31, "pause_s": 1.0,
             "mecanismos": ["fxembed", "syndication"], "syndication_max_por_corrida": 20, "stale_dias": 7,
             "recheck_h": {"vivo": 0, "lento": 6, "congelado": 24, "vacio": 24}, "fail_auto_off": 3,
@@ -327,13 +361,30 @@ def _perp_base(sym):
     return s[1:] if re.match(r"^k[A-Z0-9]", s) else s
 
 
-def vigentes(root=None, now=None, alert_days=30):
-    """Activos vigentes [H]: los que el sistema sigue hoy. Devuelve {"symbols", "contracts", "fuentes"}:
+def _norm_words(text):
+    return " ".join(re.findall(r"[a-z0-9]+", str(text or "").lower()))
+
+
+def _name_variants(name):
+    """Formas de nombre que se buscan en el texto: el nombre completo (≥ 4 caracteres) y, si tiene varias palabras,
+    la primera cuando es distintiva (≥ 5 caracteres y fuera de NAME_STOP): "Render Network" → render network, render."""
+    n = _norm_words(re.split(r"\s+/\s+", str(name or ""))[0])          # "CARNAGE / SOL" (par on-chain) → carnage
+    out = {n} if len(n) >= 4 else set()
+    words = n.split()
+    if len(words) > 1 and len(words[0]) >= 5:
+        out.add(words[0])
+    return out - NAME_STOP
+
+
+def vigentes(root=None, now=None, alert_days=30, majors=()):
+    """Activos vigentes [H]: los que el sistema sigue hoy. Devuelve {"symbols", "contracts", "names", "fuentes"}:
     calendario de preventa sin purgar, alertas de los últimos `alert_days`, scan multichain (grupos, on-chain y
-    acelerando), perps de Hyperliquid y watchlists del early watch. Un archivo que falta no rompe: aporta 0."""
+    acelerando), perps de Hyperliquid y watchlists del early watch. `names` = {forma del nombre: símbolo} (D-091,
+    para "keyword sectorial + activo"). Un archivo que falta no rompe: aporta 0."""
     base = Path(root or store.ROOT) / "02_Analisis"
     now = now if now is not None else time.time()
-    syms, addrs, fuentes = set(), set(), {}
+    syms, addrs, names, fuentes = set(), set(), {}, {}
+    skip = {norm.cashtag(x) for x in majors}
 
     def read(rel):
         try:
@@ -341,10 +392,13 @@ def vigentes(root=None, now=None, alert_days=30):
         except (OSError, ValueError):
             return None
 
-    def add(fuente, symbol=None, addr=None):
+    def add(fuente, symbol=None, addr=None, name=None):
         s, a = norm.cashtag(symbol) if symbol else None, norm.address(addr) if addr else None
         if s:
             syms.add(s)
+            if name and s not in skip:
+                for v in _name_variants(name):
+                    names.setdefault(v, s)
         if a:
             addrs.add(a)
         if s or a:
@@ -353,7 +407,7 @@ def vigentes(root=None, now=None, alert_days=30):
     cal = read("prelaunch/_calendar.json") or {}
     for a in ((cal.get("assets") or {}) if isinstance(cal, dict) else {}).values():
         if isinstance(a, dict) and a.get("state") != "purgado":
-            add("calendario", a.get("symbol"), a.get("contract") or (a.get("born") or {}).get("contract"))
+            add("calendario", a.get("symbol"), a.get("contract") or (a.get("born") or {}).get("contract"), a.get("name"))
     alerts = read("alerts/_all_alerts.json")
     for a in alerts if isinstance(alerts, list) else []:
         ts = norm.timestamp(str((a or {}).get("timestamp") or "")) if isinstance(a, dict) else None
@@ -363,10 +417,10 @@ def vigentes(root=None, now=None, alert_days=30):
     if isinstance(scan, dict):
         for g in (scan.get("groups") or {}).values():
             for it in (g or {}).get("items") or []:
-                add("multichain", (it or {}).get("symbol"))
+                add("multichain", (it or {}).get("symbol"), name=(it or {}).get("name"))
         for net in (scan.get("onchain") or {}).values():
             for it in (net or {}).get("items") or []:
-                add("multichain", (it or {}).get("symbol"), (it or {}).get("token_address"))
+                add("multichain", (it or {}).get("symbol"), (it or {}).get("token_address"), (it or {}).get("name"))
         for it in scan.get("accelerating") or []:
             add("multichain", (it or {}).get("symbol"), (it or {}).get("token_address"))
     perps = read("multichain/_perps.json") or {}
@@ -376,16 +430,89 @@ def vigentes(root=None, now=None, alert_days=30):
         w = read(path.relative_to(base).as_posix()) or {}
         for it in (w.get("top") or []) if isinstance(w, dict) else []:
             add("early_watch", (it or {}).get("symbol"), (it or {}).get("mint"))
-    return {"symbols": syms, "contracts": addrs, "fuentes": fuentes}
+    return {"symbols": syms, "contracts": addrs, "names": names, "fuentes": fuentes}
+
+
+def _tickers_in(text):
+    """Tickers con forma explícita: $CASHTAG, (TICKER), #TICKER (en mayúsculas) y palabras en mayúsculas sueltas."""
+    t = text or ""
+    cash = {c.upper() for c in store.CASHTAG_RE.findall(t)}
+    tk = set(TICKER_PAREN_RE.findall(t)) | set(HASHTAG_TICKER_RE.findall(t))
+    bare = set(BARE_TICKER_RE.findall(t))
+    return cash, tk - TICKER_STOP, bare - TICKER_STOP
+
+
+def senales_aporte(text, names=None):
+    """Lo que la métrica de aporte necesita del texto completo, sacado al registrar (el texto no se guarda):
+      tk   tickers en forma (TICKER) o #TICKER        bt   palabras sueltas en mayúsculas (candidatas a ticker)
+      sec  keywords sectoriales (depin, rwa, l2, memecoin, ai, defi)
+      anu  tickers explícitos ($X, (X), #X) en una oración con patrón de anuncio (list/listing/listed/launch/TGE)
+      anb  palabras en mayúsculas de esas oraciones (cuentan solo si son un activo vigente: "MVNO" no es un ticker)
+      nm   nombres de activos vigentes mencionados (formas de `names`)
+    Solo las claves con algo. Los símbolos se cruzan con los activos vigentes recién al evaluar (aporte_tipos)."""
+    t = text or ""
+    _, tk, bare = _tickers_in(t)
+    out = {"tk": sorted(tk), "bt": sorted(bare)[:20], "sec": sorted(k for k, rx in SECTOR_RES.items() if rx.search(t))}
+    anu, anb = set(), set()
+    for sentence in re.split(r"[\n!?]+|\.(?=\s|$)", t):
+        if ANNOUNCE_RE.search(sentence):
+            cash, tk_s, bare_s = _tickers_in(sentence)
+            anu |= (cash | tk_s) - TICKER_STOP
+            anb |= bare_s - TICKER_STOP
+    out["anu"], out["anb"] = sorted(anu), sorted(anb)
+    if names:
+        flat = f" {_norm_words(t)} "
+        out["nm"] = sorted(n for n in names if f" {n} " in flat)
+    return {k: v for k, v in out.items() if v}
+
+
+def aporte_tipos(post, activos_vigentes, majors=None):
+    """Tipos de aporte de un post (D-091). `post` = publicación con "text" (al registrar) o registro src-1 de un
+    diario (c, a, m.tok, m.sg; sin m.sg, desde m.ext). Tipos:
+      cashtag   $CASHTAG de un activo vigente
+      contrato  un contrato de token (URL de token, "CA:", sufijo de launchpad) o una dirección vigente
+      ticker    (TICKER) o #TICKER de un activo vigente
+      sector    keyword sectorial + un activo vigente mencionado (por ticker en cualquier forma, nombre o contrato)
+      anuncio   patrón de anuncio (list/listing/listed/launch/TGE) + un ticker explícito ($X, (X), #X) en la misma
+                oración, que no hace falta que sea vigente (un listado nuevo es justo lo que todavía no se sigue); o
+                una palabra en mayúsculas de esa oración que sí sea un activo vigente
+    Los mayores (cashtags_mayores) no cuentan en ningún tipo."""
+    vig = activos_vigentes
+    majors = {norm.cashtag(x) for x in (majors if majors is not None else DEFAULTS["cashtags_mayores"])}
+    syms, contracts, names = vig.get("symbols") or set(), vig.get("contracts") or set(), vig.get("names") or {}
+    m = post.get("m") or {}
+    if post.get("text") is not None:
+        text = post["text"]
+        addrs, cash, _ = store.extract(text)
+        cash, addrs, tok = set(cash), set(addrs), post_fields(text)[1]
+        sg = senales_aporte(text, names)
+    else:
+        cash, addrs, tok = set(post.get("c") or []), set(post.get("a") or []), m.get("tok") or []
+        sg = m.get("sg") if isinstance(m.get("sg"), dict) else senales_aporte(m.get("ext") or "", names)
+    ok = lambda s: s in syms and s not in majors  # noqa: E731
+    tipos = set()
+    if any(ok(c) for c in cash):
+        tipos.add("cashtag")
+    if tok or addrs & contracts:
+        tipos.add("contrato")
+    if any(ok(t) for t in sg.get("tk") or []):
+        tipos.add("ticker")
+    named = {names.get(n) for n in sg.get("nm") or []} - {None}
+    mencionado = {s for s in cash | set(sg.get("tk") or []) | set(sg.get("bt") or []) | named if ok(s)}
+    if sg.get("sec") and (mencionado or addrs & contracts or tok):
+        tipos.add("sector")
+    if any(t not in majors for t in sg.get("anu") or []) or any(ok(t) for t in sg.get("anb") or []):
+        tipos.add("anuncio")
+    return tipos
+
+
+def calculate_aporte(post, activos_vigentes, majors=None):
+    """Cantidad de tipos de aporte del post (0–5). Un post aporta si es > 0 (D-091)."""
+    return len(aporte_tipos(post, activos_vigentes, majors))
 
 
 def tiene_aporte(rec, vig, majors):
-    """Un post aporta si nombra un contrato (señal concreta sobre un token vivo) o el cashtag de un activo vigente
-    que no sea un mayor (BTC, ETH… no anticipan nada) [H]."""
-    m = rec.get("m") or {}
-    if m.get("tok") or set(rec.get("a") or []) & vig["contracts"]:
-        return True
-    return any(c in vig["symbols"] and c not in majors for c in rec.get("c") or [])
+    return calculate_aporte(rec, vig, majors) > 0
 
 
 def frescura_score(dias):
@@ -396,7 +523,13 @@ def frescura_score(dias):
 
 def evaluar_cuentas(active, health, window, now, cfg, vig):
     """Agrega a cada fila de `health` las señales de evaluación. `window` = registros (historia + corrida).
-    Devuelve las claves con evaluar: true. No toca `next_check`, `auto_off_until` ni la config: Yang decide."""
+    Devuelve las claves con evaluar: true.
+
+    POLÍTICA (D-089-R, D-091): la evaluación es una SEÑAL para Yang, nunca una acción. Esta función solo escribe
+    campos informativos en la fila de la cuenta: no toca `next_check`, `auto_off_until`, `enabled` ni la config, y
+    ninguna parte del bot borra una cuenta de influencers.yaml ni de _state.json por estar marcada. Una cuenta
+    inactiva > dias_sin_post sigue en `evaluar` con motivo explícito; con > dias_revision_yang (60) además queda
+    `revision_yang: true`: la decisión de sacarla es de Yang, no de la máquina."""
     ev = cfg["evaluacion"]
     since = now - float(ev["ventana_dias"]) * DAY
     majors = {norm.cashtag(x) for x in cfg.get("cashtags_mayores") or []}
@@ -413,15 +546,24 @@ def evaluar_cuentas(active, health, window, now, cfg, vig):
         posts = list((by.get(key) or {}).values())
         last = max([row.get("ultimo_post_ts") or 0] + [r.get("ts") or 0 for r in posts]) or None
         dias = round((now - last) / DAY, 1) if last else None
-        aporte = sum(1 for r in posts if tiene_aporte(r, vig, majors))
+        por_tipo, aporte = {}, 0
+        for r in posts:
+            tipos = aporte_tipos(r, vig, majors)
+            aporte += bool(tipos)
+            for t in tipos:
+                por_tipo[t] = por_tipo.get(t, 0) + 1
         motivos = []
         if dias is None or dias > float(ev["dias_sin_post"]):
             motivos.append("sin_posts_visibles" if dias is None else f"sin_post_{int(ev['dias_sin_post'])}d")
+        revision = dias is not None and dias > float(ev["dias_revision_yang"])
+        if revision:
+            motivos.append(f"inactiva_{int(ev['dias_revision_yang'])}d_decide_yang")
         if aporte == 0 and len(posts) > int(ev["posts_min_sin_aporte"]):
             motivos.append("sin_aporte")
         row.update(ultimo_post_ts=int(last) if last else None, dias_desde_ultimo_post=dias,
                    frescura_score=frescura_score(dias), posts_30d=len(posts), aporte_estimado=aporte,
-                   evaluar=bool(motivos), evaluar_motivo=motivos)
+                   aporte_tipos=dict(sorted(por_tipo.items())), evaluar=bool(motivos), evaluar_motivo=motivos,
+                   revision_yang=bool(motivos) and revision)
         if motivos:
             marked.append(key)
     return marked
@@ -474,7 +616,7 @@ def run(config, state, fetch=http_get, now=None, sleep=time.sleep, keywords=stor
     `vig`: activos vigentes (vigentes()); sin él, solo los contratos cuentan como aporte."""
     now = now if now is not None else time.time()
     history = history or []
-    vig = vig or {"symbols": set(), "contracts": set(), "fuentes": {}}
+    vig = vig or {"symbols": set(), "contracts": set(), "names": {}, "fuentes": {}}
     keep_s = float(config["dedup_hours"]) * 3600
     seen = {k: t for k, t in (state.get("seen") or {}).items() if now - t <= keep_s}
     known = set(seen) | {r.get("id") for r in history}
@@ -533,7 +675,7 @@ def run(config, state, fetch=http_get, now=None, sleep=time.sleep, keywords=stor
                         and casi_duplicado(sig, r.get("m") or {}, float(config["dup_umbral"]))), None)
             meta = {"cat": c["categoria"], "prio": c["prioridad"], "mec": best["mec"], "repost": p["repost"],
                     "likes": p["likes"], "reposts": p["reposts"], "replies": p["replies"], "views": p["views"],
-                    "urls": urls, "tok": tok, **sig,
+                    "urls": urls, "tok": tok, **sig, "sg": senales_aporte(p["text"], vig.get("names")),
                     "dup_de": dup.get("id") if dup else None, "dup_cuenta": dup.get("src") if dup else None}
             rec = store.make_record(BOT, key, "tweet", p["text"], id=p["id"], url=f"https://x.com/i/status/{p['id']}",
                                     ts=p["ts"], seen=now, author=p["author"],
@@ -622,16 +764,19 @@ def reporte_semanal(state, config):
         filas.append({"cuenta": c.get("cuenta", key), "categoria": c.get("categoria"), "prioridad": c.get("prioridad"),
                       "dias_desde_ultimo_post": r.get("dias_desde_ultimo_post"), "frescura_score": r.get("frescura_score"),
                       "posts_30d": r.get("posts_30d"), "aporte_estimado": r.get("aporte_estimado"),
-                      "motivo": r.get("evaluar_motivo") or [], "status": r.get("status"), "mec": r.get("mec")})
+                      "aporte_tipos": r.get("aporte_tipos") or {}, "motivo": r.get("evaluar_motivo") or [],
+                      "revision_yang": bool(r.get("revision_yang")), "status": r.get("status"), "mec": r.get("mec")})
     filas.sort(key=lambda f: (f["prioridad"] or 9, f["cuenta"].lower()))
     mecs = {m: {k: v.get(k) for k in ("posts_total", "posts_frescos_30d", "ratio", "marginal")}
             for m, v in (state.get("mecanismos") or {}).items()}
     vig = state.get("vigentes") or {}
     lines = [f"# Evaluación semanal de cuentas de X — {iso_week(now)}", "",
              f"Generado {datetime.fromtimestamp(now, timezone.utc).isoformat(timespec='minutes')} por "
-             "bot_influencer_tracker (D-089-R). **Son señales: el bot no saca ni apaga cuentas. Decide Yang.**", "",
-             "Criterios: `evaluar` si no publica hace > 30 días o si aporta 0 con > 10 posts en 30 días. Aporte = post "
-             "que nombra un contrato o el cashtag de un activo vigente (no mayor) [H].", "",
+             "bot_influencer_tracker (D-089-R, D-091). **Son señales: el bot no saca ni apaga cuentas. Decide Yang.**",
+             "", "Criterios: `evaluar` si no publica hace > 30 días o si aporta 0 con > 10 posts en 30 días; con > 60 "
+             "días sin publicar queda en revisión de Yang. Aporte (D-091) = post con al menos uno de: $cashtag, "
+             "(TICKER)/#TICKER o contrato de un activo vigente; keyword sectorial + activo vigente; anuncio "
+             "(list/listing/launch/TGE) + ticker. Los mayores no cuentan [H].", "",
              "Activos vigentes usados: " + (", ".join(f"{k} {v}" for k, v in vig.items()) or "ninguno") + ".", "",
              f"## Cuentas a evaluar: {len(filas)} de {len(activas)} activas", ""]
     if filas:
@@ -642,6 +787,11 @@ def reporte_semanal(state, config):
                   f"{', '.join(f['motivo'])} | {_fmt(f['status'])} |" for f in filas]
     else:
         lines.append("Ninguna.")
+    revision = [f for f in filas if f["revision_yang"]]
+    lines += ["", f"## Revisión de Yang: {len(revision)} cuentas con > 60 días sin publicar", "",
+              "Siguen activas y se consultan en su turno. Sacarlas o no es decisión de Yang, no de la máquina.", ""]
+    lines += [f"- {f['cuenta']} ({f['categoria']}, prioridad {f['prioridad']}): {_fmt(f['dias_desde_ultimo_post'])} "
+              "días sin publicar" for f in revision] or ["Ninguna."]
     lines += ["", "## Mecanismos HTTP (posts de los últimos 30 días / posts devueltos)", "",
               "| Mecanismo | Frescos / total | Ratio | Marginal (< 0.10) |", "|---|---|---|---|"]
     lines += [f"| {m} | {_fmt(v['posts_frescos_30d'])} / {_fmt(v['posts_total'])} | {_fmt(v['ratio'], 3)} | "
@@ -684,10 +834,11 @@ def main(argv=None):
     state_file = store.sources_dir() / BOT / "_state.json"
     t_start = now = time.time()
     repair = load_state(store.sources_dir() / "_repair_state.json")
+    vig = vigentes(store.ROOT, now, majors=config["cashtags_mayores"])
     records, events, state = run(config, load_state(state_file), fetch=http_get, now=now,
                                  keywords=store.load_keywords(), auto_off=(repair.get("auto_off") or {}).get(BOT),
                                  groups=norm.load_groups(), max_accounts=args.max,
-                                 history=load_history(now, config["historia_dias"]), vig=vigentes(store.ROOT, now))
+                                 history=load_history(now, config["historia_dias"]), vig=vig)
     fetched = {k: r for k, r in state["sources"].items() if r.get("checked_at") == state["last_run"]}
     print(f"{BOT}: {len(records)} publicaciones nuevas · {len(events)} eventos · cuentas consultadas "
           f"{len(fetched)} (OK {sum(1 for r in fetched.values() if r['status'] == 200)}) · requests "

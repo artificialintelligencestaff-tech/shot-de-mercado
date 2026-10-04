@@ -511,12 +511,27 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
   - `ultimo_post_ts` y `dias_desde_ultimo_post`: el post más nuevo visto, aunque sea más viejo que la ventana o la última consulta haya fallado;
   - `frescura_score`: 1,0 con < 7 días, 0,5 de 7 a 30 días, 0,2 con > 30 días o sin posts;
   - `posts_30d` y `aporte_estimado`, sobre los diarios de 30 días más la corrida, cada post por id una sola vez.
-- **Aporte** = post que nombra un contrato, o el cashtag de un **activo vigente** que no sea mayor [H].
-  - Activo vigente = lo que el sistema sigue hoy: calendario de preventa sin purgar, alertas de 30 días, scan multichain (grupos, on-chain, acelerando), perps de Hyperliquid (kPEPE y 1000BONK se cuentan como PEPE y BONK) y watchlists del early watch.
-  - El 2026-10-04: 449 símbolos y 223 contratos.
+- **Aporte (D-091): `calculate_aporte(post, activos_vigentes) -> int`** cuenta cuántos de estos 5 tipos tiene un post. Un post aporta si cuenta ≥ 1. Los mayores (`cashtags_mayores`) no cuentan en ningún tipo [H].
+  1. `cashtag`: `$CASHTAG` de un activo vigente.
+  2. `contrato`: un contrato de token (URL de token, "CA:", sufijo `pump`/`bonk`) o una dirección vigente.
+  3. `ticker`: `(TICKER)` o `#TICKER` (en mayúsculas) de un activo vigente.
+  4. `sector`: keyword sectorial (DePIN, RWA/tokenización, L2/rollup, memecoin, "AI" en mayúsculas o "AI agents", DeFi) + un activo vigente mencionado en el mismo post. La mención puede ser por ticker en cualquier forma (también en mayúsculas sueltas), por contrato o por nombre.
+  5. `anuncio`: patrón list/listing/listed/launch/TGE + un ticker explícito (`$X`, `(X)`, `#X`) en la misma oración, aunque no sea vigente, porque un listado nuevo es justo lo que todavía no se sigue. También cuenta una palabra en mayúsculas de esa oración si es un activo vigente.
+  - **Al registrar** se guardan en `m.sg` las señales sacadas del texto completo: `tk`, `bt`, `sec`, `anu`, `anb` y `nm` (nombres vigentes mencionados). Al evaluar se cruzan con los activos vigentes de ese momento, así que un post viejo sin texto se recalifica igual. Sin `m.sg`, se usan `m.ext`.
+  - **Activo vigente** = lo que el sistema sigue hoy: calendario de preventa sin purgar, alertas de 30 días, scan multichain (grupos, on-chain, acelerando), perps de Hyperliquid (kPEPE y 1000BONK se cuentan como PEPE y BONK) y watchlists del early watch. El 2026-10-04: 456 símbolos, 228 contratos y 163 formas de nombre.
+  - **Nombres:** se busca el nombre completo y, si tiene varias palabras, la primera, salvo palabras comunes (`NAME_STOP`).
+    - La lista se armó revisando los 233 nombres vigentes: "Bitcoin Cash" mapeaba "bitcoin" a BCH, "Blockchain Capital" convertía "blockchain" en BCAP, y aparecían "soon", "compound", "grass".
+    - Las siglas que no son tickers (UTC, TGE, MVNO no, porque no es vigente, TOP10, nombres de exchanges) están en `TICKER_STOP`.
+  - Por cuenta queda además `aporte_tipos` (posts por tipo).
 - **`evaluar: true`** si `dias_desde_ultimo_post` > 30 (o nunca se vio un post), o si `aporte_estimado` = 0 con > 10 posts en 30 días. `evaluar_motivo` dice cuál.
   - Una cuenta que todavía no se consultó no se juzga.
-  - El bot **no** cambia `next_check` ni `auto_off_until`, y no edita `influencers.yaml`: una cuenta marcada se sigue consultando en su turno normal. Lo verifica `test_d089_influencer_evaluacion` (test 4).
+  - **Más de 60 días sin publicar (D-091):** se suma el motivo `inactiva_60d_decide_yang` y `revision_yang: true`, y el reporte semanal la lista en "Revisión de Yang". La cuenta sigue activa y se consulta en su turno: sacarla es decisión de Yang, no de la máquina.
+  - **Política de no eliminación (D-089-R, D-091), escrita en el docstring de `evaluar_cuentas`:** la evaluación solo escribe campos informativos. El bot **no** cambia `next_check`, `auto_off_until` ni `enabled`, y no edita `influencers.yaml`.
+    - Lo único automático es el apagado de 6 h tras 3 fallas HTTP seguidas, que se reintenta solo.
+    - Lo verifican `test_d089_influencer_evaluacion` (test 4) y `test_d091_aporte` (test 6, con 3 corridas y `main` sobre el YAML byte a byte).
+- **Métrica ampliada, medición en vivo (2026-10-04):** de las 25 cuentas marcadas en D-089-R, 5 pasan a tener aporte > 0: BinanceWallet (DeFi + TRON), ethena (RWA + Ethena), ondo (7 posts: tokenización + Ondo), rajgokal (activos tokenizados + Raydium) y tayvano_ (débil: "AI" + Zcash). Quedan 20 marcadas.
+  - Suben otras: solana 2→5, raydium 3→5, route2fi 6→8, solanafloor 2→4.
+  - CEX, fundadores y cuentas de sector como coinbase, toly, helium y MEXC siguen en 0: publican sin tickers ni activos vigentes nombrados.
 - **Por mecanismo:** posts de los últimos 30 días / posts devueltos, por día, en una ventana de 30 días. `marginal: true` si el cociente es < 0,10. Solo marca: el orden de `mecanismos` no cambia solo.
   - Syndication se consulta solo cuando FxEmbed falla o trae lo viejo, así que su muestra está sesgada.
 - **Reporte semanal:** en la primera corrida de cada semana ISO (o con `--reporte`) se reescribe `sources/x_influencers/_evaluar_semanal.md` y se agrega una línea a `_evaluar_log.jsonl`. Contiene la tabla de cuentas a evaluar con sus datos y los mecanismos marginales. Yang decide.
