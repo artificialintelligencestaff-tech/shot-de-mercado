@@ -1,6 +1,6 @@
 # Lido DAO (LDO) — dossier multi-chain
-🎴 Grupo c (7: categoría governance) · chain n/d · precio $0.442215 · mcap $366,895,087
-Detectado 01/10/2026 18:59 UTC · score 62 (scoring mc-c-0.2, cobertura 1.00)
+🎴 Grupo c (7: categoría governance) · chain n/d · precio $0.461099 · mcap $382,513,160
+Detectado 04/10/2026 22:35 UTC · score 56 (scoring mc-c-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | governance |
-| Volumen 24 h | $65,628,761 |
-| Cambio 24 h / 7 d | -2.94468% / 4.8064% |
+| Volumen 24 h | $43,186,686 |
+| Cambio 24 h / 7 d | -0.07032% / -6.9953% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,17 +35,17 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Crecimiento de fees (7d vs 30d) | ρ 1.07 | +0.13 | 25 | DefiLlama overview/fees |
+| Crecimiento de fees (7d vs 30d) | ρ 1.05 | +0.11 | 25 | DefiLlama overview/fees |
 | Valuación mcap/TVL | 0.01 | +1.00 | 20 | CoinGecko + DefiLlama |
 | Evento de gobernanza (Snapshot) | 0 propuestas activas, ninguna de fees/emisiones en 48 h | +0.00 | 20 | Snapshot GraphQL |
 | Dilución FDV/mcap | 1.21 | -0.17 | 15 | CoinGecko |
-| Momentum vs categoría (7d) | +3.72 pp | +0.19 | 20 | CoinGecko |
+| Momentum vs categoría (7d) | -7.38 pp | -0.37 | 20 | CoinGecko |
 
-**Total: 62** (umbral 56, cobertura 1.00)
+**Total: 56** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/10/2026 18:59 UTC.
+- < 48 h desde 04/10/2026 22:35 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
-- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.2
+- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.3
