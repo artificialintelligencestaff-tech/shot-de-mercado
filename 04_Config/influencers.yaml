@@ -17,9 +17,12 @@
 # MEXC_Official, ethena_labs, DriftProtocol, heliuslabs, RaydiumProtocol (404).
 
 version: 1
-max_age_h: 48            # publicaciones más viejas no se registran (fijados viejos, timelines congelados)
+max_age_h: 720           # 30 d: se registra lo que entra en la ventana de evaluación (fijados viejos y timelines congelados, no)
 event_max_age_h: 2       # eventos solo para publicaciones de las últimas 2 h (sin ráfagas tras una caída)
-dedup_hours: 72          # ids vistos que se recuerdan (> max_age_h)
+historia_dias: 31        # dedup contra los diarios propios de este lapso (tiene que cubrir max_age_h)
+dedup_hours: 72          # ids vistos en _state.json (respaldo del dedup por diarios)
+dup_horas: 72            # casi-duplicados: se compara el extracto con los posts de este lapso
+dup_umbral: 0.7          # Jaccard de n-gramas de caracteres de los extractos [H]
 pause_s: 1.0
 # Orden de consulta por cuenta. El siguiente se usa si el anterior falla, viene vacío o trae solo lo viejo.
 # fxembed: api.fxtwitter.com/2/profile/<cuenta>/statuses (fresco para casi todas las cuentas activas) [V]
@@ -30,7 +33,13 @@ stale_dias: 7            # newest más viejo que esto: se prueba el mecanismo si
 recheck_h: {vivo: 0, lento: 6, congelado: 24, vacio: 24}   # 0 = cada corrida
 fail_auto_off: 3         # fallas seguidas para apagar la cuenta
 auto_off_h: 6            # cuánto queda apagada antes de reintentar
-cashtags_mayores: [BTC, ETH, SOL, BNB, XRP, USDT, USDC, USD1, DOGE]   # mencion_token con severidad 0
+cashtags_mayores: [BTC, ETH, SOL, BNB, XRP, USDT, USDC, USD1, DOGE]   # mencion_token con severidad 0; no cuentan como aporte
+# Evaluación (D-089-R): SEÑALES para Yang, nunca acciones automáticas. El bot no saca ni apaga cuentas por esto.
+evaluacion:
+  ventana_dias: 30
+  dias_sin_post: 30          # evaluar: true si el último post es más viejo
+  posts_min_sin_aporte: 10   # evaluar: true si aporte_estimado = 0 con más posts que esto en la ventana
+  marginal_ratio: 0.10       # mecanismo marginal si posts frescos (30 d) / total < esto
 
 cuentas:
   # --- analistas on-chain --------------------------------------------------------------------------------------

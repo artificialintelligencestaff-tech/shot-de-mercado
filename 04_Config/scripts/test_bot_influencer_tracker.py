@@ -116,7 +116,7 @@ class TestRun(unittest.TestCase):
     def test_2_dedup_por_id_y_ventana(self):
         c = cfg([("a", "cex", 1), ("b", "narrativa", 3)])
         http = Http({FX.format("a"): (200, fx_body("a", [fx_post(1, T0 - 600, "$WIF"), fx_post(2, T0 - 900),
-                                                          fx_post(3, T0 - 3 * D, "fijado viejo")]), {}),
+                                                          fx_post(3, T0 - 40 * D, "fijado viejo")]), {}),
                      FX.format("b"): (200, fx_body("b", [fx_post(1, T0 - 600, "$WIF", author="a", repost=True)]), {})})
         recs, _, st = bit.run(c, {}, fetch=http, now=T0, sleep=lambda s: None)
         self.assertEqual(sorted(r["id"] for r in recs), ["1", "2"])        # el repost de b es el mismo id; el viejo no
@@ -127,11 +127,13 @@ class TestRun(unittest.TestCase):
         self.assertNotIn("text", r)                                        # src-1: el texto no se guarda
         self.assertIsNone(r["title"])
         self.assertEqual((r["m"]["prio"], r["m"]["mec"], r["m"]["likes"]), (1, "fxembed", 10))
-        recs2, _, st2 = bit.run(c, st, fetch=http, now=T0 + 1800, sleep=lambda s: None)
+        recs2, _, st2 = bit.run(c, st, fetch=http, now=T0 + 1800, sleep=lambda s: None, history=recs)
         self.assertEqual(recs2, [])                                        # segunda corrida: nada nuevo
-        _, _, st3 = bit.run(c, st2, fetch=http, now=T0 + 73 * H, sleep=lambda s: None)
+        _, _, st3 = bit.run(c, st2, fetch=http, now=T0 + 73 * H, sleep=lambda s: None, history=recs)
         self.assertEqual(st3["seen"], {})                                  # ids fuera de dedup_hours se olvidan…
-        self.assertEqual(st3["items_last_run"], 0)                         # …y lo viejo tampoco vuelve (max_age_h)
+        self.assertEqual(st3["items_last_run"], 0)                         # …pero el dedup por diarios los frena
+        recs4, _, _ = bit.run(c, st3, fetch=http, now=T0 + 73 * H, sleep=lambda s: None)
+        self.assertEqual(sorted(r["id"] for r in recs4), ["1", "2"])       # sin diarios se repetirían (por eso historia_dias)
 
     def test_3_falla_de_una_cuenta_no_corta_y_auto_off(self):
         c = cfg([("caida", "cex", 1), ("sana", "cex", 1), ("renombrada", "solana", 2)],
@@ -201,7 +203,8 @@ class TestRun(unittest.TestCase):
         http = Http(routes)
         recs, _, st = bit.run(c, {}, fetch=http, now=T0, sleep=lambda s: None)
         s = st["sources"]
-        self.assertEqual((s["vieja"]["mec"], s["vieja"]["estado"], [r["id"] for r in recs]), ("syndication", "vivo", ["2"]))
+        self.assertEqual((s["vieja"]["mec"], s["vieja"]["estado"]), ("syndication", "vivo"))
+        self.assertEqual(sorted(r["id"] for r in recs), ["2", "3"])        # el de hace 20 d entra en la ventana de 30 d
         self.assertEqual((s["congelada"]["mec"], s["congelada"]["estado"]), ("fxembed", "lento"))   # la más fresca de las dos
         self.assertEqual(s["congelada"]["next_check"], T0 + 6 * H)
         self.assertEqual((s["vacia"]["status"], s["vacia"]["estado"], s["vacia"]["next_check"]), (200, "vacio", T0 + D))
@@ -278,7 +281,7 @@ class TestConfigYMain(unittest.TestCase):
             "pause_s: 0\nmecanismos: [fxembed]\ncuentas:\n"
             "  - {cuenta: lookonchain, categoria: analista_onchain, prioridad: 1}\n"
             "  - {cuenta: apagada, categoria: cex, prioridad: 2, enabled: false}\n", encoding="utf-8")
-        secret_text = "Whale texto completo que no debe quedar en disco $WIF"
+        secret_text = "Whale $WIF " + "relleno que no debe quedar en disco " * 12 + "COLA-FINAL"
         http = Http({FX.format("lookonchain"): (200, fx_body("lookonchain", [fx_post(7, int(now) - 60, secret_text)]), {})})
         store.ROOT, bit.http_get = self.tmp, http
         self.assertEqual(bit.main(["--dry-run"]), 0)
@@ -289,8 +292,10 @@ class TestConfigYMain(unittest.TestCase):
         diaries = sorted(folder.glob("20*.jsonl"))
         self.assertEqual(len(diaries), 1)
         raw = diaries[0].read_text(encoding="utf-8")
-        self.assertNotIn("texto completo", raw)
+        self.assertNotIn("COLA-FINAL", raw)                                # solo el extracto de 200 caracteres
         rec = json.loads(raw.splitlines()[0])
+        self.assertTrue(rec["m"]["ext"].startswith("Whale $WIF") and len(rec["m"]["ext"]) <= 200)
+        self.assertEqual(rec["m"]["sha"], bit.sha256_texto(secret_text))
         self.assertEqual((rec["id"], rec["c"], rec["src"]), ("7", ["WIF"], "lookonchain"))
         st = json.loads((folder / "_state.json").read_text(encoding="utf-8"))
         self.assertEqual((st["sources"]["lookonchain"]["status"], st["items_last_run"], st["events_last_run"]), (200, 1, 2))

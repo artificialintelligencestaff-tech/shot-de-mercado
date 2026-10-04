@@ -465,22 +465,49 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
 - **Primario: FxEmbed** `api.fxtwitter.com/2/profile/<cuenta>/statuses`. Trae ~20 publicaciones frescas para casi todas las cuentas activas, con likes, reposts, respuestas y vistas. En ~120 requests no apareció ningún límite.
 - **Respaldo: syndication** (el widget de inserción). Límite de 30 requests cada 15 min por cliente. De 8 cuentas probadas, solo 2 vinieron frescas: 3 congeladas (la publicación más nueva era de hace ~330 días) y 3 vacías. Por eso no puede ser el único mecanismo, como suponía la ficha de D-079.
 - El siguiente mecanismo se usa si el anterior falla, viene vacío o trae solo publicaciones de más de `stale_dias` (7).
+- FxEmbed da **404 pasajeros**: el 2026-10-04, OnchainLens y hivemapper dieron 404 y un minuto después 200 [V]. Por eso un 404 de FxEmbed se reintenta una vez antes de contar como falla (D-089-R).
 
 **Flujo por corrida:**
 1. Elige las cuentas al día. Una cuenta `vivo` se consulta en todas las corridas; `lento`, cada 6 h; `congelado` y `vacio`, cada 24 h. Primero van las de prioridad 1.
 2. Pide las publicaciones, con 1 s entre requests reales.
-3. Registra las publicaciones de las últimas 48 h que no estén en `seen`.
+3. Registra las publicaciones de los últimos 30 días (`max_age_h: 720`, la ventana de evaluación) cuyo id no esté en los diarios de los últimos 31 días (`historia_dias`) ni en `seen`. Hasta D-089-R la ventana era de 48 h.
 4. Emite eventos para las de las últimas 2 h.
 
 **Salida:**
 - **Diario:** `sources/x_influencers/<fecha>.jsonl` (src-1, kind `tweet`).
   - `src` = la cuenta.
-  - El texto se usa para extraer y hashear y no se guarda.
+  - **Texto (D-089-R):** se guardan solo `m.sha` (sha256 del texto original) y `m.ext` (extracto de hasta 200 caracteres, con los espacios colapsados).
+    - El extracto se centra en lo primero que se detecta: un contrato, un $cashtag o una palabra clave. Si no hay nada, toma el comienzo.
+    - Pesa ~250 bytes por post: medido en vivo, 249 de promedio.
+  - **Casi-duplicados:**
+    - Detección: mismo sha256, o Jaccard ≥ `dup_umbral` (0,7) de 5-gramas de caracteres de los extractos sin URLs ni puntuación, contra los posts de las últimas `dup_horas` (72).
+    - Marca: el post queda con `m.dup_de` (id) y `m.dup_cuenta`.
+    - Si la que se repite es la misma cuenta, no se emite `tweet_influencer`. Una copia de otra cuenta sí avisa, porque el eco es señal.
   - `m` lleva categoría, prioridad, mecanismo, repost, métricas, URLs (sin t.co) y `tok` (contratos sacados de URLs de token, de "CA:" o de sufijos `pump`/`bonk`; las wallets de exploradores no cuentan).
 - **Estado:** `sources/x_influencers/_state.json` con:
   - `seen` (72 h);
   - `rate_limit` por mecanismo;
-  - `sources`, la salud por cuenta: estado HTTP, mecanismo, frescura, fallas seguidas, `next_check` y `auto_off_until` tras 3 fallas (6 h).
+  - `sources`, la salud por cuenta: estado HTTP, mecanismo, frescura, fallas seguidas, `next_check`, `auto_off_until` tras 3 fallas (6 h) y la evaluación (abajo);
+  - `mecanismos`, `evaluar` y `vigentes` (abajo), y `reporte_semana`.
+
+**Evaluación (D-089-R): señales para Yang, nunca acciones automáticas.**
+- **Por cuenta:**
+  - `ultimo_post_ts` y `dias_desde_ultimo_post`: el post más nuevo visto, aunque sea más viejo que la ventana o la última consulta haya fallado;
+  - `frescura_score`: 1,0 con < 7 días, 0,5 de 7 a 30 días, 0,2 con > 30 días o sin posts;
+  - `posts_30d` y `aporte_estimado`, sobre los diarios de 30 días más la corrida, cada post por id una sola vez.
+- **Aporte** = post que nombra un contrato, o el cashtag de un **activo vigente** que no sea mayor [H].
+  - Activo vigente = lo que el sistema sigue hoy: calendario de preventa sin purgar, alertas de 30 días, scan multichain (grupos, on-chain, acelerando), perps de Hyperliquid (kPEPE y 1000BONK se cuentan como PEPE y BONK) y watchlists del early watch.
+  - El 2026-10-04: 449 símbolos y 223 contratos.
+- **`evaluar: true`** si `dias_desde_ultimo_post` > 30 (o nunca se vio un post), o si `aporte_estimado` = 0 con > 10 posts en 30 días. `evaluar_motivo` dice cuál.
+  - Una cuenta que todavía no se consultó no se juzga.
+  - El bot **no** cambia `next_check` ni `auto_off_until`, y no edita `influencers.yaml`: una cuenta marcada se sigue consultando en su turno normal. Lo verifica `test_d089_influencer_evaluacion` (test 4).
+- **Por mecanismo:** posts de los últimos 30 días / posts devueltos, por día, en una ventana de 30 días. `marginal: true` si el cociente es < 0,10. Solo marca: el orden de `mecanismos` no cambia solo.
+  - Syndication se consulta solo cuando FxEmbed falla o trae lo viejo, así que su muestra está sesgada.
+- **Reporte semanal:** en la primera corrida de cada semana ISO (o con `--reporte`) se reescribe `sources/x_influencers/_evaluar_semanal.md` y se agrega una línea a `_evaluar_log.jsonl`. Contiene la tabla de cuentas a evaluar con sus datos y los mecanismos marginales. Yang decide.
+- **Primera medición en vivo (2026-10-04, sin diarios todavía; `posts_30d` sale de los últimos ~20 posts):** 25 de 50 cuentas marcadas.
+  - 2 por `sin_post_30d`: cobie (30,4 días) y hivemapper (67).
+  - 23 por `sin_aporte`: cuentas que publican sin cashtags ni contratos, sobre todo CEX, fundadores y cuentas de sector.
+  - FxEmbed 843/937 = 0,90, no marginal.
 - **Eventos** (`events/x_influencers/`, lib_events):
 
 | Tipo | Subject | Severidad | TTL / ventana |
@@ -499,4 +526,6 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
 
 **Registro.** `x_influencers` en `_bots.yaml` (cadencia 30 min, atrasado a los 90): lo vigilan el orquestador y self_repair.
 
-**Tests:** `test_bot_influencer_tracker.py` (8): parsing de los dos mecanismos y extracción, dedup, falla aislada con auto_off, rate limit, frescura con respaldo, eventos, configuración real, corrida completa con escritura.
+**Tests:**
+- `test_bot_influencer_tracker.py` (8): parsing de los dos mecanismos y extracción, dedup (por diarios), falla aislada con auto_off, rate limit, frescura con respaldo, eventos, configuración real, corrida completa con escritura (extracto y no texto completo).
+- `test_d089_influencer_evaluacion.py` (5): frescura, aporte y activos vigentes, marcado `evaluar` + `marginal` + reporte, NO eliminación automática, y sha256 + extracto que detectan casi-duplicados.
