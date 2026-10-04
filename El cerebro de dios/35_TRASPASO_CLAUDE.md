@@ -93,7 +93,7 @@ Estados:
 | `04_Config/sources/_bots.yaml` | Registro de bots: workflow, cadencia, stale, respaldo | rama | `c88c8d9d307a2b93f441b81f2f65c6893b2cf1de852aeb16643043377cc374fa` |
 | `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `37ba02cf8f82cbacce9bf6701a7a82cfa3192174abd46e0f6cf51c1e1d3d8e6f` |
 | `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `ff45ece2cd810477dc60483b933b24b753a755d00eccb0774e9ee2021ebb5d54` |
-| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `cbf87f741ff11752ebe1b2c42c1db565249674a423ee2bb90c691a9c26f3c1c5` |
+| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `e5dc754ce89660b1f3e2e4b6a6282d52cb6ce9e4b019eeb357faeabb7a10baac` |
 | `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `db128d3ad8b27469ce0a16232f2f94c41cb4af6acb8026c3ae89f13cf87e4c21` |
 | `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `b55d49cef4bcccf1b53ea0e8989621b303dc4574e8ae455436a5de20e45218b2` |
 | `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `3816a9a8cadc8e6ed102570fcefe9552e403138b00c486cd2c51ecfcd2cefc23` |
@@ -102,7 +102,7 @@ Estados:
 | `El cerebro de dios/31_DETECCION_TEMPRANA.md` | Early watch: diseño, hand-off, claims, gate | doc | `e9385fe9a3d5f9f18af4ce4d22e684af3b112e729fd745477ae61fdd29ba47d3` |
 | `El cerebro de dios/32_SCORER_JOVENES.md` | Scorer joven v0.5, H-0, v7.2.2 aprobado, arquitectura Yin-Claude | doc | `af3fd1533292401ad0797a1e35a70aca2b893cc45a6a2aa531cc6fb82a3139a9` |
 | `El cerebro de dios/33_ARQUITECTURA_MULTIBOT.md` | Investigación de fuentes (RSS, MCP, Reddit, Nitter) | doc (diseño reemplazado por 34) | `50131aa522f8c1a81be690f4091da85854b9b3bc4a1425eb328a167e7398090c` |
-| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: 7 bots + store + self-repair + coparticipación | diseño | `cb3b1bf2f9a5df551d1aca626afcbc924a347ff220926f428044079133a84a84` |
+| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: 7 bots + store + self-repair + coparticipación | diseño | `a5da664c3bb87b01b400ebdbb8304870ea786a297f786213c80bd921f1b980f4` |
 
 ## 2. Lógica por archivo
 
