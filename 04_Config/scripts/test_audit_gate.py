@@ -125,5 +125,13 @@ class Dependencias(unittest.TestCase):
         self.assertIn("no existe", steps[1]["detail"])                                  # falta bs4 y su archivo fijado
 
 
+    def test_repo_tiene_requirements_dev_fijado_con_hashes(self):
+        """T3: el requirements-dev.txt real del repo trae bs4 y soupsieve fijados y con hash."""
+        req = ag.ROOT / "requirements-dev.txt"
+        lines = [x for x in req.read_text(encoding="utf-8").splitlines() if x.strip() and not x.startswith("#")]
+        pins = {x.split("==")[0]: x for x in lines}
+        self.assertTrue({"beautifulsoup4", "soupsieve"} <= set(pins))
+        self.assertTrue(all("==" in x and "--hash=sha256:" in x for x in lines), lines)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

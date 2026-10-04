@@ -1,0 +1,10 @@
+# requirements-dev.txt (D-075): dependencias de los tests. Lo usan audit_gate (antes de la batería), los tests
+# locales, Claude2 y YIN. Instalar con:
+#   pip install --require-hashes --no-deps -r requirements-dev.txt
+# Mismos pins y hashes que 04_Config/requirements/sources_telegram.txt (supply chain verificada en PyPI el 2026-10-03
+# y re-verificada en D-075): wheels de Python puro, licencias MIT/PSF.
+# typing-extensions va porque beautifulsoup4 4.15.0 la declara obligatoria (requires_dist) y con --no-deps no se
+# instalaría sola. requests y pyyaml se asumen presentes (los instalan los workflows; los tests no hacen red).
+beautifulsoup4==4.15.0 --hash=sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9
+soupsieve==2.9.2 --hash=sha256:8089a26fd974ca7a1f30276d3d8492ab266ab15af581642dfe8aa162e0c1c823
+typing-extensions==4.16.0 --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
