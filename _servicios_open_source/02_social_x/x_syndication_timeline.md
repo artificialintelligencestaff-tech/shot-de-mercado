@@ -12,4 +12,8 @@
 - Lista de cuentas de alta señal (proyectos, launchpads, exchanges): por cada cuenta, 1 request cada 30–60 min. [I]
 - El texto se usa para extraer direcciones, cashtags y keywords y no se guarda (src-1). [V convención]
 **Riesgos técnicos:** endpoint no documentado; X lo cambió en 2023 y puede volver a cambiarlo [I]. Ritmo prudente: ≤ 1 request/s y caché por cuenta [I].
-**Recomendación:** P1. Bot `bot_x_accounts` o receta nueva `kind: x_timeline` en bot_runner, con una lista de cuentas en YAML. Empezar por las cuentas oficiales de los activos `confirmado` del calendario.
+**Medición D-087 (2026-10-04) [V]:**
+- **Límite:** cabeceras `x-rate-limit-limit: 30`, ventana de 15 min (`x-rate-limit-reset`), por cliente. Agotado → 429 con cuerpo `Rate limit exceeded`. Alcanza para 30 cuentas cada 15 min, no para 50 cada 30 min.
+- **Frescura desigual:** de 8 cuentas probadas, 2 frescas (`solana`, `binance`: 20 posts de las últimas horas), 1 a medias (`whale_alert`), 3 **congeladas** (`cobie`, `lookonchain`, `zachxbt`: ~100 entradas, la más nueva de hace ~330 días) y 3 vacías (`aeyakovenko`, `pumpdotfun`, `spotonchain`). Variantes de URL (`showReplies`, mayúsculas) no cambian el resultado.
+- La ficha decía "las ~20 más recientes": vale solo para algunas cuentas (orgs verificadas, al parecer [I]).
+**Recomendación:** P1 como **respaldo**. `bot_influencer_tracker` (D-087) usa FxEmbed `/2/profile/<cuenta>/statuses` como mecanismo primario (fresco para casi todas las cuentas activas, ver `fxembed_api.md`) y syndication solo si FxEmbed falla o trae lo viejo, con cupo por corrida y respeto de `x-rate-limit-remaining`.

@@ -58,6 +58,10 @@ TYPES = {
     "token_confirmado":    {"ttl_s": 604800, "bucket_s": 2592000},
     "prelaunch_nacido":    {"ttl_s": 259200, "bucket_s": 2592000},   # vive las 72 h de seguimiento
     "token_purgado":       {"ttl_s": 86400,  "bucket_s": 2592000},
+    # Cuentas de X de alta señal (D-087, bot_influencer_tracker).
+    "tweet_influencer":    {"ttl_s": 21600,  "bucket_s": 86400},     # subject = id de la publicación: una vez
+    "mencion_token":       {"ttl_s": 10800,  "bucket_s": 3600},      # subject = $CASHTAG o contrato; uno por hora
+    "keyword_narrativa":   {"ttl_s": 14400,  "bucket_s": 3600},
 }
 
 
