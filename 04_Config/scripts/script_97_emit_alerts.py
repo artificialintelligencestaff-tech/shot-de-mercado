@@ -575,6 +575,31 @@ def source_links(mint, facts):
     return links
 
 
+def prelaunch_line(mint, root=None):
+    """D-082: '🆕 PRE-LANZAMIENTO …' si el calendario de preventa siguió este token (por contrato) antes de nacer.
+    Sin calendario, sin coincidencia o ante cualquier error: '' y la alerta sale igual que siempre."""
+    try:
+        here = str(_Path(__file__).resolve().parent)
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        import lib_sources_store   # noqa: E402
+        asset = lib_sources_store.prelaunch_lookup(mint, PROJECT_ROOT if root is None else root)
+    except Exception:
+        return ""
+    if not asset:
+        return ""
+    born = asset.get("born") or {}
+    pre, delta = born.get("precio_preventa") or asset.get("precio_preventa"), born.get("delta_preventa_apertura_pct")
+    if pre is not None and delta is not None:
+        text = f"precio preventa ${pre:.8g}, delta vs apertura {delta:+.1f}%"
+    elif pre is not None:
+        text = f"precio preventa ${pre:.8g}"
+    else:
+        text = "seguido desde el anuncio (" + ", ".join(sorted(asset.get("sources") or {})) + ")"
+    tag = "" if born.get("alertable") else " (candidato por símbolo)"
+    return f"🆕 *PRE-LANZAMIENTO*{tag}: {md(text)}\n"
+
+
 def format_alert_message(token, collisions=(), calibration=None):
     # Symbol is in token.token.symbol, fallback to top-level
     symbol = (token.get("token") or {}).get("symbol") or token.get("symbol") or "UNKNOWN"
@@ -643,7 +668,7 @@ def format_alert_message(token, collisions=(), calibration=None):
 • Edad del par al detectar: {age_text}
 • Par creado: {when(facts['created'])}
 • Ventana operativa: < {SIGNAL_WINDOW_H} h desde la detección
-
+{prelaunch_line(mint)}
 {probabilities}
 📊 *DATOS (DexScreener, al detectar)*
 • Precio: {show(snap['price'], '${:.8g}')}

@@ -255,3 +255,26 @@ def mention_items(mint, symbol, records):
                 seen.add(k)
                 hits.append(r)
     return to_items_store(hits)
+
+
+PRELAUNCH_CALENDAR_REL = "02_Analisis/prelaunch/_calendar.json"
+
+
+def prelaunch_lookup(mint, root=None):
+    """D-082: el activo del calendario de preventa (bot_prelaunch_calendar) que nació con este contrato, si el
+    calendario lo siguió antes de nacer (prelaunch_known). Solo por contrato exacto: nunca por símbolo. Sin
+    calendario, corrupto o sin coincidencia: None. Nunca lanza (el emisor no se bloquea por esto)."""
+    addr = norm.address(mint) if mint else None
+    if not addr:
+        return None
+    try:
+        doc = json.loads((Path(root or ROOT) / PRELAUNCH_CALENDAR_REL).read_text(encoding="utf-8"))
+        assets = (doc.get("assets") or {}).values() if isinstance(doc, dict) else ()
+    except (OSError, ValueError, AttributeError):
+        return None
+    for a in assets:
+        if not isinstance(a, dict) or not a.get("prelaunch_known"):
+            continue
+        if addr in ((a.get("born") or {}).get("contract"), a.get("contract")):
+            return a
+    return None
