@@ -48,6 +48,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 import lib_early_signals as es  # noqa: E402
+import lib_events as ev  # noqa: E402  D-082: token_nacido para el calendario de preventa
 import lib_sources_store as sources  # noqa: E402
 import lib_info_signals as inf  # noqa: E402
 import lib_scoring_young as ly  # noqa: E402
@@ -86,6 +87,7 @@ WATCH_HOURS = 6
 PP_MAX_AGE_MIN = 180            # un lanzamiento de PumpPortal se vigila hasta 3 h
 WATCH_CAP = 900
 MAX_PER_POLL = 3                # igual que script_97 por ciclo
+BIRTH_MAX_AGE_MIN = 30          # D-082: token_nacido para candidatos del scorer joven de hasta 30 min con liquidez
 NEAR_THRESHOLD = es.BONUS_CAP   # RugCheck solo para los que el bono puede llevar al umbral
 RUGCHECK_PER_POLL = 8
 RUGCHECK_REFRESH_S = 300
@@ -1000,6 +1002,8 @@ def poll_once(ctx, now):
         except Exception as e:
             print(f"[WARN] {mint[:10]}...: {type(e).__name__}: {e}")
     ctx["prev_results"] = results
+    if not ctx["dry_run"]:                       # D-082: evento para el calendario de preventa (no cambia la emisión)
+        emit_births(results, watch, dexs, root, now, ctx.get("instance"), ctx.setdefault("births_seen", set()))
     if info_ctx is not None and ctx.get("listener") and hasattr(ctx["listener"], "set_trade_keys"):
         young = sorted((r for r in results if r.get("scorer") == "young" and r["score"] is not None
                         and r["score"] >= ly.YOUNG_THRESHOLD - TRADE_NEAR), key=lambda r: -r["score"])
@@ -1067,11 +1071,37 @@ def poll_once(ctx, now):
     return snapshot
 
 
+def emit_births(results, watch, dexs, root, now, instance=None, seen=None):
+    """D-082: un `token_nacido` (lib_events) por candidato del scorer joven con edad ≤ 30 min y liquidez > 0, para el
+    calendario de preventa. Solo agrega el evento: no toca puntajes, gate ni emisión. `seen` evita reintentar en el
+    mismo loop; lib_events deduplica por mint y día entre las dos instancias. Nunca lanza."""
+    seen = seen if seen is not None else set()
+    items = []
+    for r in results:
+        dx, age = dexs.get(r["mint"]) or {}, r.get("age_min")
+        if (r.get("scorer") != "young" or age is None or age > BIRTH_MAX_AGE_MIN or not dx.get("liquidityUsd")
+                or r["mint"] in seen):
+            continue
+        tok = (watch.get(r["mint"]) or {}).get("token") or {}
+        items.append(("token_nacido", r["mint"], 1, {
+            "symbol": tok.get("symbol"), "name": tok.get("name"), "chain": "solana", "price_usd": dx.get("priceUsd") or None,
+            "liquidity_usd": dx.get("liquidityUsd"), "age_min": age, "pool": dx.get("pairAddress"), "source": "early_watch"}))
+        seen.add(r["mint"])
+    if not items:
+        return 0
+    try:
+        return len(ev.write_events(items, writer=f"early_watch_{instance or INSTANCE}", now=now, root=root))
+    except Exception as e:                                    # un evento nunca frena el early watch
+        print(f"[WARN] token_nacido: {type(e).__name__}: {e}")
+        return 0
+
+
 def run_loop(ctx, loop_minutes, poll_seconds, clock=time.time, sleep=time.sleep):
     start, last_commit, polls = clock(), clock(), 0
     root = Path(ctx["root"])
     paths = instance_paths(ctx.get("instance"))
-    own = [paths["watch"], paths["signals"], CLAIMS_REL, YOUNG_DIR_REL]
+    own = [paths["watch"], paths["signals"], CLAIMS_REL, YOUNG_DIR_REL,
+           f"02_Analisis/events/early_watch_{ctx.get('instance') or INSTANCE}"]          # D-082: sus token_nacido
     while True:
         t = clock()
         try:

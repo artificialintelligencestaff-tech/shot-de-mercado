@@ -635,6 +635,33 @@ def write_outputs(out_file, report, out_dir=None, cards=None, categories=None, c
     return written
 
 
+BIRTH_MAX_AGE_H = 24        # D-082: pool on-chain creado hace ≤ 24 h = token recién nacido
+
+
+def emit_births(report, now=None, root=None, max_age_h=BIRTH_MAX_AGE_H):
+    """D-082: `token_nacido` (lib_events, escritor multichain_scanner) por cada pool en tendencia de GeckoTerminal
+    creado hace ≤ max_age_h, para el calendario de preventa. Solo agrega el evento; no cambia el scan. Nunca lanza."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import lib_events
+    now = now if now is not None else time.time()
+    items = []
+    for net, entry in (report.get("onchain") or {}).items():
+        for it in entry.get("items") or []:
+            try:
+                born = datetime.fromisoformat(str(it.get("pool_created_at") or "").replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                continue
+            if it.get("token_address") and 0 <= now - born <= max_age_h * 3600:
+                items.append(("token_nacido", it["token_address"], 1, {
+                    "symbol": it.get("symbol"), "name": it.get("name"), "chain": it.get("chain") or net,
+                    "price_usd": it.get("price_usd") or None, "pool": it.get("id"), "source": "multichain_scanner"}))
+    try:
+        return len(lib_events.write_events(items, writer="multichain_scanner", now=now, root=root or ROOT))
+    except Exception as e:                                    # un evento nunca frena el scanner
+        print(f"[WARN] token_nacido: {type(e).__name__}: {e}")
+        return 0
+
+
 def main(argv=None, http=None):
     ap = argparse.ArgumentParser(description="Scanner multi-chain v0.2: recolecta y marca aceleraciones (no emite)")
     ap.add_argument("--groups", default=",".join(GROUP_ORDER), help="subconjunto de h,f,c,g,d,e")
@@ -694,6 +721,7 @@ def main(argv=None, http=None):
         import lib_persist   # Fase 9: bitácora de la operación
         lib_persist.log_operation("multichain_scan", "script_114", written, calls=http.calls,
                                   errors=len(report.get("errors") or []), accelerating=len(report.get("accelerating") or []))
+        print(f"[114] token_nacido emitidos: {emit_births(report)}")       # D-082: calendario de preventa
     return 0
 
 
