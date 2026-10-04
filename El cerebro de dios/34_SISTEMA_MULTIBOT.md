@@ -376,7 +376,7 @@ fallback_sources:
 - **Por contrato:** coincidencia exacta. Es alertable.
 - **Por símbolo + nombre + chain:** exige ≥ 2 fuentes. Queda como candidato, **no alertable**.
 - Los nacimientos llegan por dos vías: el evento `token_nacido` y la observación propia (el símbolo aparece en spot o en DEX).
-- [P] `token_nacido` lo tienen que emitir `script_116` y `script_114`, que son producción: hay que consultar antes de tocarlos.
+- `token_nacido` lo emiten `script_116` y `script_114` desde D-082 (§16).
 
 **Archivos** (un dueño por archivo): `02_Analisis/prelaunch/_calendar.json` y `_state.json`, `events/prelaunch_calendar/`, `events/_cursors/prelaunch_calendar.json` y `sources/_episodes_prelaunch.jsonl`. El workflow commitea esas rutas explícitas y nunca usa `git add -A`.
 
@@ -386,5 +386,30 @@ fallback_sources:
   - mandaba mensajes al grupo sin método de emparejamiento;
   - sus fuentes (Metaplex, Clawnch) no estaban verificadas;
   - commiteaba con `git add -A` y compartía el grupo de concurrencia `repo-write-main` con otros workflows.
-- Reemplazo: el calendario de arriba, que **no envía** mensajes. Si un nacimiento alertable merece aviso, lo decide el emisor (script_97) a partir de `prelaunch_nacido`; eso queda [P] para Dirección.
+- Reemplazo: el calendario de arriba, que **no envía** mensajes. La alerta de un token que el calendario siguió desde antes de nacer lleva la línea PRE-LANZAMIENTO de script_97 (D-082, §16).
+
+## 16. Integración preventa ↔ producción (D-082)
+
+Autorizado por Dirección en D-082. Las tres conexiones **agregan** información y no cambian puntajes, gates ni la decisión de emitir.
+
+**Flujo:**
+1. **Anuncio:** Hyperliquid, Aevo, Polymarket, Bybit, Binance o Bitcointalk.
+2. **Calendario:** `bot_prelaunch_calendar`, cada 6 h; el activo queda anunciado → confirmado.
+3. **Nacimiento:** llega el evento `token_nacido`, o el calendario lo observa en spot o en DEX. Se emite `prelaunch_nacido`, el activo pasa a seguimiento con `prelaunch_known: true`, y se registran el precio de preventa, el de apertura y el delta.
+4. **Alerta:** cuando script_97 alerta ese contrato por sus propios criterios, el mensaje suma la línea PRE-LANZAMIENTO.
+
+| Conexión | Dónde | Qué hace | Commit |
+|---|---|---|---|
+| `token_nacido` desde el early watch | `script_116.emit_births()`, después de evaluar | candidato del scorer joven con edad ≤ 30 min y liquidez > 0 → evento con mint, símbolo y nombre del lanzamiento, chain `solana`, precio, liquidez y pool. Escritor `early_watch_<inst>`; un set por loop evita reintentos y lib_events deduplica por mint y día entre a y b | la carpeta `events/early_watch_<inst>/` entra en los paths que ya commitea el script |
+| `token_nacido` desde el scanner | `script_114.emit_births()`, después de escribir | pools en tendencia de GeckoTerminal creados hace ≤ 24 h → evento con contrato, símbolo, red y precio. Escritor `multichain_scanner` | `multichain_scanner.yml` suma `events/multichain_scanner/` |
+| Línea en la alerta | `script_97.prelaunch_line()` dentro de `format_alert_message` (alertas principales y del early watch) | `lib_sources_store.prelaunch_lookup(mint)` busca en el calendario **por contrato exacto** y devuelve «🆕 PRE-LANZAMIENTO: precio preventa $X, delta vs apertura +Y%». Si el nacimiento se emparejó por símbolo, agrega «(candidato por símbolo)». Sin calendario, o si está corrupto: no agrega nada y el mensaje queda idéntico | — |
+
+**Garantías.**
+- **Ningún evento frena a su emisor:** `emit_births` nunca lanza; si falla, imprime un aviso.
+- **Eficiencia:** `lib_events.write_events` escribe en lote y carga los ids conocidos una vez por poll, porque el early watch evalúa cientos de candidatos.
+- **TTL de `token_nacido`: 24 h.** Con 6 h igualaba la cadencia del calendario y un evento podía vencerse sin que nadie lo leyera.
+
+**Cuándo es alertable.** El calendario nunca alerta: solo marca. La línea se agrega a alertas que script_97 ya decidió emitir. Un nacimiento emparejado por contrato se muestra limpio; uno por símbolo, como candidato.
+
+**Tests:** `test_d082_token_nacido.py` (2) y `test_d082_prelaunch_alerta.py` (1). Las suites existentes de 116 (26), 114 (19) y 97 siguen verdes.
 
