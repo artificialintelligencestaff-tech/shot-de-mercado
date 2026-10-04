@@ -3,7 +3,8 @@
 audit_gate.py — compuertas deterministas de auditoría para cada pull request (Ola 3, D-067; C-005 P4).
 Sin LLM. Lo llama .github/workflows/audit_gate.yml; cada subcomando sale con código 1 si su compuerta falla.
 
-  tests                         batería completa, archivo por archivo, con PYTHONUTF8=1 (decide por exit code)
+  tests [--no-install]          instala dependencias (install_deps) y corre la batería completa, archivo por archivo,
+                                con PYTHONUTF8=1 y REQUIRE_TEST_DEPS=1 (decide por exit code)
   doc35 [--rev R] [--update]    SHA-256 de cada archivo del inventario del doc 35 contra el BLOB de git (LF, el
                                 mismo contenido en Windows y en Linux). --update reescribe los hashes desde el blob.
   prohibited --base B           líneas AGREGADAS en el PR: --force / reset --hard en comandos, TELEGRAM_CHAT_ID en
@@ -67,9 +68,51 @@ def git_blob(rev, path):
 # a) batería
 # ---------------------------------------------------------------------------
 
+REQ_FILES = ("requirements-dev.txt", "requirements.txt")              # en la raíz del repo, en este orden
+BS4_PINNED = "04_Config/requirements/sources_telegram.txt"            # bs4 + soupsieve + typing-extensions con hash
+
+
+def _pip(args, run=subprocess.run):
+    r = run([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "-q", *args],
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return r.returncode, (r.stdout + r.stderr).strip()[-800:]
+
+
+def _has_bs4():
+    try:
+        import bs4  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def install_deps(root=None, pip=_pip, has_bs4=_has_bs4):
+    """Antes de la batería (D-075): instala el primer archivo de REQ_FILES que exista y, si después sigue faltando
+    bs4, el archivo fijado con hashes. Un archivo con `--hash=` se instala con --require-hashes --no-deps (supply
+    chain: todo lo que entra está fijado y verificado, incluidas las transitivas).
+    Que no exista ningún requirements no es error. Devuelve [{"step", "rc", "detail"}]; rc != 0 = falla."""
+    root = Path(root or ROOT)
+    steps = []
+    req = next((root / f for f in REQ_FILES if (root / f).is_file()), None)
+    if req is None:
+        steps.append({"step": "requirements", "rc": 0, "detail": f"sin {' ni '.join(REQ_FILES)}: nada que instalar"})
+    else:
+        hashed = "--hash=" in req.read_text(encoding="utf-8")
+        rc, out = pip((["--require-hashes", "--no-deps"] if hashed else []) + ["-r", str(req)])
+        steps.append({"step": req.name, "rc": rc, "detail": out or "ok"})
+    if not has_bs4():
+        pinned = root / BS4_PINNED
+        if pinned.is_file():
+            rc, out = pip(["--require-hashes", "--no-deps", "-r", str(pinned)])
+            steps.append({"step": "bs4 (fijado con hash)", "rc": rc, "detail": out or "ok"})
+        else:
+            steps.append({"step": "bs4", "rc": 1, "detail": f"falta bs4 y no existe {BS4_PINNED}"})
+    return steps
+
+
 def run_tests(root=None, timeout=600):
     root = Path(root or ROOT)
-    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", SHOT_ROOT=str(root))
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", SHOT_ROOT=str(root), REQUIRE_TEST_DEPS="1")
     results = []
     for f in sorted((root / "04_Config" / "scripts").glob("test_*.py")):
         t0 = time.time()
@@ -251,7 +294,8 @@ def bundle(base, head="HEAD", results=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Compuertas deterministas de auditoría (Ola 3)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("tests")
+    t = sub.add_parser("tests")
+    t.add_argument("--no-install", action="store_true", help="no instala dependencias antes de la batería")
     d = sub.add_parser("doc35")
     d.add_argument("--rev", default="HEAD")
     d.add_argument("--update", action="store_true")
@@ -264,6 +308,13 @@ def main(argv=None):
             p.add_argument("--results", help="JSON con los resultados de las otras compuertas")
     a = ap.parse_args(argv)
     if a.cmd == "tests":
+        if not a.no_install:
+            steps = install_deps()
+            for st in steps:
+                print(f"deps: {st['step']} → rc={st['rc']} · {st['detail'].splitlines()[-1] if st['detail'] else ''}")
+            if any(st["rc"] for st in steps):
+                print("::error::la instalación de dependencias falló: la batería no corre con un entorno incompleto")
+                return 1
         res = run_tests()
         bad = [r for r in res if not r["ok"]]
         print(f"batería: {sum(r['tests'] for r in res)} tests en {len(res)} archivos · archivos con fallas: {len(bad)}")

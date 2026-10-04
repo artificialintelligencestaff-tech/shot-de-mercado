@@ -88,5 +88,42 @@ class Doc35YProduccion(unittest.TestCase):
         self.assertEqual((t["workflows"], t["data"]), ([".github/workflows/w.yml"], ["02_Analisis/sources/x/_state.json"]))
 
 
+class Dependencias(unittest.TestCase):
+    """D-075: la batería del gate instala dependencias antes de correr (antes no lo hacía)."""
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self.root = Path(tempfile.mkdtemp(prefix="gate_deps_"))
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.calls = []
+
+    def pip(self, rc=0):
+        def fake(args):
+            self.calls.append(args)
+            return rc, "ok"
+        return fake
+
+    def test_sin_requirements_no_rompe_y_con_hashes_instala_verificado(self):
+        steps = ag.install_deps(self.root, pip=self.pip(), has_bs4=lambda: True)
+        self.assertEqual(([s["rc"] for s in steps], self.calls), ([0], []))           # sin archivos: nada, sin error
+        self.assertIn("nada que instalar", steps[0]["detail"])
+        (self.root / "requirements-dev.txt").write_text("soupsieve==2.9.2 --hash=sha256:abc\n", encoding="utf-8")
+        pinned = self.root / ag.BS4_PINNED
+        pinned.parent.mkdir(parents=True)
+        pinned.write_text("beautifulsoup4==4.15.0 --hash=sha256:def\n", encoding="utf-8")
+        steps = ag.install_deps(self.root, pip=self.pip(), has_bs4=lambda: False)
+        self.assertEqual(self.calls, [["--require-hashes", "--no-deps", "-r", str(self.root / "requirements-dev.txt")],
+                                      ["--require-hashes", "--no-deps", "-r", str(pinned)]])
+        self.assertEqual([s["step"] for s in steps], ["requirements-dev.txt", "bs4 (fijado con hash)"])
+
+    def test_falla_de_pip_o_bs4_imposible_se_informa(self):
+        (self.root / "requirements.txt").write_text("pyyaml\n", encoding="utf-8")          # sin hashes: pip simple
+        steps = ag.install_deps(self.root, pip=self.pip(rc=1), has_bs4=lambda: False)
+        self.assertEqual(self.calls[0], ["-r", str(self.root / "requirements.txt")])
+        self.assertEqual([s["rc"] for s in steps], [1, 1])
+        self.assertIn("no existe", steps[1]["detail"])                                  # falta bs4 y su archivo fijado
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
