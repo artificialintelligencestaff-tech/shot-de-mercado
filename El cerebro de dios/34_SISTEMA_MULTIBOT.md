@@ -521,7 +521,7 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
   - **Activo vigente** = lo que el sistema sigue hoy: calendario de preventa sin purgar, alertas de 30 días, scan multichain (grupos, on-chain, acelerando), perps de Hyperliquid (kPEPE y 1000BONK se cuentan como PEPE y BONK) y watchlists del early watch. El 2026-10-04: 456 símbolos, 228 contratos y 163 formas de nombre.
   - **Nombres:** se busca el nombre completo y, si tiene varias palabras, la primera, salvo palabras comunes (`NAME_STOP`).
     - La lista se armó revisando los 233 nombres vigentes: "Bitcoin Cash" mapeaba "bitcoin" a BCH, "Blockchain Capital" convertía "blockchain" en BCAP, y aparecían "soon", "compound", "grass".
-    - Las siglas que no son tickers (UTC, TGE, MVNO no, porque no es vigente, TOP10, nombres de exchanges) están en `TICKER_STOP`.
+    - Las siglas que no son tickers (UTC, TGE, TOP10, nombres de exchanges…) están en `TICKER_STOP`. Una sigla suelta de una oración de anuncio solo cuenta si es un activo vigente: así "MVNO" (de un post de helium) no pasa por ticker.
   - Por cuenta queda además `aporte_tipos` (posts por tipo).
 - **`evaluar: true`** si `dias_desde_ultimo_post` > 30 (o nunca se vio un post), o si `aporte_estimado` = 0 con > 10 posts en 30 días. `evaluar_motivo` dice cuál.
   - Una cuenta que todavía no se consultó no se juzga.
