@@ -367,6 +367,13 @@ fallback_sources:
 **Fuentes** (verificadas en vivo el 2026-10-03; las 6 respondieron 200 desde fuera de EE. UU.) [V]:
 - Hyperliquid `metaAndAssetCtxs`, Aevo `/markets`, Polymarket `public-search` («FDV one day after launch»), Bybit `announcements` (new_crypto), Bitcointalk board 159.
 - Binance CMS (catálogo 48). Desde runners de EE. UU. puede dar 451: se registra con la nota «[P] bloqueado desde runners US» y la corrida sigue.
+- **D-089-R** (verificadas el 2026-10-04; 200 sin key ni Cloudflare) [V]:
+  - **CoinMarketCap:** calendario ICO por `__NEXT_DATA__`; toma las ventas `ongoing` y `upcoming` con `icoPriceUsd`, etapa, fechas, meta y launchpad. Tiene poca cobertura: hoy, 1 venta (CON a $0,007).
+  - **ICO Drops:** la lista "upcoming" (50 proyectos, con ronda, valuación previa y fecha) no trae ticker ni precio. Por eso se pide la página de cada proyecto nuevo, hasta `detalle_max` (15) por corrida, con caché de 7 días en `_state.json` (`icodrops_cache`). De ahí sale el ticker del título y el primer "Price" de una ronda.
+  - Sin venta pública no hay precio; sin ticker publicado, el activo entra por nombre (`name:…`).
+  - En la corrida de prueba: 50 filas, 9 con precio de venta (CHIMP $1,5, CLIX $0,1, SPWAY $0,12, GNOT $0,0645…).
+- **Precio de preventa:** manda el último precio de un perp (Hyperliquid/Aevo, `precio_preventa_fuente`). Si no hay perp, se usa el precio de la venta (CMC/ICO Drops), que además queda en `precio_venta`. Es el precio que muestra la línea PRE-LANZAMIENTO de script_97 (§16) y la base del `delta_preventa_apertura_pct`.
+- **Colisión de ticker [V]:** CRED (Credible) y CON (ConConAI) no entran, porque ya hay pares DEX con ese símbolo y ≥ 100 000 USD de liquidez, y el filtro de "ya nacido" los toma como nacidos. Es el mismo criterio de antes para todas las fuentes [H].
 
 **"No nacido" [H].** Ni Hyperliquid ni Aevo marcan la preventa en la API.
 - Regla: el símbolo no tiene spot en Bybit, OKX, Binance ni Hyperliquid, **ni** un par DEX con ≥ 100 000 USD de liquidez (DexScreener, también por nombre del token).
