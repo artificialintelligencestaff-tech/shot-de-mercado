@@ -19,13 +19,19 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 # aunque el secret exista. Los avisos de sistema van por TELEGRAM_OPS_CHAT_ID (bots, lib_ops).
 # El bot es solo emisor: no lee updates ni comandos de nadie.
 TELEGRAM_PUBLIC_CHAT_ID = os.getenv("TELEGRAM_PUBLIC_CHAT_ID")
-ACCUMULATED_FILE = str(PROJECT_ROOT / "02_Analisis" / "shadow_v4" / "_accumulated.json")
-ALERTS_DIR = str(PROJECT_ROOT / "02_Analisis" / "alerts")
+_HERE = str(_Path(__file__).resolve().parent)
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+import lib_alerts   # noqa: E402  D-105: dominio de alertas (lectura/escritura + esquema)
+import lib_paths as P   # noqa: E402  D-105: ninguna ruta literal; todas salen de la interfaz común
+
+ACCUMULATED_FILE = P.path_str("shadow_v4.accumulated", PROJECT_ROOT)
+ALERTS_DIR = P.path_str("alerts.dir", PROJECT_ROOT)
 os.makedirs(ALERTS_DIR, exist_ok=True)
 
-PRECISION_LOG = os.path.join(ALERTS_DIR, "_precision_log.json")
-ALL_ALERTS_FILE = os.path.join(ALERTS_DIR, "_all_alerts.json")
-CYCLE_LOG = os.path.join(ALERTS_DIR, "_cycle_log.json")
+PRECISION_LOG = P.path_str("alerts.precision_log", PROJECT_ROOT)
+ALL_ALERTS_FILE = P.path_str("alerts.all", PROJECT_ROOT)
+CYCLE_LOG = P.path_str("alerts.cycle_log", PROJECT_ROOT)
 
 EVM_ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
 TRUTHY = {"1", "true", "yes", "on"}
@@ -49,8 +55,7 @@ def env_flag(name):
     return os.getenv(name, "").strip().lower() in TRUTHY
 
 
-class CorruptStateError(Exception):
-    """El archivo canónico de alertas no se puede leer como lista: no se emite ni se sobrescribe."""
+CorruptStateError = lib_alerts.CorruptAlertsError   # D-105: el error del dominio de alertas
 
 
 def normalize_mint(mint):
@@ -70,20 +75,11 @@ def normalize_symbol(symbol):
 
 
 def load_alerts(path):
-    """Historial de alertas. Inexistente -> []. Ilegible o no-lista -> CorruptStateError.
+    """Historial de alertas. Inexistente -> []. Ilegible o no-lista -> CorruptStateError (lib_alerts, D-105).
 
     Antes, un error de lectura dejaba la lista vacía y el write final borraba el historial.
     """
-    if not os.path.exists(path):
-        return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, ValueError) as e:
-        raise CorruptStateError(f"{path}: {e}") from e
-    if not isinstance(data, list):
-        raise CorruptStateError(f"{path}: se esperaba una lista, llegó {type(data).__name__}")
-    return data
+    return lib_alerts.read_alerts(path, strict=True)
 
 
 def duplicate_mints(all_alerts):
@@ -386,7 +382,7 @@ def load_emission_calibration(path=None):
     Archivo 02_Analisis/diagnostics/emission_calibration.json con validated=true. Sin archivo, ilegible
     o sin validar -> None, y el mensaje dice "en validación": nunca se muestran cifras no validadas.
     """
-    path = path or os.path.join(str(PROJECT_ROOT), "02_Analisis", "diagnostics", "emission_calibration.json")
+    path = path or P.path_str("diagnostics.emission_calibration", PROJECT_ROOT)
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -589,11 +585,17 @@ def prelaunch_line(mint, root=None):
     if not asset:
         return ""
     born = asset.get("born") or {}
-    pre, delta = born.get("precio_preventa") or asset.get("precio_preventa"), born.get("delta_preventa_apertura_pct")
-    if pre is not None and delta is not None:
-        text = f"precio preventa ${pre:.8g}, delta vs apertura {delta:+.1f}%"
-    elif pre is not None:
-        text = f"precio preventa ${pre:.8g}"
+    # D-101 (doc 38 fix B): "preventa" solo si es precio de mercado real (perp); el de la ronda se muestra como venta
+    real = born.get("precio_preventa") if "precio_preventa" in born else (
+        asset.get("precio_preventa") if asset.get("precio_preventa_fuente") in ("hyperliquid", "aevo") else None)
+    venta = born.get("precio_venta") or (asset.get("precio_venta") or {}).get("usd")
+    delta, delta_v = born.get("delta_preventa_apertura_pct"), born.get("delta_venta_apertura_pct")
+    if real is not None and delta is not None:
+        text = f"precio preventa ${real:.8g}, delta vs apertura {delta:+.1f}%"
+    elif real is not None:
+        text = f"precio preventa ${real:.8g}"
+    elif venta is not None:
+        text = f"precio de venta (ICO) ${venta:.8g}" + (f", delta vs apertura {delta_v:+.1f}%" if delta_v is not None else "")
     else:
         text = "seguido desde el anuncio (" + ", ".join(sorted(asset.get("sources") or {})) + ")"
     tag = "" if born.get("alertable") else " (candidato por símbolo)"
@@ -709,9 +711,9 @@ def get_current_price(token):
 # Emisión multi-chain (Fase 7, doc 27). La ruta de memecoins Solana de arriba NO cambia: esto corre después,
 # con su propio tope por ciclo, y lee las salidas de script_114 (02_Analisis/multichain/).
 # ---------------------------------------------------------------------------
-MULTICHAIN_DIR = PROJECT_ROOT / "02_Analisis" / "multichain"
-MULTICHAIN_SCORES_FILE = MULTICHAIN_DIR / "_scores.json"
-DOSSIERS_MULTICHAIN_DIR = PROJECT_ROOT / "02_Analisis" / "dossiers" / "multichain"
+MULTICHAIN_DIR = P.path("multichain.dir", PROJECT_ROOT)
+MULTICHAIN_SCORES_FILE = P.path("multichain.scores", PROJECT_ROOT)
+DOSSIERS_MULTICHAIN_DIR = P.path("dossiers.multichain_dir", PROJECT_ROOT)
 MULTICHAIN_MAX_AGE_MIN = 120          # el scanner corre cada 1 h: un scan de más de 2 h no se usa
 MULTICHAIN_MAX_PER_CYCLE = 2          # aparte de las 3 de Solana
 MULTICHAIN_MAX_PER_GROUP_24H = 3      # ningún grupo acapara la emisión
@@ -805,12 +807,13 @@ def load_multichain_inputs(now=None, max_age_min=MULTICHAIN_MAX_AGE_MIN):
             card = _read_json_file(path)
             if isinstance(card, dict):
                 cards[path.stem] = card
-    return scan, cards, _read_json_file(MULTICHAIN_DIR / "_categories.json"), _read_json_file(MULTICHAIN_DIR / "_protocols.json")
+    return scan, cards, _read_json_file(P.path("multichain.categories", PROJECT_ROOT)), \
+        _read_json_file(P.path("multichain.protocols", PROJECT_ROOT))
 
 
-EARLY_DIR = PROJECT_ROOT / "02_Analisis" / "early"
-EARLY_ALERTS_FILE = EARLY_DIR / "_early_alerts.json"     # v0.1 (una sola instancia); se sigue leyendo
-EARLY_CLAIMS_DIR = EARLY_DIR / "alerts"                 # Fase 10b: un archivo por mint (reclamo entre instancias)
+EARLY_DIR = P.path("early.dir", PROJECT_ROOT)
+EARLY_ALERTS_FILE = P.path("early.alerts_legacy", PROJECT_ROOT)   # v0.1 (una sola instancia); se sigue leyendo
+EARLY_CLAIMS_DIR = P.path("early.alerts_dir", PROJECT_ROOT)       # Fase 10b: un archivo por mint (reclamo)
 EARLY_SIGNALS_MAX_AGE_MIN = 20       # script_116 los reescribe cada 2 min mientras corre
 EARLY_WORKFLOWS = ("early_watch.yml", "early_watch_b.yml")
 
@@ -838,14 +841,14 @@ def load_early_signals(now=None, max_age_min=EARLY_SIGNALS_MAX_AGE_MIN):
 
 
 def load_multichain_extras():
-    """Fase 8: Snapshot (c), perps de Hyperliquid (d), pre-mercado de Aevo y TGEs de script_99 (b).
-    Fase 10: bono anticipatorio de script_116 (early)."""
+    """Fase 8: Snapshot (c), perps de Hyperliquid (d) y pre-mercado de Aevo. Fase 10: bono anticipatorio de script_116
+    (early). D-101: sin la lectura de 02_Analisis/pre_launch/_prelaunch_accumulated.json (script_99 deprecado en D-079,
+    archivo movido a _archivo_2026_Q3 en D-089-R): la preventa vive en prelaunch/_calendar.json (prelaunch_line)."""
     return {"early": load_early_signals(),
-            "memechain": _read_json_file(PROJECT_ROOT / "02_Analisis" / "datasets" / "memechain_index.json"),
-            "governance": _read_json_file(MULTICHAIN_DIR / "_governance.json"),
-            "perps": _read_json_file(MULTICHAIN_DIR / "_perps.json"),
-            "premarket": _read_json_file(MULTICHAIN_DIR / "_premarket.json"),
-            "prelaunch": _read_json_file(PROJECT_ROOT / "02_Analisis" / "pre_launch" / "_prelaunch_accumulated.json")}
+            "memechain": _read_json_file(P.path("datasets.memechain_index", PROJECT_ROOT)),
+            "governance": _read_json_file(P.path("multichain.governance", PROJECT_ROOT)),
+            "perps": _read_json_file(P.path("multichain.perps", PROJECT_ROOT)),
+            "premarket": _read_json_file(P.path("multichain.premarket", PROJECT_ROOT))}
 
 
 def multichain_results(now=None, memecoin_scorer=None):
@@ -997,7 +1000,7 @@ def format_multichain_message(result, links, detected_at):
             f"• Cambio 24h / 7d: {pct(result.get('change_24h'))} / {pct(result.get('change_7d'))}\n\n"
             f"🔎 *POR QUÉ LO DETECTAMOS* (score {result['score']}, cobertura {result['confidence']:.2f})\n{reasons}\n"
             f"🔗 *FUENTES VERIFICABLES*\n• CoinGecko: https://www.coingecko.com/en/coins/{result.get('cg_id')}\n"
-            f"• Datos del scan: 02_Analisis/multichain/ (script_114)\n\n"
+            f"• Datos del scan: {P.rel('multichain.dir')}/ (script_114)\n\n"
             f"⏱️ *SEGUIMIENTO*\n• Ventana de {SIGNAL_WINDOW_H} h; el activo se puede volver a alertar al cerrarla\n")
 
 
@@ -1061,10 +1064,9 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
         record.update(flags)
         record.update(source_mentions(r["address"] if onchain else r["key"], r.get("symbol")))  # D-035, informativo
         safe = re.sub(r"[^A-Za-z0-9]+", "_", r["key"])
-        with open(os.path.join(ALERTS_DIR, f"alert_{safe}_{timestamp}.json"), "w", encoding="utf-8") as f:
-            json.dump(r, f, indent=2, ensure_ascii=False)
+        lib_alerts.write_detail(safe, timestamp, r, ensure_ascii=False, root=PROJECT_ROOT)
         all_alerts.append(record)
-        write_json_atomic(ALL_ALERTS_FILE, all_alerts)            # persistido ANTES de enviar
+        lib_alerts.write_alerts(all_alerts, ALL_ALERTS_FILE)            # persistido ANTES de enviar
         lib = _load_lib_scoring()
         dossier_path = DOSSIERS_MULTICHAIN_DIR / r["group"] / f"{safe}.md"
         dossier_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1076,7 +1078,7 @@ def emit_multichain(all_alerts, timestamp, shadow, calibration, now=None, memeco
             record["telegram_sent"] = False
         else:
             record["telegram_sent"], record["dossier_sent"] = send_alert(msg, str(dossier_path), name)
-        write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+        lib_alerts.write_alerts(all_alerts, ALL_ALERTS_FILE)
         _persist().record_alert(record, r.get("components"), r.get("reasons"), source="script_97:multichain")
         print(f"[INFO] Multi-chain emitida: {r['symbol']} grupo {r['group']} score {r['score']} ({r['key']})")
         emitted += 1
@@ -1177,7 +1179,7 @@ def adopt_early_alerts(all_alerts, early_alerts, shadow=False, builder_loader=No
         adopted.append(record)
     if not adopted:
         return []
-    write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+    lib_alerts.write_alerts(all_alerts, ALL_ALERTS_FILE)
     builder = (builder_loader or load_dossier_builder)()
     for record in adopted:
         path, name = generate_dossier(builder, record["mint"])
@@ -1191,7 +1193,7 @@ def adopt_early_alerts(all_alerts, early_alerts, shadow=False, builder_loader=No
             _persist().record_alert(dict(record, chain="solana", group="a"), source="script_116:early")
         except Exception as e:
             print(f"[WARN] dataset: {e}")
-    write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+    lib_alerts.write_alerts(all_alerts, ALL_ALERTS_FILE)
     print(f"[INFO] Alertas tempranas adoptadas: {[r.get('symbol') for r in adopted]}")
     return adopted
 
@@ -1312,13 +1314,11 @@ def main(argv=None):
                              "other_mints": collisions})
 
         # Save individual alert record
-        ind_file = os.path.join(ALERTS_DIR, f"alert_{mint}_{timestamp}.json")
-        with open(ind_file, "w", encoding="utf-8") as f:
-            json.dump(token, f, indent=2)
+        lib_alerts.write_detail(mint, timestamp, token, root=PROJECT_ROOT)
 
         # Persistir ANTES de enviar: si algo falla después, el mint ya figura como alertado
         all_alerts.append(alert_record)
-        write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+        lib_alerts.write_alerts(all_alerts, ALL_ALERTS_FILE)
 
         # Dossier del activo: se arma con el registro ya persistido; en sombra se guarda sin enviarse
         dossier_path, dossier_name = generate_dossier(builder, mint)
@@ -1330,7 +1330,7 @@ def main(argv=None):
             alert_record["telegram_sent"] = False
         else:
             alert_record["telegram_sent"], alert_record["dossier_sent"] = send_alert(msg, dossier_path, dossier_name)
-        write_json_atomic(ALL_ALERTS_FILE, all_alerts)
+        lib_alerts.write_alerts(all_alerts, ALL_ALERTS_FILE)
         _persist().record_alert(dict(alert_record, scoring_version=token.get("scoring_version"), chain="solana",
                                      group=token.get("group") or "a"), reasons=token.get("reasons"),
                                 source="script_97:solana")

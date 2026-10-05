@@ -47,7 +47,10 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
+import lib_alerts  # noqa: E402  D-105: dominio de alertas
 import lib_early_signals as es  # noqa: E402
+import lib_early_watch as ew  # noqa: E402  D-105: dominio del early watch (archivos por instancia)
+import lib_paths as P  # noqa: E402  D-105: interfaz común de rutas
 import lib_events as ev  # noqa: E402  D-082: token_nacido para el calendario de preventa
 import lib_sources_store as sources  # noqa: E402
 import lib_info_signals as inf  # noqa: E402
@@ -56,9 +59,9 @@ import lib_scoring_young as ly  # noqa: E402
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
 VERSION = "116-0.4"
 INSTANCE = (os.environ.get("EARLY_INSTANCE") or "a").strip().lower() or "a"   # Fase 10b: a (:07/:37), b (:22/:52)
-EARLY_DIR_REL = "02_Analisis/early"
-CLAIMS_REL = f"{EARLY_DIR_REL}/alerts"      # un archivo por mint = reclamo de la emisión entre instancias
-GATE_FILE_REL = f"{EARLY_DIR_REL}/_gate.json"
+EARLY_DIR_REL = P.rel("early.dir")
+CLAIMS_REL = ew.rel_claims()               # un archivo por mint = reclamo de la emisión entre instancias
+GATE_FILE_REL = ew.rel_gate()
 EARLY_MIN_AGE_MIN_DEFAULT = 10              # Fase 10b (Dirección): 30 -> 10; early_review puede subirlo a 15
 PHOENIX_BOOK = "https://perp-api.phoenix.trade/v1/view/orderbook/{symbol}"
 RAYDIUM_LINE = "https://api-v3.raydium.io/pools/line/position?id={pool}"
@@ -66,7 +69,7 @@ DEX_BATCH_URL = "https://api.dexscreener.com/tokens/v1/solana/{mints}"
 DEX_PROFILES_URL = "https://api.dexscreener.com/token-profiles/latest/v1"
 DEX_BOOSTS_URL = "https://api.dexscreener.com/token-boosts/latest/v1"
 GITHUB_REPO_URL = "https://api.github.com/repos/{repo}"
-YOUNG_DIR_REL = "02_Analisis/early/young"     # D-014-R-3: registro JSONL por token del scorer joven
+YOUNG_DIR_REL = ew.rel_young()                # D-014-R-3: registro JSONL por token del scorer joven
 META_PER_POLL = 40                            # metadata IPFS de lanzamientos nuevos por poll
 META_BUDGET_S = 25                            # tope de tiempo por poll para la metadata (poll de 120 s)
 GITHUB_PER_POLL = 1                           # API de GitHub sin token: 60/h por IP
@@ -104,8 +107,9 @@ COVERAGE_KEEP_S = 26 * 3600        # intervalos de conexión de PumpPortal que s
 def instance_paths(instance=None):
     """Archivos propios de una instancia: dos early watch en paralelo nunca escriben el mismo archivo."""
     inst = instance or INSTANCE
-    return {"watch": f"{EARLY_DIR_REL}/_watch_{inst}.json", "signals": f"{EARLY_DIR_REL}/_signals_{inst}.json",
-            "op": f"early_watch_{inst}"}
+    return {"watch": ew.rel_watch(inst), "signals": ew.rel_signals(inst), "op": f"early_watch_{inst}",
+            "events": P.rel("events.writer", writer=f"early_watch_{inst}"),
+            "op_log": P.rel("operations.log", op=f"early_watch_{inst}")}
 
 
 def merge_intervals(intervals):
@@ -122,7 +126,7 @@ def merge_intervals(intervals):
 
 
 def claim_rel(mint):
-    return f"{CLAIMS_REL}/{mint}.json"
+    return ew.claim_rel(mint)
 
 
 def resolve_min_age(root, env=None):
@@ -308,7 +312,7 @@ def push_series(state, bucket, key, point, keep=SERIES_KEEP):
 
 
 def narrative_signal(root, mint):
-    doc = read_json(Path(root) / "02_Analisis" / "narrative" / f"{mint}.json", None)
+    doc = read_json(P.path("narrative.token", root, mint=mint), None)
     if not isinstance(doc, dict):
         return None
     return es.social_velocity(doc.get("snapshot"), doc.get("coingecko_trending"))
@@ -441,8 +445,8 @@ def young_info_context(ctx, root, watch, now, get):
     llamadas), índice de palabras clave de los lanzamientos de la última hora. Y trae metadata IPFS de los
     lanzamientos nuevos y, con cupo, el repo de GitHub enlazado."""
     state = ctx["state"]
-    idx_doc = read_json(root / "02_Analisis" / "narrative" / "_index.json", {}) or {}
-    items_doc = read_json(root / "02_Analisis" / "narrative" / "_items.json", {}) or {}
+    idx_doc = read_json(P.path("narrative.index", root), {}) or {}
+    items_doc = read_json(P.path("narrative.items", root), {}) or {}
     profiles, boosts = set(), {}
     for url, kind in ((DEX_PROFILES_URL, "p"), (DEX_BOOSTS_URL, "b")):
         try:
@@ -874,7 +878,7 @@ def early_records(root):
     """Registros de alertas tempranas: un archivo por mint en early/alerts/ + el _early_alerts.json de la v0.1."""
     root = Path(root)
     out = []
-    legacy = read_json(root / EARLY_DIR_REL / "_early_alerts.json", [])
+    legacy = read_json(P.path("early.alerts_legacy", root), [])
     out += [a for a in legacy if isinstance(a, dict)] if isinstance(legacy, list) else []
     d = root / CLAIMS_REL
     if d.is_dir():
@@ -889,7 +893,7 @@ def alerted_mints(root):
     """Mints ya alertados: _all_alerts.json (pipeline_t0) + alertas tempranas (ambas instancias)."""
     root = Path(root)
     out = set()
-    data = read_json(root / "02_Analisis" / "alerts" / "_all_alerts.json", [])
+    data = lib_alerts.read_alerts(lib_alerts.all_path(root), strict=False)
     for a in (data if isinstance(data, list) else []) + early_records(root):
         if isinstance(a, dict):
             out.add(normalize_mint(a.get("mint")))
@@ -934,7 +938,7 @@ def emit_early(s97, root, mint, token, git, shadow, dry_run, now, gate_min=None)
     if token.get("tradability"):                      # D-023-R3 T4: flag informativo, no bloquea
         record.update(token["tradability"])
     claim_path = root / claim_rel(mint)
-    detail_rel = f"02_Analisis/alerts/alert_{mint}_{ts}.json"
+    detail_rel = P.rel("alerts.detail", mint=mint, ts=ts)
     if not dry_run:
         write_json_atomic(root / detail_rel, token)
         write_json_atomic(claim_path, record)
@@ -968,7 +972,7 @@ def poll_once(ctx, now):
     min_age = ctx["min_age_min"] if ctx.get("min_age_min") is not None else resolve_min_age(root)
     paths = instance_paths(ctx.get("instance"))
     alerted = alerted_mints(root)
-    acc = read_json(root / "02_Analisis" / "shadow_v4" / "_accumulated.json", {})
+    acc = read_json(P.path("shadow_v4.accumulated", root), {})
     watch = ctx["watch"]
     for mint, e in watch_from_accumulated(acc, alerted, now).items():
         watch.setdefault(mint, e)
@@ -1030,9 +1034,9 @@ def poll_once(ctx, now):
 
     mc = {}
     if ctx.get("multichain", True):
-        scores = read_json(root / "02_Analisis" / "multichain" / "_scores.json", {})
-        perps = read_json(root / "02_Analisis" / "multichain" / "_perps.json", {})
-        fng = (((read_json(root / "02_Analisis" / "multichain" / "bitcoin.json", {}) or {}).get("universe_a") or {})
+        scores = read_json(P.path("multichain.scores", root), {})
+        perps = read_json(P.path("multichain.perps", root), {})
+        fng = (((read_json(P.path("multichain.card", root, name="bitcoin"), {}) or {}).get("universe_a") or {})
                .get("fear_greed") or {}).get("value")
         mc = multichain_signals(multichain_targets(scores, perps), state, now, ctx["post"], ctx["get"],
                                 hyperliquid_ctxs(ctx["post"]), fng)
@@ -1041,7 +1045,8 @@ def poll_once(ctx, now):
     listener = ctx.get("listener")
     # Fase 11: se une con lo que ya está en el archivo después del pull (la corrida anterior de esta instancia puede
     # haber escrito después del checkout de esta: Actions hace checkout del SHA del momento en que se encoló)
-    on_file = (read_json(root / paths["watch"], {}) or {}).get("listener_intervals") or []
+    inst = ctx.get("instance") or INSTANCE
+    on_file = (ew.read_watch(inst, {}, root) or {}).get("listener_intervals") or []
     intervals = [i for i in merge_intervals(list(on_file) + list(ctx.get("intervals_prev") or [])
                                             + (listener.intervals(now) if listener else []))
                  if i[1] >= now - COVERAGE_KEEP_S]
@@ -1056,8 +1061,8 @@ def poll_once(ctx, now):
                          "why": r["why"]} for r in top]}
     ctx["last"] = snapshot
     if not ctx["dry_run"]:
-        write_json_atomic(root / paths["signals"], {"version": VERSION, "generated_at": now_iso(now),
-                                                    "lib": es.VERSION, "signals": mc})
+        ew.write_signals(inst, {"version": VERSION, "generated_at": now_iso(now), "lib": es.VERSION, "signals": mc},
+                         root)
         state_out = {k: v for k, v in state.items()}
         state_out["holders"] = {m: v for m, v in (state.get("holders") or {}).items() if m in watch}
         state_out["liquidity"] = {m: v for m, v in (state.get("liquidity") or {}).items() if m in watch}
@@ -1065,9 +1070,9 @@ def poll_once(ctx, now):
         state_out["meta"] = {m: v for m, v in (state.get("meta") or {}).items() if m in watch}
         state_out["ylog"] = {m: v for m, v in (state.get("ylog") or {}).items() if m in watch}
         state_out["bonding"] = {m: v for m, v in (state.get("bonding") or {}).items() if m in watch}
-        write_json_atomic(root / paths["watch"], dict(snapshot, state=state_out,
-                                                          watch={m: {"source": e.get("source"), "since": e.get("since")}
-                                                                 for m, e in watch.items()}))
+        ew.write_watch(inst, dict(snapshot, state=state_out,
+                                  watch={m: {"source": e.get("source"), "since": e.get("since")} for m, e in watch.items()}),
+                       root)
     return snapshot
 
 
@@ -1100,8 +1105,7 @@ def run_loop(ctx, loop_minutes, poll_seconds, clock=time.time, sleep=time.sleep)
     start, last_commit, polls = clock(), clock(), 0
     root = Path(ctx["root"])
     paths = instance_paths(ctx.get("instance"))
-    own = [paths["watch"], paths["signals"], CLAIMS_REL, YOUNG_DIR_REL,
-           f"02_Analisis/events/early_watch_{ctx.get('instance') or INSTANCE}"]          # D-082: sus token_nacido
+    own = [paths["watch"], paths["signals"], CLAIMS_REL, YOUNG_DIR_REL, paths["events"]]   # D-082: sus token_nacido
     while True:
         t = clock()
         try:
@@ -1123,7 +1127,7 @@ def run_loop(ctx, loop_minutes, poll_seconds, clock=time.time, sleep=time.sleep)
                                   listener_seen=getattr(ctx.get("listener"), "seen", None))
     except Exception:
         pass
-    ctx["git"].commit_push(own + [f"02_Analisis/operations/{paths['op']}.jsonl"],
+    ctx["git"].commit_push(own + [paths["op_log"]],
                            f"early_watch {ctx.get('instance') or INSTANCE}: {now_iso()}")
     return polls
 
@@ -1146,7 +1150,7 @@ def main(argv=None):
     shadow = (os.environ.get("SHADOW_MODE") or "").strip().lower() in {"1", "true", "yes", "on"}
     git = Git(ROOT, enabled=not args.no_git)
     git.pull()     # Fase 11: el checkout es del SHA de cuando se encoló la corrida; el estado se lee del main actual
-    prev = read_json(ROOT / instance_paths()["watch"], {})
+    prev = ew.read_watch(INSTANCE, {}, ROOT)
     listener = None
     if not args.no_listen:
         listener = LaunchListener(s82.filter_pumpportal_tokens)

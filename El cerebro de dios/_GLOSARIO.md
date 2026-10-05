@@ -168,7 +168,7 @@ Mints que el proyecto ha rastreado o alertado:
 ## VER TAMBIÉN
 
 - [00_NUCLEO.md](00_NUCLEO.md) — fines del proyecto
-- [02_ARQUITECTURA.md](02_ARQUITECTURA.md) — arquitectura general
+- [02_ARQUITECTURA.md](_historico/02_ARQUITECTURA.md) — arquitectura general
 - [04_SCRIPTS_CATALOG.md](04_SCRIPTS_CATALOG.md) — catálogo de scripts
 - [05_FUENTES.md](05_FUENTES.md) — catálogo de fuentes
 - [06_SCORING.md](06_SCORING.md) — scoring y confianza

@@ -225,7 +225,7 @@ Ver `03_FLUJOS.md` para detalles de cada workflow.
 - [SKILLS_skill_entender_proyecto.md](SKILLS_skill_entender_proyecto.md) — entry point
 - [SKILLS_skill_agregar_alerta.md](SKILLS_skill_agregar_alerta.md) — cómo emitir alertas
 - [SKILLS_skill_debuggear.md](SKILLS_skill_debuggear.md) — cómo diagnosticar fallos
-- [08_PIPELINE_ACTIVO.md](08_PIPELINE_ACTIVO.md) — scripts canónicos
+- [08_PIPELINE_ACTIVO.md](_historico/08_PIPELINE_ACTIVO.md) — scripts canónicos
 - [12_TROUBLESHOOTING.md](12_TROUBLESHOOTING.md) — errores conocidos
 
 ## Changelog

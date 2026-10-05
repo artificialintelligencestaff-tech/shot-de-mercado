@@ -12,28 +12,36 @@ Estructura de investigación de servicios open source gratuitos para el pipeline
 | 04 | `04_scrapers/` | Scrapers web genéricos, Selenium, Playwright | P1 |
 | 05 | `05_analisis_sentiment/` | NLP, sentiment, topic modeling, embeddings | P2 |
 | 06 | `06_utilidades/` | Herramientas auxiliares (caché, rate limit, dedup) | P2 |
+| 07 | `07_portales/` | Portales de lanzamientos, ventas, unlocks y sectores (preventa y anticipación) | P1 |
 
 ## Fichas
 
 | Cat | Ficha | Key | Prioridad |
 |-----|-------|-----|-----------|
 | 01 | `cryptopanic.md`, `coindesk_rss_aggregator.md`, `cryptocontrol.md` | — | — |
-| 02 | `x_syndication_timeline.md` | no (sin login) | P1 |
-| 02 | `fxembed_api.md` | no (sin login) | P1 |
-| 02 | `react_tweet_syndication.md` | no (sin login) | P2 |
+| 02 | `x_syndication_timeline.md` (incluye `tweet-result` de react-tweet, fusionada en D-101) | no (sin login) | P1 (respaldo de D-087) |
+| 02 | `fxembed_api.md` | no (sin login) | P0 (timeline, D-087) |
 | 03 | `goplus_security.md` | no | P1 |
 | 03 | `dexpaprika.md` | no | P1 |
 | 03 | `helius_free.md` | gratuita | P2 |
-| 04 | `pumpfun_datos.md` | no | P1 |
+| 03 | `pumpfun_datos.md` (movida de 04 en D-101: es una API) | no | P1 |
+| 03 | `dextools_api.md` (movida de 04 en D-101: es una API) | gratuita | P3 |
 | 04 | `bitcointalk_ann.md` | no | P2 |
-| 04 | `dextools_api.md` | gratuita | P3 |
 | 05 | `vader_lexico_cripto.md` | no | P2 |
 | 05 | `cryptobert.md` | no | P3 |
 | 06 | `healthchecks_io.md` | cuenta gratuita | P1 |
 | 06 | `requests_cache.md` | no | P2 |
 | 06 | `pyrate_limiter.md` | no | P2 |
+| 07 | `coinmarketcap_nuevos.md` | no (data-api del sitio) | P1 |
+| 07 | `icodrops.md` | no | P1 |
+| 07 | `coingecko_nuevos.md` | no (Pro para `list/new`) | P2 |
+| 07 | `rwa_xyz.md` | no (HTML) | P2 |
+| 07 | `depinscan.md` | no (HTML) | P2 |
+| 07 | `tokenunlocks_tokenomist.md` | API con key | P3 |
+| 07 | `cryptorank.md`, `binance_research.md`, `dune_analytics.md`, `flipside_crypto.md`, `depin_ninja.md` | — | descartadas (bloqueo, pago o servicio caído) |
 
 Fichas de D-055: endpoints probados en vivo el 2026-10-03 (rótulo [V]). Estado y descartes en `_PENDIENTES.md`.
+Fichas de D-087 (`07_portales/`): probadas en vivo el 2026-10-04, **sin bloque `recipe:`** (integrarlas es decisión de Dirección).
 
 **Fichas con bloque `recipe:` (D-067).** `bot_genesis` las convierte en recetas de `04_Config/recipes/` y las valida una vez por día. Resultado de la validación en vivo del 2026-10-03:
 

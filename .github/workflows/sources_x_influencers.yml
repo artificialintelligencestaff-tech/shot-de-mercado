@@ -1,0 +1,64 @@
+name: sources_x_influencers
+
+# bot_influencer_tracker (D-087) — cuentas de X de 04_Config/influencers.yaml cada 30 min (minutos 12/42: fuera del
+# pipeline, early watch, runner, rss y telegram). Sin login: FxEmbed y, de respaldo, el timeline de syndication.
+# Solo GET públicos, sin secretos ni envíos a Telegram. Commitea SOLO sus archivos (nunca git add -A):
+#   02_Analisis/sources/x_influencers/   diarios src-1, _state.json (salud por cuenta) y auditoría (dueño único)
+#   02_Analisis/events/x_influencers/    eventos tweet_influencer, mencion_token, keyword_narrativa (lib_events)
+
+on:
+  schedule:
+    - cron: '12,42 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sources-x-influencers-write
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml
+
+      - name: Collect X influencers
+        env:
+          SHOT_ROOT: ${{ github.workspace }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python 04_Config/scripts/bot_influencer_tracker.py
+
+      - name: Commit sources/x_influencers
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          for p in 02_Analisis/sources/x_influencers 02_Analisis/events/x_influencers; do
+            if [ -e "$p" ]; then git add -- "$p"; fi
+          done
+          if git diff --staged --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -q -m "sources_x_influencers: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 15))
+          done
+          echo "::error::No se pudo pushear 02_Analisis/sources/x_influencers tras 4 intentos"
+          exit 1

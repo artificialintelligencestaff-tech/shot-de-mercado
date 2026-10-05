@@ -41,7 +41,8 @@ DEFAULT_KEYWORDS = ("memecoin", "pump.fun", "presale", "airdrop", "solana", "dep
 
 
 def sources_dir(root=None):
-    return Path(root or ROOT) / "02_Analisis" / "sources"
+    import lib_paths as P   # D-105: interfaz común de rutas
+    return P.path("sources.dir", Path(root or ROOT))
 
 
 def load_keywords(root=None):
@@ -257,7 +258,12 @@ def mention_items(mint, symbol, records):
     return to_items_store(hits)
 
 
-PRELAUNCH_CALENDAR_REL = "02_Analisis/prelaunch/_calendar.json"
+def _prelaunch_rel():
+    import lib_paths as P   # D-105: interfaz común de rutas
+    return P.rel("prelaunch.calendar")
+
+
+PRELAUNCH_CALENDAR_REL = _prelaunch_rel()
 
 
 def prelaunch_lookup(mint, root=None):

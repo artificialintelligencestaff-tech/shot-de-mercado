@@ -65,6 +65,7 @@ sources/rss/  sources/telegram/ sources/web/  sources/github/ sources/x/   sourc
 | `bot_web_scraper` | Plantilla YAML: Bitcointalk; DEXTools y Solscan desactivados (§1 #5) | 30 min (`11,41 * * * *`) | `sources/web/<fecha>.jsonl` | red; `beautifulsoup4` (MIT) | `sources_web.yml` |
 | `bot_github_trending` | `github.com/trending` (HTML) + Search API por topic: crypto, solana, defi, memecoin, depin, rwa | 6 h (`17 */6 * * *`) | `sources/github/<fecha>.jsonl` | red; `GITHUB_TOKEN` (30 req/min en búsqueda) | `sources_github.yml` |
 | `bot_x_nitter` | Pool de instancias de Nitter elegido desde `status.d420.de`; cuentas en YAML | 20 min (`9,29,49 * * * *`) | `sources/x/<fecha>.jsonl` | red; health check | `sources_x.yml` |
+| `bot_influencer_tracker` | 50 cuentas de X de `04_Config/influencers.yaml`: FxEmbed (primario) y syndication (respaldo), sin login (§18) | 30 min (`12,42 * * * *`) | `sources/x_influencers/<fecha>.jsonl` + eventos | red | `sources_x_influencers.yml` **[implementado, D-087]** |
 | `bot_forum_scraper` | API oficial de 4chan /biz/; Reddit: PullPush → Arctic Shift → RSSHub | 1 h (`25 * * * *`) | `sources/forums/<fecha>.jsonl` | red | `sources_forums.yml` |
 | `bot_orchestrator` | Lee `_bots.yaml`, el `_state.json` de cada bot y las corridas de Actions | 10 min (`*/10 * * * *`, real ~15; D-035) | `sources/_merged.jsonl`, `_index.json`, `_health.json`, bloque en `_INSTALADOS.md` | **todos los bots** + `lib_sources_store` | `sources_orchestrator.yml` **[implementado]** |
 | `lib_sources_store` (librería) | Todos los `sources/*/<fecha>*.jsonl` | la llama el orquestador; consulta bajo demanda | `_merged.jsonl`, `_index.json` | outputs de los bots | — **[implementado]** |
@@ -196,6 +197,16 @@ rwa…). Las comparten todos los bots y `query()`.
 
 Cada workflow commitea **solo su carpeta**, con el loop `pull --rebase` + 4 reintentos de los workflows actuales.
 Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `--force`.
+
+**Retención por carpeta (D-101, doc 38 §2).** La poda del orquestador lee el `_retention.yaml` más cercano a cada diario.
+
+| Carpeta | Retención | Quién poda |
+|---|---|---|
+| `sources/` | 7 días | orquestador |
+| `sources/x_influencers/` | 35 días (la evaluación usa 30) | orquestador |
+| `events/<writer>/` | 8 días | cada escritor (`lib_events.prune`) |
+| `_audit*.jsonl` | 90 días | cada bot (`lib_audit`) |
+| `_episodes_*.jsonl`, `hypotheses/`, `alerts/`, `prelaunch/_calendar.json` | sin poda | — |
 
 ## 7. Dependencias
 
@@ -366,6 +377,19 @@ fallback_sources:
 **Fuentes** (verificadas en vivo el 2026-10-03; las 6 respondieron 200 desde fuera de EE. UU.) [V]:
 - Hyperliquid `metaAndAssetCtxs`, Aevo `/markets`, Polymarket `public-search` («FDV one day after launch»), Bybit `announcements` (new_crypto), Bitcointalk board 159.
 - Binance CMS (catálogo 48). Desde runners de EE. UU. puede dar 451: se registra con la nota «[P] bloqueado desde runners US» y la corrida sigue.
+- **D-089-R** (verificadas el 2026-10-04; 200 sin key ni Cloudflare) [V]:
+  - **CoinMarketCap:** calendario ICO por `__NEXT_DATA__`; toma las ventas `ongoing` y `upcoming` con `icoPriceUsd`, etapa, fechas, meta y launchpad. Tiene poca cobertura: hoy, 1 venta (CON a $0,007).
+  - **ICO Drops:** la lista "upcoming" (50 proyectos, con ronda, valuación previa y fecha) no trae ticker ni precio. Por eso se pide la página de cada proyecto nuevo, hasta `detalle_max` (15) por corrida, con caché de 7 días en `_state.json` (`icodrops_cache`). De ahí sale el ticker del título y el primer "Price" de una ronda.
+  - Sin venta pública no hay precio; sin ticker publicado, el activo entra por nombre (`name:…`).
+  - Pidiendo todas las páginas de detalle: 50 filas, 38 con ticker y 35 con precio de venta (CHIMP $1,5, CLIX $0,1, SPWAY $0,12, GNOT $0,0645…). Con el tope de 15 por corrida, la cobertura se completa en unas 4 corridas (un día).
+- **Precios (D-101, doc 38 §5 fix B):**
+  - `precio_preventa`: **solo** el último precio de un perp de preventa (Hyperliquid/Aevo, `precio_preventa_fuente`). Es mercado real.
+  - `precio_venta`: el precio fijo de la ronda (CMC/ICO Drops). Nunca se copia a `precio_preventa`.
+  - `precio_apertura`: el primer precio en DEX/CEX después de nacer.
+  - `delta_preventa_apertura_pct`: solo con preventa real. `delta_venta_apertura_pct` va aparte.
+  - Los calendarios viejos con la venta guardada como preventa se corrigen al cargar (`split_sale_price`).
+  - La línea PRE-LANZAMIENTO de script_97 (§16) dice "precio preventa" solo si es real; si no, "precio de venta (ICO)".
+- **Colisión de ticker [V]:** CRED (Credible) y CON (ConConAI) no entran, porque ya hay pares DEX con ese símbolo y ≥ 100 000 USD de liquidez, y el filtro de "ya nacido" los toma como nacidos. Es el mismo criterio de antes para todas las fuentes [H].
 
 **"No nacido" [H].** Ni Hyperliquid ni Aevo marcan la preventa en la API.
 - Regla: el símbolo no tiene spot en Bybit, OKX, Binance ni Hyperliquid, **ni** un par DEX con ≥ 100 000 USD de liquidez (DexScreener, también por nombre del token).
@@ -413,3 +437,142 @@ Autorizado por Dirección en D-082. Las tres conexiones **agregan** información
 
 **Tests:** `test_d082_token_nacido.py` (2) y `test_d082_prelaunch_alerta.py` (1). Las suites existentes de 116 (26), 114 (19) y 97 siguen verdes.
 
+
+## 17. Patrimonio de datos (D-087)
+
+`02_Analisis/patrimonio/` es el **índice de qué hay dónde**. No es una mudanza: cada bot sigue escribiendo en su ruta (un dueño por archivo) y `_inventario.json` la apunta. Mover datos rompería a productores y consumidores en producción.
+
+**Árbol:**
+
+```
+02_Analisis/patrimonio/
+  README.md          reglas
+  _inventario.json   índice: una entrada por carpeta o archivo de primer nivel de 02_Analisis/
+  cuantitativo/      series nuevas sin dueño previo (p. ej. lead-lag por cuenta de X)
+  informativo/       snapshots diarios de portales sin bot (rwa/, depin/: fichas 07_portales)
+  calendario/        fuentes extra del calendario que no escriba bot_prelaunch_calendar
+  resultados/        resultados agregados (precisión por fuente, por cuenta, por narrativa)
+```
+
+| Categoría | Qué guarda | Rutas reales vivas |
+|---|---|---|
+| cuantitativo | precios, liquidez, volumen, scores, señales, datasets | `multichain/`, `early/`, `datasets/`, `shadow_v4/` |
+| informativo | fuentes src-1, eventos, narrativa, X, dossiers | `sources/` (incluye `x_influencers/`), `events/`, `narrative/`, `dossiers/` |
+| calendario | activos no nacidos y su seguimiento | `prelaunch/` |
+| resultados | alertas, operación, diagnósticos, hipótesis | `alerts/`, `operations/`, `diagnostics/`, `hypotheses/`, logs `_*.json` de los bots del pipeline |
+
+**Entrada del inventario:** `{ruta, categoria, estado, dueno, formato, que}` más, si aplica, `consumidores`, `retencion` y `doc`. Estados:
+- `vivo`: lo escribe un workflow activo;
+- `manual`: corridas a mano o bibliotecas sin workflow (`signals/`, `macro/`, `hypotheses/`);
+- `futuro`: ruta reservada que crea su dueño en la primera corrida (las 4 subcarpetas de `patrimonio/`);
+- `legado`: sin escritor, todavía en su lugar;
+- `archivado`: movido a `02_Analisis/_archivo_2026_Q3/` (D-089-R), con `archivado.desde`.
+
+**Estado al 2026-10-04 [V]:** 60 entradas.
+
+| Categoría | Entradas | Archivos | Tamaño |
+|---|---|---|---|
+| cuantitativo | 24 | 163 | 34,4 MB |
+| informativo | 11 | 212 | 3,8 MB |
+| calendario | 5 | 7 | 0 MB |
+| resultados | 20 | 241 | 1,6 MB |
+
+**Archivo (D-089-R, 2026-10-04).** Las 38 entradas `legado` (detection_v3–v6, shadow_v2/v3/v5, deep_dive_*, panorama…) se movieron con `git mv` a `02_Analisis/_archivo_2026_Q3/`: 91 archivos, 1,1 MB, con la historia conservada (`git log --follow`).
+- El README del archivo dice qué es cada una, quién la escribía y por qué se archivó: sin escritor activo y sin lector en producción. El criterio es el aporte al fin, no la fecha.
+- En el inventario conservan su categoría, con `estado: archivado` y `archivado.desde`. No se borró nada.
+- `events/` y `prelaunch/` pasaron de `futuro` a `vivo`, porque ya existen en main.
+
+**Única lectura en producción encontrada:** `script_97.load_multichain_extras()` lee `pre_launch/_prelaunch_accumulated.json`, el insumo del grupo b de `lib_scoring_multichain`.
+- Antes de moverlo, ese archivo tenía las tres listas vacías; el grupo b es solo de registro (`REGISTER_ONLY`) y su escritor (script_99) está deprecado desde D-079.
+- Sin el archivo, `_read_json_file` devuelve `None`: el mismo resultado que con listas vacías.
+- [P] Si Dirección quiere el grupo b vivo, la fuente natural es `prelaunch/_calendar.json`, pero eso es un cambio en script_97 que hay que autorizar.
+
+**Guardia.** `lib_patrimonio.check()` falla si una entrada no cumple el esquema, si una ruta vivo/manual/legado no existe, o si una carpeta o archivo de primer nivel de `02_Analisis/` no figura en el inventario. `test_lib_patrimonio` corre en `audit_gate tests`: una ruta nueva de un bot se anota en el mismo PR. `python 04_Config/scripts/lib_patrimonio.py` imprime el resumen.
+
+## 18. bot_influencer_tracker — cuentas de X (D-087)
+
+`bot_influencer_tracker.py` + `sources_x_influencers.yml` (cada 30 min, minutos :12 y :42; concurrency `sources-x-influencers-write`). Lee las cuentas de `04_Config/influencers.yaml` (`{cuenta, categoria, prioridad}`): 50 activas y 16 candidatas apagadas, todas verificadas el 2026-10-04.
+
+**Mecanismos sin login (medidos el 2026-10-04) [V]:**
+- **Primario: FxEmbed** `api.fxtwitter.com/2/profile/<cuenta>/statuses`. Trae ~20 publicaciones frescas para casi todas las cuentas activas, con likes, reposts, respuestas y vistas. En ~120 requests no apareció ningún límite.
+- **Respaldo: syndication** (el widget de inserción). Límite de 30 requests cada 15 min por cliente. De 8 cuentas probadas, solo 2 vinieron frescas: 3 congeladas (la publicación más nueva era de hace ~330 días) y 3 vacías. Por eso no puede ser el único mecanismo, como suponía la ficha de D-079.
+- El siguiente mecanismo se usa si el anterior falla, viene vacío o trae solo publicaciones de más de `stale_dias` (7).
+- FxEmbed da **404 pasajeros**: el 2026-10-04, OnchainLens y hivemapper dieron 404 y un minuto después 200 [V]. Por eso un 404 de FxEmbed se reintenta una vez antes de contar como falla (D-089-R).
+
+**Flujo por corrida:**
+1. Elige las cuentas al día. Una cuenta `vivo` se consulta en todas las corridas; `lento`, cada 6 h; `congelado` y `vacio`, cada 24 h. Primero van las de prioridad 1.
+2. Pide las publicaciones, con 1 s entre requests reales.
+3. Registra las publicaciones de los últimos 30 días (`max_age_h: 720`, la ventana de evaluación) cuyo id no esté en los diarios de los últimos 31 días (`historia_dias`) ni en `seen`. Hasta D-089-R la ventana era de 48 h.
+4. Emite eventos para las de las últimas 2 h.
+
+**Salida:**
+- **Diario:** `sources/x_influencers/<fecha>.jsonl` (src-1, kind `tweet`).
+  - `src` = la cuenta.
+  - **Texto (D-089-R):** se guardan solo `m.sha` (sha256 del texto original) y `m.ext` (extracto de hasta 200 caracteres, con los espacios colapsados).
+    - El extracto se centra en lo primero que se detecta: un contrato, un $cashtag o una palabra clave. Si no hay nada, toma el comienzo.
+    - Pesa ~250 bytes por post: medido en vivo, 249 de promedio.
+  - **Casi-duplicados:**
+    - Detección: mismo sha256, o Jaccard ≥ `dup_umbral` (0,7) de 5-gramas de caracteres de los extractos sin URLs ni puntuación, contra los posts de las últimas `dup_horas` (72).
+    - Marca: el post queda con `m.dup_de` (id) y `m.dup_cuenta`.
+    - Si la que se repite es la misma cuenta, no se emite `tweet_influencer`. Una copia de otra cuenta sí avisa, porque el eco es señal.
+  - `m` lleva categoría, prioridad, mecanismo, repost, métricas, URLs (sin t.co) y `tok` (contratos sacados de URLs de token, de "CA:" o de sufijos `pump`/`bonk`; las wallets de exploradores no cuentan).
+- **Estado:** `sources/x_influencers/_state.json` con:
+  - `seen` (72 h);
+  - `rate_limit` por mecanismo;
+  - `sources`, la salud por cuenta: estado HTTP, mecanismo, frescura, fallas seguidas, `next_check`, `auto_off_until` tras 3 fallas (6 h) y la evaluación (abajo);
+  - `mecanismos`, `evaluar` y `vigentes` (abajo), y `reporte_semana`.
+
+**Evaluación (D-089-R): señales para Yang, nunca acciones automáticas.**
+- **Por cuenta:**
+  - `ultimo_post_ts` y `dias_desde_ultimo_post`: el post más nuevo visto, aunque sea más viejo que la ventana o la última consulta haya fallado;
+  - `frescura_score`: 1,0 con < 7 días, 0,5 de 7 a 30 días, 0,2 con > 30 días o sin posts;
+  - `posts_30d` y `aporte_estimado`, sobre los diarios de 30 días más la corrida, cada post por id una sola vez.
+- **Aporte (D-091): `calculate_aporte(post, activos_vigentes) -> int`** cuenta cuántos de estos 5 tipos tiene un post. Un post aporta si cuenta ≥ 1. Los mayores (`cashtags_mayores`) no cuentan en ningún tipo [H].
+  1. `cashtag`: `$CASHTAG` de un activo vigente.
+  2. `contrato`: un contrato de token (URL de token, "CA:", sufijo `pump`/`bonk`) o una dirección vigente.
+  3. `ticker`: `(TICKER)` o `#TICKER` (en mayúsculas) de un activo vigente.
+  4. `sector`: keyword sectorial (DePIN, RWA/tokenización, L2/rollup, memecoin, "AI" en mayúsculas o "AI agents", DeFi) + un activo vigente mencionado en el mismo post. La mención puede ser por ticker en cualquier forma (también en mayúsculas sueltas), por contrato o por nombre.
+  5. `anuncio`: patrón list/listing/listed/launch/TGE + un ticker explícito (`$X`, `(X)`, `#X`) en la misma oración, aunque no sea vigente, porque un listado nuevo es justo lo que todavía no se sigue. También cuenta una palabra en mayúsculas de esa oración si es un activo vigente.
+  - **Al registrar** se guardan en `m.sg` las señales sacadas del texto completo: `tk`, `bt`, `sec`, `anu`, `anb` y `nm` (nombres vigentes mencionados). Al evaluar se cruzan con los activos vigentes de ese momento, así que un post viejo sin texto se recalifica igual. Sin `m.sg`, se usan `m.ext`.
+  - **Activo vigente** = lo que el sistema sigue hoy: calendario de preventa sin purgar, alertas de 30 días, scan multichain (grupos, on-chain, acelerando), perps de Hyperliquid (kPEPE y 1000BONK se cuentan como PEPE y BONK) y watchlists del early watch. El 2026-10-04: 456 símbolos, 228 contratos y 163 formas de nombre.
+  - **Nombres:** se busca el nombre completo y, si tiene varias palabras, la primera, salvo palabras comunes (`NAME_STOP`).
+    - La lista se armó revisando los 233 nombres vigentes: "Bitcoin Cash" mapeaba "bitcoin" a BCH, "Blockchain Capital" convertía "blockchain" en BCAP, y aparecían "soon", "compound", "grass".
+    - Las siglas que no son tickers (UTC, TGE, TOP10, nombres de exchanges…) están en `TICKER_STOP`. Una sigla suelta de una oración de anuncio solo cuenta si es un activo vigente: así "MVNO" (de un post de helium) no pasa por ticker.
+  - Por cuenta queda además `aporte_tipos` (posts por tipo).
+- **`evaluar: true`** si `dias_desde_ultimo_post` > 30 (o nunca se vio un post), o si `aporte_estimado` = 0 con > 10 posts en 30 días. `evaluar_motivo` dice cuál.
+  - Una cuenta que todavía no se consultó no se juzga.
+  - **Más de 60 días sin publicar (D-091):** se suma el motivo `inactiva_60d_decide_yang` y `revision_yang: true`, y el reporte semanal la lista en "Revisión de Yang". La cuenta sigue activa y se consulta en su turno: sacarla es decisión de Yang, no de la máquina.
+  - **Política de no eliminación (D-089-R, D-091), escrita en el docstring de `evaluar_cuentas`:** la evaluación solo escribe campos informativos. El bot **no** cambia `next_check`, `auto_off_until` ni `enabled`, y no edita `influencers.yaml`.
+    - Lo único automático es el apagado de 6 h tras 3 fallas HTTP seguidas, que se reintenta solo.
+    - Lo verifican `test_d089_influencer_evaluacion` (test 4) y `test_d091_aporte` (test 6, con 3 corridas y `main` sobre el YAML byte a byte).
+- **Métrica ampliada, medición en vivo (2026-10-04):** de las 25 cuentas marcadas en D-089-R, 5 pasan a tener aporte > 0: BinanceWallet (DeFi + TRON), ethena (RWA + Ethena), ondo (7 posts: tokenización + Ondo), rajgokal (activos tokenizados + Raydium) y tayvano_ (débil: "AI" + Zcash). Quedan 20 marcadas.
+  - Suben otras: solana 2→5, raydium 3→5, route2fi 6→8, solanafloor 2→4.
+  - CEX, fundadores y cuentas de sector como coinbase, toly, helium y MEXC siguen en 0: publican sin tickers ni activos vigentes nombrados.
+- **Por mecanismo:** posts de los últimos 30 días / posts devueltos, por día, en una ventana de 30 días. `marginal: true` si el cociente es < 0,10. Solo marca: el orden de `mecanismos` no cambia solo.
+  - Syndication se consulta solo cuando FxEmbed falla o trae lo viejo, así que su muestra está sesgada.
+- **Reporte semanal:** en la primera corrida de cada semana ISO (o con `--reporte`) se reescribe `sources/x_influencers/_evaluar_semanal.md` y se agrega una línea a `_evaluar_log.jsonl`. Contiene la tabla de cuentas a evaluar con sus datos y los mecanismos marginales. Yang decide.
+- **Primera medición en vivo (2026-10-04, sin diarios todavía; `posts_30d` sale de los últimos ~20 posts):** 25 de 50 cuentas marcadas.
+  - 2 por `sin_post_30d`: cobie (30,4 días) y hivemapper (67).
+  - 23 por `sin_aporte`: cuentas que publican sin cashtags ni contratos, sobre todo CEX, fundadores y cuentas de sector.
+  - FxEmbed 843/937 = 0,90, no marginal.
+- **Eventos** (`events/x_influencers/`, lib_events):
+
+| Tipo | Subject | Severidad | TTL / ventana |
+|---|---|---|---|
+| `tweet_influencer` | id de la publicación | 2 si prioridad 1 y nombra un cashtag o contrato; 1 si prioridad ≤ 2; 0 si no | 6 h / 1 día |
+| `mencion_token` | `$CASHTAG` o contrato | 0 para los mayores (BTC, ETH, SOL…); 1 + (≥ 2 cuentas o prioridad 1) + (≥ 3 cuentas), máximo 3 | 3 h / 1 h |
+| `keyword_narrativa` | palabra clave de `keywords.yaml` | 0 con 1 cuenta, 1 con 2–3, 2 con ≥ 4 | 4 h / 1 h |
+
+**Límites de tasa:**
+- Un 429 guarda el `x-rate-limit-reset` (o 15 min) y ese mecanismo no se vuelve a usar hasta entonces.
+- Un `x-rate-limit-remaining` ≤ 1 corta el mecanismo sin esperar el 429.
+- Syndication tiene un cupo de 20 por corrida.
+- Si todos los mecanismos están limitados, la corrida termina y las cuentas pendientes quedan sin falla para la próxima.
+
+**Efecto en producción [V].** Los registros entran al almacén fusionado (§4, §6), como RSS y Telegram, así que por diseño (D-035) suman menciones por mint y `$símbolo` al componente informacional del scorer joven de script_116 y a las menciones informativas de script_97. Es la vía prevista para todo bot de fuentes; no se tocó código de scorers.
+
+**Registro.** `x_influencers` en `_bots.yaml` (cadencia 30 min, atrasado a los 90): lo vigilan el orquestador y self_repair.
+
+**Tests:**
+- `test_bot_influencer_tracker.py` (8): parsing de los dos mecanismos y extracción, dedup (por diarios), falla aislada con auto_off, rate limit, frescura con respaldo, eventos, configuración real, corrida completa con escritura (extracto y no texto completo).
+- `test_d089_influencer_evaluacion.py` (5): frescura, aporte y activos vigentes, marcado `evaluar` + `marginal` + reporte, NO eliminación automática, y sha256 + extracto que detectan casi-duplicados.

@@ -136,9 +136,9 @@ text
 
 ## VER TAMBIÉN
 
-- [00_NUCLEO.md](00_NUCLEO.md) — propósito raíz
-- [03_FLUJOS.md](03_FLUJOS.md) — workflows detallados
-- [04_SCRIPTS_CATALOG.md](04_SCRIPTS_CATALOG.md) — catálogo de scripts
+- [00_NUCLEO.md](../00_NUCLEO.md) — propósito raíz
+- [03_FLUJOS.md](../03_FLUJOS.md) — workflows detallados
+- [04_SCRIPTS_CATALOG.md](../04_SCRIPTS_CATALOG.md) — catálogo de scripts
 - [08_PIPELINE_ACTIVO.md](08_PIPELINE_ACTIVO.md) — cuál es el canónico hoy
 
 ## Changelog

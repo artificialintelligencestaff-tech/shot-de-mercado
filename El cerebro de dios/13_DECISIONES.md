@@ -168,7 +168,7 @@ Este archivo registra **cada decisión relevante** tomada en el proyecto: qué s
 ## VER TAMBIÉN
 
 - [00_NUCLEO.md](00_NUCLEO.md) — fines del proyecto
-- [11_ROADMAP.md](11_ROADMAP.md) — fases y ciclos
+- [11_ROADMAP.md](_historico/11_ROADMAP.md) — fases y ciclos
 - [12_TROUBLESHOOTING.md](12_TROUBLESHOOTING.md) — errores conocidos
 - [14_METRICAS.md](14_METRICAS.md) — precisión medida
 

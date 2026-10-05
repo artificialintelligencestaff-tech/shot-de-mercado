@@ -147,11 +147,11 @@ Reglas de decisión:
 
 ## VER TAMBIÉN
 
-- [03_FLUJOS.md](03_FLUJOS.md) — workflows que usan estos scripts
-- [04_SCRIPTS_CATALOG.md](04_SCRIPTS_CATALOG.md) — catálogo completo de scripts
-- [05_FUENTES.md](05_FUENTES.md) — fuentes que consume cada capa
-- [07_TRUST_UPDATE.md](07_TRUST_UPDATE.md) — detalle del trust scheduler
-- [12_TROUBLESHOOTING.md](12_TROUBLESHOOTING.md) — bugs conocidos
+- [03_FLUJOS.md](../03_FLUJOS.md) — workflows que usan estos scripts
+- [04_SCRIPTS_CATALOG.md](../04_SCRIPTS_CATALOG.md) — catálogo completo de scripts
+- [05_FUENTES.md](../05_FUENTES.md) — fuentes que consume cada capa
+- [07_TRUST_UPDATE.md](../07_TRUST_UPDATE.md) — detalle del trust scheduler
+- [12_TROUBLESHOOTING.md](../12_TROUBLESHOOTING.md) — bugs conocidos
 
 ## Changelog
 
