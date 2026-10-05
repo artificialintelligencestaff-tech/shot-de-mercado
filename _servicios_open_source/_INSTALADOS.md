@@ -13,12 +13,12 @@
 |---|---|---|---|
 | `forums` | diseño | — | —/— |
 | `github` | diseño | — | —/— |
-| `rss` | ok | 2 | 11/11 |
-| `telegram` | vacío | 0 | 15/15 |
+| `rss` | ok | 4 | 11/11 |
+| `telegram` | ok | 1 | 15/15 |
 | `telegram_b` | sin_datos | — | —/— |
 | `web` | diseño | — | —/— |
 | `x` | diseño | — | —/— |
-| `x_influencers` | sin_datos | — | —/— |
+| `x_influencers` | ok | 814 | 49/50 |
 <!-- /AUTO:sources -->
 
 <!-- AUTO:repair -->
