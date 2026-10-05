@@ -143,7 +143,7 @@ Este archivo lista **todas** las fuentes gratuitas que el proyecto consulta o pu
 
 ## VER TAMBIÉN
 
-- [02_ARQUITECTURA.md](02_ARQUITECTURA.md) — arquitectura general
+- [02_ARQUITECTURA.md](_historico/02_ARQUITECTURA.md) — arquitectura general
 - [03_FLUJOS.md](03_FLUJOS.md) — qué fuentes usa cada workflow
 - [04_SCRIPTS_CATALOG.md](04_SCRIPTS_CATALOG.md) — scripts que consultan cada fuente
 - [06_SCORING.md](06_SCORING.md) — cómo se usan las señales de cada fuente

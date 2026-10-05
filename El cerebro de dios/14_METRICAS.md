@@ -257,8 +257,8 @@ precision = aciertos / (aciertos + fallos + falsos_positivos + neutros)
 
 - [06_SCORING.md](06_SCORING.md) — cómo se calcula el score
 - [09_ALERTAS.md](09_ALERTAS.md) — cómo se emiten y cierran las alertas
-- [10_ESTADO_ACTUAL.md](10_ESTADO_ACTUAL.md) — snapshot vivo
-- [11_ROADMAP.md](11_ROADMAP.md) — fases y objetivos
+- [10_ESTADO_ACTUAL.md](_historico/10_ESTADO_ACTUAL.md) — snapshot vivo
+- [11_ROADMAP.md](_historico/11_ROADMAP.md) — fases y objetivos
 
 ## Changelog
 

@@ -170,10 +170,10 @@ AHORA  → Fase 0: Fundación documental + serverless
 
 ## VER TAMBIÉN
 
-- [00_NUCLEO.md](00_NUCLEO.md) — fines del proyecto
+- [00_NUCLEO.md](../00_NUCLEO.md) — fines del proyecto
 - [10_ESTADO_ACTUAL.md](10_ESTADO_ACTUAL.md) — dónde estamos hoy
-- [12_TROUBLESHOOTING.md](12_TROUBLESHOOTING.md) — bugs que bloquean fases
-- [13_DECISIONES.md](13_DECISIONES.md) — bitácora de decisiones que impactan el roadmap
+- [12_TROUBLESHOOTING.md](../12_TROUBLESHOOTING.md) — bugs que bloquean fases
+- [13_DECISIONES.md](../13_DECISIONES.md) — bitácora de decisiones que impactan el roadmap
 
 ## Changelog
 

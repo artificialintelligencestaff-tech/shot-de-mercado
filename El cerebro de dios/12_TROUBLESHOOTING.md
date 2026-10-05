@@ -216,8 +216,8 @@ python -c "import os; root=r'D:\Proyecto Shot de mercado'; [print(os.path.join(r
 ## VER TAMBIÉN
 
 - [07_TRUST_UPDATE.md](07_TRUST_UPDATE.md) — bug de baseline en detalle
-- [08_PIPELINE_ACTIVO.md](08_PIPELINE_ACTIVO.md) — scripts canónicos y deprecados
-- [10_ESTADO_ACTUAL.md](10_ESTADO_ACTUAL.md) — snapshot vivo del proyecto
+- [08_PIPELINE_ACTIVO.md](_historico/08_PIPELINE_ACTIVO.md) — scripts canónicos y deprecados
+- [10_ESTADO_ACTUAL.md](_historico/10_ESTADO_ACTUAL.md) — snapshot vivo del proyecto
 - [13_DECISIONES.md](13_DECISIONES.md) — bitácora de decisiones
 
 ## Changelog

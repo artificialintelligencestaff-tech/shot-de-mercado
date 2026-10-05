@@ -69,7 +69,7 @@ El proyecto debe sobrevivir a:
 
 - [00_Directivas_INDEX.md](00_Directivas_INDEX.md) — índice central
 - [01_HISTORIA.md](01_HISTORIA.md) — cómo llegamos acá
-- [02_ARQUITECTURA.md](02_ARQUITECTURA.md) — cómo funciona el sistema
+- [02_ARQUITECTURA.md](_historico/02_ARQUITECTURA.md) — cómo funciona el sistema
 - [SKILLS_skill_entender_proyecto.md](SKILLS_skill_entender_proyecto.md) — entry point para agentes
 
 ## Changelog

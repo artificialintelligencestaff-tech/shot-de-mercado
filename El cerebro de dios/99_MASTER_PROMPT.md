@@ -169,8 +169,8 @@ Si tenés dudas que el cerebro no resuelve, escalá a Dirección.
 - [00_NUCLEO.md](00_NUCLEO.md) — fines del proyecto
 - [_MANIFESTO.md](_MANIFESTO.md) — principios
 - [00_Directivas_INDEX.md](00_Directivas_INDEX.md) — índice central
-- [11_ROADMAP.md](11_ROADMAP.md) — fases y ciclos
-- [10_ESTADO_ACTUAL.md](10_ESTADO_ACTUAL.md) — snapshot vivo
+- [11_ROADMAP.md](_historico/11_ROADMAP.md) — fases y ciclos
+- [10_ESTADO_ACTUAL.md](_historico/10_ESTADO_ACTUAL.md) — snapshot vivo
 
 ## Changelog
 

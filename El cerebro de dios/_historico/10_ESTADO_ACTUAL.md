@@ -162,7 +162,7 @@ Total: 13 archivos creados de 18 planificados.
 - [02_ARQUITECTURA.md](02_ARQUITECTURA.md) — arquitectura completa
 - [08_PIPELINE_ACTIVO.md](08_PIPELINE_ACTIVO.md) — scripts canónicos
 - [11_ROADMAP.md](11_ROADMAP.md) — próximas fases
-- [12_TROUBLESHOOTING.md](12_TROUBLESHOOTING.md) — bugs conocidos en detalle
+- [12_TROUBLESHOOTING.md](../12_TROUBLESHOOTING.md) — bugs conocidos en detalle
 
 ## Changelog
 

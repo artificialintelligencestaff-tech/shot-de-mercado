@@ -193,7 +193,7 @@ Toda contribución aceptada se registra en `13_DECISIONES.md` con el nombre del 
 - [SKILLS_skill_entender_proyecto.md](SKILLS_skill_entender_proyecto.md) — entry point
 - [00_Directivas_INDEX.md](00_Directivas_INDEX.md) — índice general
 - [13_DECISIONES.md](13_DECISIONES.md) — bitácora de decisiones
-- [11_ROADMAP.md](11_ROADMAP.md) — fase actual del proyecto
+- [11_ROADMAP.md](_historico/11_ROADMAP.md) — fase actual del proyecto
 
 ## Changelog
 

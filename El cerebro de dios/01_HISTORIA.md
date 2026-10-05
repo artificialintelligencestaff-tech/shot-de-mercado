@@ -80,8 +80,8 @@ version: 1.0
 ## VER TAMBIÉN
 
 - [00_NUCLEO.md](00_NUCLEO.md) — propósito raíz
-- [02_ARQUITECTURA.md](02_ARQUITECTURA.md) — arquitectura actual
-- [11_ROADMAP.md](11_ROADMAP.md) — próximas fases
+- [02_ARQUITECTURA.md](_historico/02_ARQUITECTURA.md) — arquitectura actual
+- [11_ROADMAP.md](_historico/11_ROADMAP.md) — próximas fases
 - [13_DECISIONES.md](13_DECISIONES.md) — bitácora de decisiones
 
 ## Changelog

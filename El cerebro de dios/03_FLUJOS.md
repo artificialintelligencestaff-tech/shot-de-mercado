@@ -143,10 +143,10 @@ MANUAL / EVENTO
 
 ## VER TAMBIEN
 
-- [02_ARQUITECTURA.md](02_ARQUITECTURA.md) — arquitectura general
+- [02_ARQUITECTURA.md](_historico/02_ARQUITECTURA.md) — arquitectura general
 - [04_SCRIPTS_CATALOG.md](04_SCRIPTS_CATALOG.md) — scripts por workflow
 - [07_TRUST_UPDATE.md](07_TRUST_UPDATE.md) — reglas de trust update
-- [08_PIPELINE_ACTIVO.md](08_PIPELINE_ACTIVO.md) — cual es el canonico hoy
+- [08_PIPELINE_ACTIVO.md](_historico/08_PIPELINE_ACTIVO.md) — cual es el canonico hoy
 
 ## Changelog
 
