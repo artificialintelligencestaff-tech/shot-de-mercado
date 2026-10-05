@@ -18,8 +18,9 @@ Bitcointalk board 159. D-089-R [V 2026-10-04]: CoinMarketCap (calendario ICO: ve
 icoPriceUsd) · ICO Drops (lista "upcoming" + página de cada proyecto nuevo: ticker y precio de la venta pública, con
 caché de 7 d y tope de páginas por corrida). Cada fuente falla sola: una caída no rompe la corrida.
 
-Precio de preventa: el último precio de un perp de preventa (Hyperliquid/Aevo) manda; si no hay, el precio de la
-venta (CMC/ICO Drops). El de la venta queda además en `precio_venta`.
+Precios (D-101, doc 38 §5 fix B): `precio_preventa` es SOLO el último precio de un perp de preventa (Hyperliquid/Aevo),
+mercado real. El precio fijo de la ronda (CMC/ICO Drops) va SOLO a `precio_venta`; nunca se copia a precio_preventa.
+Al nacer: `delta_preventa_apertura_pct` solo con preventa real; `delta_venta_apertura_pct` aparte.
 
 "No nacido" [H]: ni Hyperliquid ni Aevo marcan la preventa en la API, así que un perp es preventa si su símbolo NO
 tiene spot en Bybit/OKX/Binance/Hyperliquid NI un par DEX con liquidez ≥ liq_born_usd (DexScreener). La regla sale
@@ -418,6 +419,9 @@ class Calendar:
         self.doc = self._read("_calendar.json", {"assets": {}, "purged": {}})
         self.doc.setdefault("assets", {})
         self.doc.setdefault("purged", {})
+        for a in self.doc["assets"].values():          # D-101: calendarios viejos con el precio de venta como preventa
+            if isinstance(a, dict):
+                split_sale_price(a)
         self.emitted = []
         self.pending_new, self.pending_conf = [], []        # se emiten al final de la ingesta (flush_pending)
 
@@ -494,11 +498,8 @@ class Calendar:
         src.update(last_seen=self.now, url=o["url"], price=o["price"], extra=o["extra"])
         if o["price"] is not None and o["source"] in PERP_PRICE:
             a["precio_preventa"], a["precio_preventa_ts"], a["precio_preventa_fuente"] = o["price"], self.now, o["source"]
-        elif o["price"] is not None and o["source"] in SALE_PRICE:
+        elif o["price"] is not None and o["source"] in SALE_PRICE:     # precio fijo de la ronda: nunca es preventa
             a["precio_venta"] = {"usd": o["price"], "fuente": o["source"], "ts": self.now}
-            if not a.get("precio_preventa") or a.get("precio_preventa_fuente") in SALE_PRICE:   # el perp manda
-                a["precio_preventa"], a["precio_preventa_ts"], a["precio_preventa_fuente"] = \
-                    o["price"], self.now, o["source"]
         if a["state"] == "anunciado" and len(a["sources"]) >= self.cfg.get("min_sources_confirm", 2):
             self.set_state(a, "confirmado")
             self.pending_conf.append(a)
@@ -535,18 +536,22 @@ class Calendar:
 
     def birth(self, a, match, contract=None, chain=None, price=None, via=None):
         alertable = match == "contrato"
-        pre, op = a.get("precio_preventa"), price
+        pre = a.get("precio_preventa") if a.get("precio_preventa_fuente") in PERP_PRICE else None   # solo mercado real
+        venta, op = (a.get("precio_venta") or {}).get("usd"), price
         delta = round((op / pre - 1) * 100, 2) if pre and op else None
+        delta_venta = round((op / venta - 1) * 100, 2) if venta and op else None
         a["born"] = {"ts": self.now, "match": match, "alertable": alertable, "via": via,
                      "contract": norm.address(contract) if contract else a.get("contract"), "chain": chain or a.get("chain"),
-                     "precio_preventa": pre, "precio_apertura": op, "delta_preventa_apertura_pct": delta}
+                     "precio_preventa": pre, "precio_venta": venta, "precio_apertura": op,
+                     "delta_preventa_apertura_pct": delta, "delta_venta_apertura_pct": delta_venta}
         if contract and not a.get("contract"):
             a["contract"] = norm.address(contract)
         a["prelaunch_known"] = True
         self.set_state(a, "nacido")
         self.event("prelaunch_nacido", a, 2 if alertable else 1, match=match, alertable=alertable,
                    candidato=not alertable, via=via, chain=a["born"]["chain"], contract=a["born"]["contract"],
-                   precio_preventa=pre, precio_apertura=op, delta_preventa_apertura_pct=delta, sources=sorted(a["sources"]))
+                   precio_preventa=pre, precio_venta=venta, precio_apertura=op, delta_preventa_apertura_pct=delta,
+                   delta_venta_apertura_pct=delta_venta, sources=sorted(a["sources"]))
         self.set_state(a, "seguimiento")
 
     # -- purga ----------------------------------------------------------------------------------------------------
@@ -584,6 +589,19 @@ class Calendar:
 # ---------------------------------------------------------------------------
 # Corrida
 # ---------------------------------------------------------------------------
+
+def split_sale_price(a):
+    """D-101: si `precio_preventa` vino de una venta (CMC/ICO Drops), pasa a `precio_venta` y la preventa queda vacía.
+    Idempotente. Devuelve True si cambió algo."""
+    if a.get("precio_preventa_fuente") not in SALE_PRICE:
+        return False
+    if not a.get("precio_venta") and a.get("precio_preventa") is not None:
+        a["precio_venta"] = {"usd": a["precio_preventa"], "fuente": a["precio_preventa_fuente"],
+                             "ts": a.get("precio_preventa_ts")}
+    for k in ("precio_preventa", "precio_preventa_ts", "precio_preventa_fuente"):
+        a.pop(k, None)
+    return True
+
 
 def load_config(path):
     import yaml

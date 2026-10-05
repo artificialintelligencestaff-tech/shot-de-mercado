@@ -118,7 +118,8 @@ class TestFuentesD089(unittest.TestCase):
             a = out["calendar"]["assets"]
             cred = a["sym:CRED"]
             self.assertEqual((cred["state"], sorted(cred["sources"])), ("confirmado", ["coinmarketcap", "icodrops"]))
-            self.assertEqual((cred["precio_preventa"], cred["precio_venta"]["usd"]), (0.2, 0.2))
+            self.assertNotIn("precio_preventa", cred)              # D-101: la venta de la ronda nunca es preventa
+            self.assertEqual(cred["precio_venta"]["usd"], 0.2)
             newt = a["sym:NEWT"]                                    # perp de Hyperliquid + venta en ICO Drops
             self.assertEqual((newt["precio_preventa"], newt["precio_preventa_fuente"]), (0.5, "hyperliquid"))   # el perp manda
             self.assertEqual(newt["precio_venta"], {"usd": 0.1, "fuente": "icodrops", "ts": T0})
@@ -133,14 +134,15 @@ class TestFuentesD089(unittest.TestCase):
             self.assertEqual((out["state"]["sources"]["icodrops"]["status"], out["state"]["sources"]["icodrops"]["fails"]), (500, 1))
             self.assertTrue(out["state"]["sources"]["coinmarketcap"]["ok"])
             self.assertIn("sym:CRED", out["calendar"]["assets"])
-            # nace por token_nacido (por símbolo, 2 fuentes): el delta usa el precio de la venta
+            # nace por token_nacido (por símbolo, 2 fuentes): sin perp no hay delta de preventa; el de la venta va aparte
             events.write_event("token_nacido", "So1cred111111111111111111111111111111111111", 2,
                                {"symbol": "CRED", "name": "Credible", "price_usd": 0.3}, writer="early_watch_a",
                                now=T0 + 7 * H, root=root)
             out = pc.run(cfg, root, FakeHTTP(overrides=routes), now=T0 + 8 * H, sleep=lambda s: None)
             born = out["calendar"]["assets"]["sym:CRED"]["born"]
-            self.assertEqual((born["match"], born["precio_preventa"], born["precio_apertura"], born["delta_preventa_apertura_pct"]),
-                             ("simbolo", 0.2, 0.3, 50.0))
+            self.assertEqual((born["match"], born["precio_preventa"], born["precio_venta"], born["precio_apertura"],
+                              born["delta_preventa_apertura_pct"], born["delta_venta_apertura_pct"]),
+                             ("simbolo", None, 0.2, 0.3, None, 50.0))
         finally:
             shutil.rmtree(root, ignore_errors=True)
 

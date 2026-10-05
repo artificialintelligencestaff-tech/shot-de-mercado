@@ -51,12 +51,14 @@ class TestAporte(unittest.TestCase):
                                           VIG, MAJORS), set())                  # una wallet cualquiera no
 
     def test_3_ticker_entre_parentesis_o_hashtag(self):
-        self.assertEqual(tipos("Helium Mobile (HNT) adds subscribers"), {"ticker"})
+        # D-101 capa 1: solo prefijo $ o #; "(HNT)" suelto ya no cuenta como ticker
+        self.assertEqual(tipos("Helium Mobile (HNT) adds subscribers"), set())
+        self.assertEqual(tipos("Helium Mobile ($HNT) adds subscribers"), {"cashtag"})
         self.assertEqual(tipos("#HYPE season is here"), {"ticker"})
         self.assertEqual(tipos("#Hyperliquid volume record"), set())            # hashtag de nombre, no de ticker
         self.assertEqual(tipos("Event at 14:00 (UTC)"), set())                  # sigla en la lista de exclusión
         self.assertEqual(tipos("New project (ZZZQ) teaser"), set())             # ticker que no es vigente
-        self.assertEqual(bit.aporte_tipos(as_record("Helium Mobile (HNT) adds subscribers"), VIG, MAJORS), {"ticker"})
+        self.assertEqual(bit.aporte_tipos(as_record("Helium Mobile (HNT) adds subscribers"), VIG, MAJORS), set())
 
     def test_4_keyword_sectorial_mas_activo_vigente(self):
         self.assertEqual(tipos("DePIN keeps growing: Helium added 10k hotspots this week"), {"sector"})   # por nombre
@@ -73,14 +75,18 @@ class TestAporte(unittest.TestCase):
                          {"sector"})                                             # sobrevive sin el texto (m.sg)
 
     def test_5_anuncio_oficial_con_ticker(self):
-        self.assertEqual(tipos("Binance Will List Newton (NEWT) with seed tag"), {"anuncio", "ticker"})
-        self.assertEqual(tipos("Bybit to list $ZZZQ on spot tomorrow"), {"anuncio"})   # no hace falta que sea vigente
-        self.assertEqual(tipos("TGE for #QQQZ is set for Friday"), {"anuncio"})
-        self.assertEqual(tipos("Launching today: HYPE vaults for everyone"), {"anuncio"})   # suelto pero vigente
+        # D-101 capa 1: el anuncio cuenta solo con un ticker vigente con prefijo $ o # (antes: cualquier ticker explícito)
+        self.assertEqual(tipos("Binance Will List Newton ($NEWT) with seed tag"), {"anuncio", "cashtag"})
+        self.assertEqual(tipos("Binance Will List Newton (NEWT) with seed tag"), set())   # sin prefijo
+        self.assertEqual(tipos("Bybit to list $ZZZQ on spot tomorrow"), set())   # no vigente: ya no aporta
+        self.assertEqual(tipos("TGE for #NEWT is set for Friday"), {"anuncio", "ticker"})
+        self.assertEqual(tipos("TGE for #QQQZ is set for Friday"), set())
+        self.assertEqual(tipos("Launching today: HYPE vaults for everyone"), set())   # suelto, sin prefijo
         self.assertEqual(tipos("HeliumOS lets you launch and scale your MVNO"), set())   # MVNO no es un ticker
         self.assertEqual(tipos("Japan Launches New Tax System. TOP10 news"), set())
         self.assertEqual(tipos("listing $BTC pairs for margin"), set())          # mayor
-        self.assertEqual(bit.aporte_tipos(as_record("Bybit to list $ZZZQ on spot tomorrow"), VIG, MAJORS), {"anuncio"})
+        self.assertEqual(bit.aporte_tipos(as_record("Bybit to list $NEWT on spot tomorrow"), VIG, MAJORS),
+                         {"anuncio", "cashtag"})
 
 
 class TestNoEliminacion(unittest.TestCase):

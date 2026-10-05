@@ -589,11 +589,17 @@ def prelaunch_line(mint, root=None):
     if not asset:
         return ""
     born = asset.get("born") or {}
-    pre, delta = born.get("precio_preventa") or asset.get("precio_preventa"), born.get("delta_preventa_apertura_pct")
-    if pre is not None and delta is not None:
-        text = f"precio preventa ${pre:.8g}, delta vs apertura {delta:+.1f}%"
-    elif pre is not None:
-        text = f"precio preventa ${pre:.8g}"
+    # D-101 (doc 38 fix B): "preventa" solo si es precio de mercado real (perp); el de la ronda se muestra como venta
+    real = born.get("precio_preventa") if "precio_preventa" in born else (
+        asset.get("precio_preventa") if asset.get("precio_preventa_fuente") in ("hyperliquid", "aevo") else None)
+    venta = born.get("precio_venta") or (asset.get("precio_venta") or {}).get("usd")
+    delta, delta_v = born.get("delta_preventa_apertura_pct"), born.get("delta_venta_apertura_pct")
+    if real is not None and delta is not None:
+        text = f"precio preventa ${real:.8g}, delta vs apertura {delta:+.1f}%"
+    elif real is not None:
+        text = f"precio preventa ${real:.8g}"
+    elif venta is not None:
+        text = f"precio de venta (ICO) ${venta:.8g}" + (f", delta vs apertura {delta_v:+.1f}%" if delta_v is not None else "")
     else:
         text = "seguido desde el anuncio (" + ", ".join(sorted(asset.get("sources") or {})) + ")"
     tag = "" if born.get("alertable") else " (candidato por símbolo)"

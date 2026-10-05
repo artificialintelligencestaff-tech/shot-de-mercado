@@ -226,6 +226,14 @@ def sha256_texto(text):
     return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
 
 
+def sha256_normalizado(text):
+    """D-101 capa 3: sha256 del texto normalizado (minúsculas, sin URLs, sin puntuación, espacios colapsados). El mismo
+    texto con otro link, otras mayúsculas o un signo de más da el mismo hash: cuenta una sola vez en el aporte."""
+    t = URL_RE.sub(" ", str(text or "").lower())
+    t = " ".join(re.sub(r"[^\w$#]+", " ", t).split())
+    return hashlib.sha256(t.encode("utf-8")).hexdigest()
+
+
 def extracto(text, keywords=(), size=EXTRACTO_CHARS):
     """Hasta `size` caracteres del texto (espacios colapsados) centrados en lo primero que se detecta: un contrato,
     un $cashtag o una palabra clave; sin nada detectado, el comienzo. Es lo único del texto que se guarda."""
@@ -437,7 +445,7 @@ def _tickers_in(text):
     """Tickers con forma explícita: $CASHTAG, (TICKER), #TICKER (en mayúsculas) y palabras en mayúsculas sueltas."""
     t = text or ""
     cash = {c.upper() for c in store.CASHTAG_RE.findall(t)}
-    tk = set(TICKER_PAREN_RE.findall(t)) | set(HASHTAG_TICKER_RE.findall(t))
+    tk = set(HASHTAG_TICKER_RE.findall(t))           # D-101 capa 1: solo prefijo $ o #; "(HYPE)" suelto ya no cuenta
     bare = set(BARE_TICKER_RE.findall(t))
     return cash, tk - TICKER_STOP, bare - TICKER_STOP
 
@@ -489,7 +497,7 @@ def aporte_tipos(post, activos_vigentes, majors=None):
     else:
         cash, addrs, tok = set(post.get("c") or []), set(post.get("a") or []), m.get("tok") or []
         sg = m.get("sg") if isinstance(m.get("sg"), dict) else senales_aporte(m.get("ext") or "", names)
-    ok = lambda s: s in syms and s not in majors  # noqa: E731
+    ok = lambda s: ticker_valido(s, syms, majors)  # noqa: E731
     tipos = set()
     if any(ok(c) for c in cash):
         tipos.add("cashtag")
@@ -498,12 +506,23 @@ def aporte_tipos(post, activos_vigentes, majors=None):
     if any(ok(t) for t in sg.get("tk") or []):
         tipos.add("ticker")
     named = {names.get(n) for n in sg.get("nm") or []} - {None}
-    mencionado = {s for s in cash | set(sg.get("tk") or []) | set(sg.get("bt") or []) | named if ok(s)}
+    mencionado = {s for s in cash | set(sg.get("tk") or []) | named if ok(s)}   # capa 2: activo vigente explícito
     if sg.get("sec") and (mencionado or addrs & contracts or tok):
         tipos.add("sector")
-    if any(t not in majors for t in sg.get("anu") or []) or any(ok(t) for t in sg.get("anb") or []):
+    if any(ok(t) for t in sg.get("anu") or []):                          # capa 1: anuncio de un activo vigente
         tipos.add("anuncio")
     return tipos
+
+
+TICKER_MIN = 3                         # D-101 capa 1 [H]: "AI", "ME", "ON" no son tickers que se puedan atribuir
+
+
+def ticker_valido(sym, syms, majors=()):
+    """D-101 capa 1: ≥ 3 caracteres en mayúscula (letra inicial), activo vigente (CoinGecko/DexScreener/perps/
+    watchlists: `syms`) y no mayor. El prefijo $ o # lo exige quien lo extrae (_tickers_in)."""
+    s = str(sym or "")
+    return (len(s) >= TICKER_MIN and s[:1].isalpha() and s == s.upper() and s in syms and s not in majors
+            and s not in TICKER_STOP)
 
 
 def calculate_aporte(post, activos_vigentes, majors=None):
@@ -546,8 +565,13 @@ def evaluar_cuentas(active, health, window, now, cfg, vig):
         posts = list((by.get(key) or {}).values())
         last = max([row.get("ultimo_post_ts") or 0] + [r.get("ts") or 0 for r in posts]) or None
         dias = round((now - last) / DAY, 1) if last else None
-        por_tipo, aporte = {}, 0
+        por_tipo, aporte, textos = {}, 0, set()
         for r in posts:
+            shn = (r.get("m") or {}).get("shn") or (r.get("m") or {}).get("sha") or r.get("h")
+            if shn and shn in textos:
+                continue                                                # capa 3: el mismo texto aporta una vez
+            if shn:
+                textos.add(shn)
             tipos = aporte_tipos(r, vig, majors)
             aporte += bool(tipos)
             for t in tipos:
@@ -670,7 +694,7 @@ def run(config, state, fetch=http_get, now=None, sleep=time.sleep, keywords=stor
             known.add(p["id"])
             seen[p["id"]] = now
             urls, tok = post_fields(p["text"])
-            sig = {"sha": sha256_texto(p["text"]), "ext": extracto(p["text"], keywords)}
+            sig = {"sha": sha256_texto(p["text"]), "shn": sha256_normalizado(p["text"]), "ext": extracto(p["text"], keywords)}
             dup = next((r for r in recent + records if r.get("id") != p["id"]
                         and casi_duplicado(sig, r.get("m") or {}, float(config["dup_umbral"]))), None)
             meta = {"cat": c["categoria"], "prio": c["prioridad"], "mec": best["mec"], "repost": p["repost"],

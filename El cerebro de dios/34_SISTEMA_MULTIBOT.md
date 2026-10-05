@@ -372,7 +372,13 @@ fallback_sources:
   - **ICO Drops:** la lista "upcoming" (50 proyectos, con ronda, valuación previa y fecha) no trae ticker ni precio. Por eso se pide la página de cada proyecto nuevo, hasta `detalle_max` (15) por corrida, con caché de 7 días en `_state.json` (`icodrops_cache`). De ahí sale el ticker del título y el primer "Price" de una ronda.
   - Sin venta pública no hay precio; sin ticker publicado, el activo entra por nombre (`name:…`).
   - Pidiendo todas las páginas de detalle: 50 filas, 38 con ticker y 35 con precio de venta (CHIMP $1,5, CLIX $0,1, SPWAY $0,12, GNOT $0,0645…). Con el tope de 15 por corrida, la cobertura se completa en unas 4 corridas (un día).
-- **Precio de preventa:** manda el último precio de un perp (Hyperliquid/Aevo, `precio_preventa_fuente`). Si no hay perp, se usa el precio de la venta (CMC/ICO Drops), que además queda en `precio_venta`. Es el precio que muestra la línea PRE-LANZAMIENTO de script_97 (§16) y la base del `delta_preventa_apertura_pct`.
+- **Precios (D-101, doc 38 §5 fix B):**
+  - `precio_preventa`: **solo** el último precio de un perp de preventa (Hyperliquid/Aevo, `precio_preventa_fuente`). Es mercado real.
+  - `precio_venta`: el precio fijo de la ronda (CMC/ICO Drops). Nunca se copia a `precio_preventa`.
+  - `precio_apertura`: el primer precio en DEX/CEX después de nacer.
+  - `delta_preventa_apertura_pct`: solo con preventa real. `delta_venta_apertura_pct` va aparte.
+  - Los calendarios viejos con la venta guardada como preventa se corrigen al cargar (`split_sale_price`).
+  - La línea PRE-LANZAMIENTO de script_97 (§16) dice "precio preventa" solo si es real; si no, "precio de venta (ICO)".
 - **Colisión de ticker [V]:** CRED (Credible) y CON (ConConAI) no entran, porque ya hay pares DEX con ese símbolo y ≥ 100 000 USD de liquidez, y el filtro de "ya nacido" los toma como nacidos. Es el mismo criterio de antes para todas las fuentes [H].
 
 **"No nacido" [H].** Ni Hyperliquid ni Aevo marcan la preventa en la API.

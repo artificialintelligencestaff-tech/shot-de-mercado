@@ -16,6 +16,7 @@ Uso: python 04_Config/scripts/bot_orchestrator.py [--dry-run]
 """
 import argparse
 import json
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -98,10 +99,47 @@ def bot_health(name, cfg, state, prev, now):
             "sources_total": len(srcs), "errors": errors, "empty_runs": empty, "fail_runs": fails}
 
 
+RETENTION_NAME = "_retention.yaml"
+DAY_FILE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
+
+def retention_for(folder, root, default=KEEP_DAYS, cache=None):
+    """Días de retención de una carpeta (doc 38 §2): el _retention.yaml más cercano subiendo hasta 02_Analisis/.
+    `keep_days: null` = sin poda (None). Sin archivo, o con uno roto, rige `default`."""
+    import yaml
+    stop = (Path(root) / "02_Analisis").resolve()
+    cache = {} if cache is None else cache
+    d = Path(folder).resolve()
+    while True:
+        if d not in cache:
+            f = d / RETENTION_NAME
+            val = "absent"
+            if f.is_file():
+                try:
+                    doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+                    kd = doc.get("keep_days", "absent") if isinstance(doc, dict) else "absent"
+                    val = None if kd is None else (int(kd) if isinstance(kd, int) and kd >= 1 else "absent")
+                except (OSError, ValueError, yaml.YAMLError):
+                    val = "absent"
+            cache[d] = val
+        if cache[d] != "absent":
+            return cache[d]
+        if d == stop or stop not in d.parents:
+            return default
+        d = d.parent
+
+
 def prune(root, now, keep_days=KEEP_DAYS):
-    cutoff = datetime.fromtimestamp(now - keep_days * 86400, timezone.utc).strftime("%Y-%m-%d")
-    removed = []
+    """Borra los diarios <YYYY-MM-DD>*.jsonl de sources/ más viejos que la retención de su carpeta (doc 38, D-101:
+    x_influencers 35 d, el resto 7 d). Siguen en el historial de git."""
+    removed, cache = [], {}
     for p in store.sources_dir(root).glob("*/*.jsonl"):
+        if not DAY_FILE.match(p.name):
+            continue
+        days = retention_for(p.parent, root, keep_days, cache)
+        if days is None:
+            continue
+        cutoff = datetime.fromtimestamp(now - days * 86400, timezone.utc).strftime("%Y-%m-%d")
         if p.name[:10] < cutoff:
             p.unlink()
             removed.append(p.name)
