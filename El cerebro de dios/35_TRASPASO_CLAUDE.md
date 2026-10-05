@@ -107,7 +107,7 @@ Estados:
 | `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `37ba02cf8f82cbacce9bf6701a7a82cfa3192174abd46e0f6cf51c1e1d3d8e6f` |
 | `04_Config/sources/prelaunch.yaml` | Fuentes y umbrales del calendario de preventa | rama | `d6003fb7754029be870821d83f22afba243b8903e6d3ac195d234bf3ee331a62` |
 | `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `ff45ece2cd810477dc60483b933b24b753a755d00eccb0774e9ee2021ebb5d54` |
-| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `537497a62e303014993138d918461bc310d265f8bab3a7d53839f34b04913009` |
+| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `3d5b3a9181b7ddfcd37c1d1f6fc1f8eb8687562227b5e792b7a5a869d8c545fe` |
 | `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `db128d3ad8b27469ce0a16232f2f94c41cb4af6acb8026c3ae89f13cf87e4c21` |
 | `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `b55d49cef4bcccf1b53ea0e8989621b303dc4574e8ae455436a5de20e45218b2` |
 | `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `3816a9a8cadc8e6ed102570fcefe9552e403138b00c486cd2c51ecfcd2cefc23` |
