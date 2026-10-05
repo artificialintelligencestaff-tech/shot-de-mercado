@@ -19,15 +19,14 @@ Estructura de investigación de servicios open source gratuitos para el pipeline
 | Cat | Ficha | Key | Prioridad |
 |-----|-------|-----|-----------|
 | 01 | `cryptopanic.md`, `coindesk_rss_aggregator.md`, `cryptocontrol.md` | — | — |
-| 02 | `x_syndication_timeline.md` | no (sin login) | P1 (respaldo de D-087) |
+| 02 | `x_syndication_timeline.md` (incluye `tweet-result` de react-tweet, fusionada en D-101) | no (sin login) | P1 (respaldo de D-087) |
 | 02 | `fxembed_api.md` | no (sin login) | P0 (timeline, D-087) |
-| 02 | `react_tweet_syndication.md` | no (sin login) | P2 |
 | 03 | `goplus_security.md` | no | P1 |
 | 03 | `dexpaprika.md` | no | P1 |
 | 03 | `helius_free.md` | gratuita | P2 |
-| 04 | `pumpfun_datos.md` | no | P1 |
+| 03 | `pumpfun_datos.md` (movida de 04 en D-101: es una API) | no | P1 |
+| 03 | `dextools_api.md` (movida de 04 en D-101: es una API) | gratuita | P3 |
 | 04 | `bitcointalk_ann.md` | no | P2 |
-| 04 | `dextools_api.md` | gratuita | P3 |
 | 05 | `vader_lexico_cripto.md` | no | P2 |
 | 05 | `cryptobert.md` | no | P3 |
 | 06 | `healthchecks_io.md` | cuenta gratuita | P1 |

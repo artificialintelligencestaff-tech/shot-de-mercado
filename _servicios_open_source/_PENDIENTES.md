@@ -21,7 +21,7 @@ Estado: `pendiente` | `en_curso` | `hecho` | `descartado`
 | Nitter instances | `descartado` | `zedeus/nitter` es AGPL-3.0 y está **archivado** [V 2026-10-03]; xcancel.com → 451, nitter.net y nitter.poast.org sin respuesta [V]. Desde 2024 exige cuentas reales |
 | X syndication (timeline-profile) | `hecho` | Ficha `x_syndication_timeline.md`: ~20 publicaciones recientes por cuenta, sin login [V]. Sin búsqueda. P1 |
 | FxEmbed (api.fxtwitter.com) | `hecho` | Ficha `fxembed_api.md`: MIT; perfil (seguidores) y métricas por publicación sin login [V]. P1 |
-| react-tweet (tweet-result) | `hecho` | Ficha `react_tweet_syndication.md`: MIT; publicación por id con token calculado, sin login [V]. P2 |
+| react-tweet (tweet-result) | `hecho` | Fusionada en `x_syndication_timeline.md` (D-101): MIT; publicación por id con token calculado, sin login [V]. P2 |
 | twscrape / twikit / tweety | `descartado` | Exigen cuentas o cookies de X (fuera del filtro "sin login, sin cookies"); tweety sin licencia |
 | the-convocation/twitter-scraper | `descartado` | MIT pero exige login para timelines y búsqueda; último push 2026-04-01 (> 6 meses) |
 | RSSHub (rutas de X) | `descartado` | AGPL-3.0 y la ruta de X necesita `TWITTER_AUTH_TOKEN` (cookie de una cuenta) |

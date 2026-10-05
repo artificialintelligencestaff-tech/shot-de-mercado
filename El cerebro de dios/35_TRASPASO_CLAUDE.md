@@ -111,11 +111,11 @@ Estados:
 | `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `db128d3ad8b27469ce0a16232f2f94c41cb4af6acb8026c3ae89f13cf87e4c21` |
 | `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `b55d49cef4bcccf1b53ea0e8989621b303dc4574e8ae455436a5de20e45218b2` |
 | `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `3816a9a8cadc8e6ed102570fcefe9552e403138b00c486cd2c51ecfcd2cefc23` |
-| `El cerebro de dios/28_INVENTARIO_COMPLETO.md` | Inventario completo de fuentes | doc | `088cf61c8365121545e6683cf98cff6a6cbb0f3f7103c0098f20d61c701f8979` |
+| `El cerebro de dios/_historico/28_INVENTARIO_COMPLETO.md` | Inventario completo de fuentes | doc | `088cf61c8365121545e6683cf98cff6a6cbb0f3f7103c0098f20d61c701f8979` |
 | `El cerebro de dios/29_PROTOCOLO_PERSISTENCIA.md` | — | borrado | — |
 | `El cerebro de dios/31_DETECCION_TEMPRANA.md` | Early watch: diseño, hand-off, claims, gate | doc | `e9385fe9a3d5f9f18af4ce4d22e684af3b112e729fd745477ae61fdd29ba47d3` |
 | `El cerebro de dios/32_SCORER_JOVENES.md` | Scorer joven v0.5, H-0, v7.2.2 aprobado, arquitectura Yin-Claude | doc | `af3fd1533292401ad0797a1e35a70aca2b893cc45a6a2aa531cc6fb82a3139a9` |
-| `El cerebro de dios/33_ARQUITECTURA_MULTIBOT.md` | Investigación de fuentes (RSS, MCP, Reddit, Nitter) | doc (diseño reemplazado por 34) | `50131aa522f8c1a81be690f4091da85854b9b3bc4a1425eb328a167e7398090c` |
+| `El cerebro de dios/_historico/33_ARQUITECTURA_MULTIBOT.md` | Investigación de fuentes (RSS, MCP, Reddit, Nitter) | doc (diseño reemplazado por 34) | `50131aa522f8c1a81be690f4091da85854b9b3bc4a1425eb328a167e7398090c` |
 | `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: bots + store + self-repair + coparticipación + preventa (§15–16) + patrimonio (§17) + X (§18) | diseño | `4b5380b6c7bd62af9a26ee502787ed9ea68918eb52727d977d92e993553e49b7` |
 | `El cerebro de dios/37_BOTS_AUTONOMIA.md` | Diseño de los 4 bots de autonomía: scout, evaluator, integrator, auditor (D-091) | diseño | `b92ab716fa3c9ef4ef68f636bd7eaa3a98e42ecc754e90697486c9ec3d7f7384` |
 

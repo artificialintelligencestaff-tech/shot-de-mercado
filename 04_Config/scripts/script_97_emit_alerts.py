@@ -844,14 +844,14 @@ def load_early_signals(now=None, max_age_min=EARLY_SIGNALS_MAX_AGE_MIN):
 
 
 def load_multichain_extras():
-    """Fase 8: Snapshot (c), perps de Hyperliquid (d), pre-mercado de Aevo y TGEs de script_99 (b).
-    Fase 10: bono anticipatorio de script_116 (early)."""
+    """Fase 8: Snapshot (c), perps de Hyperliquid (d) y pre-mercado de Aevo. Fase 10: bono anticipatorio de script_116
+    (early). D-101: sin la lectura de 02_Analisis/pre_launch/_prelaunch_accumulated.json (script_99 deprecado en D-079,
+    archivo movido a _archivo_2026_Q3 en D-089-R): la preventa vive en prelaunch/_calendar.json (prelaunch_line)."""
     return {"early": load_early_signals(),
             "memechain": _read_json_file(PROJECT_ROOT / "02_Analisis" / "datasets" / "memechain_index.json"),
             "governance": _read_json_file(MULTICHAIN_DIR / "_governance.json"),
             "perps": _read_json_file(MULTICHAIN_DIR / "_perps.json"),
-            "premarket": _read_json_file(MULTICHAIN_DIR / "_premarket.json"),
-            "prelaunch": _read_json_file(PROJECT_ROOT / "02_Analisis" / "pre_launch" / "_prelaunch_accumulated.json")}
+            "premarket": _read_json_file(MULTICHAIN_DIR / "_premarket.json")}
 
 
 def multichain_results(now=None, memecoin_scorer=None):

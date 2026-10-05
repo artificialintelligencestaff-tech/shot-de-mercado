@@ -198,6 +198,16 @@ rwa…). Las comparten todos los bots y `query()`.
 Cada workflow commitea **solo su carpeta**, con el loop `pull --rebase` + 4 reintentos de los workflows actuales.
 Como ningún archivo tiene dos dueños, el rebase no puede chocar. Tampoco hay `--force`.
 
+**Retención por carpeta (D-101, doc 38 §2).** La poda del orquestador lee el `_retention.yaml` más cercano a cada diario.
+
+| Carpeta | Retención | Quién poda |
+|---|---|---|
+| `sources/` | 7 días | orquestador |
+| `sources/x_influencers/` | 35 días (la evaluación usa 30) | orquestador |
+| `events/<writer>/` | 8 días | cada escritor (`lib_events.prune`) |
+| `_audit*.jsonl` | 90 días | cada bot (`lib_audit`) |
+| `_episodes_*.jsonl`, `hypotheses/`, `alerts/`, `prelaunch/_calendar.json` | sin poda | — |
+
 ## 7. Dependencias
 
 - **Bots de captura:** no dependen entre sí, solo de la red y de su YAML. Si uno se cae, los demás siguen.
