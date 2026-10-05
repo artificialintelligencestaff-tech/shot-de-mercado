@@ -54,29 +54,29 @@ Estados:
 | `02_Analisis/patrimonio/_inventario.json` | Patrimonio de datos: qué hay dónde en 02_Analisis (D-087) | rama | `015563b07c58b112447a03a41f1ea9569a9baf365ec941f5b4439bf23e7eb502` |
 | `04_Config/influencers.yaml` | Las 50 cuentas de X de bot_influencer_tracker (+16 apagadas) | rama | `322a1af03adaac375bf9de40765c8dcfdf881dd0d1840993f912704db77cc74f` |
 | `04_Config/inventario.json` | Inventario de fuentes y estado de cada una | producción | `0d823075337132638ab6e8787759e36d862b2d21c6929c6d5cdeb79f862bb1b0` |
-| `04_Config/scripts/bot_influencer_tracker.py` | Cuentas de X sin login (FxEmbed + syndication) → src-1 + eventos + evaluación para Yang (D-089-R, D-091) | rama | `dc9897039a1c7ca7b313ec42e853998b79d61eccd7accafdddb4e8fab2e358d1` |
-| `04_Config/scripts/bot_orchestrator.py` | Fusiona los diarios de bots, salud, poda y bloque AUTO de _INSTALADOS | rama | `49c8f76b3480b48f43206555125ecb53060eb357a7485c9d11d1cd888221278e` |
-| `04_Config/scripts/bot_prelaunch_calendar.py` | Calendario de activos no nacidos: 8 fuentes, precio de preventa (D-079, D-089-R) | rama | `d3821fac10af4e91a81e8e2e247425b3b224eedf271e774ec7b07a9bfa92ccad` |
+| `04_Config/scripts/bot_influencer_tracker.py` | Cuentas de X sin login (FxEmbed + syndication) → src-1 + eventos + evaluación para Yang (D-089-R, D-091) | rama | `4a94b2d00eff754ec7ba207ed60dd990149aa15dd9141da2ac187db30ca327b4` |
+| `04_Config/scripts/bot_orchestrator.py` | Fusiona los diarios de bots, salud, poda y bloque AUTO de _INSTALADOS | rama | `74a40925c4c719a459845bf248ea7f327000dd478f3c953f6c98b979287fb282` |
+| `04_Config/scripts/bot_prelaunch_calendar.py` | Calendario de activos no nacidos: 8 fuentes, precio de preventa (D-079, D-089-R) | rama | `6aa62546a75175a5dd504a8e0aee38421603eb61be2fb794528f251672660f42` |
 | `04_Config/scripts/bot_rss_news.py` | Bot RSS: 12 feeds → esquema src-1 | rama | `c70eb6728d5d9fe6f18188171f7f9db2d8938716b5535e6fd1fc7ff14673426a` |
 | `04_Config/scripts/dataset_builder.py` | Dataset histórico de alertas con resultado | producción | `e406e35486178078194a6d714f7f18a6f3638780850bdbb5e2114b6251f3db78` |
-| `04_Config/scripts/early_review.py` | Evaluación del early watch: primary rate, gate de edad, H-0 (Fisher) | producción | `c11852a02463a10bdb0d3bf38fa373331b3b49fa7ff5e99e12d20b517097cc01` |
+| `04_Config/scripts/early_review.py` | Evaluación del early watch: primary rate, gate de edad, H-0 (Fisher) | producción | `8a1b09a5ca3f72f2c9b97655e02374f2635d34e21b18c8fb9504dfdbb2bcc480` |
 | `04_Config/scripts/latency_analysis.py` | Análisis de latencia y desfase de cron | producción | `aac96406c6367c2d919c2624513761fe9d3304e58284e1165a080fb33c9f1f08` |
 | `04_Config/scripts/lib_early_signals.py` | 5 señales de precio/volumen de anticipación | producción | `298ee897a84958ce447c23a4031a3dc34b99acc281001fb601a41f1f817067c6` |
 | `04_Config/scripts/lib_events.py` | Bus de eventos tipados con TTL (D-067); tipos de D-079 y D-087 | rama | `4974d0dd5c1c9cd05409b60da671269c5e9c745c824bbfa3d24c1330c6545948` |
 | `04_Config/scripts/lib_info_signals.py` | Señales informacionales y estructurales + tradability | producción | `f06fa94d98f8cdd01c00e0578465e418b59f8ad8992c32a2a0060e4b4ac74f6f` |
-| `04_Config/scripts/lib_patrimonio.py` | Valida y resume el inventario del patrimonio | rama | `ca095ab4b193a14719b33d8daa64c07a286ce1abecf467606c3e7db8181e368a` |
+| `04_Config/scripts/lib_patrimonio.py` | Valida y resume el inventario del patrimonio | rama | `6cf8b30c3c222916c5bbdd21e4511020c53267b618a6572da53d29222f49a5f2` |
 | `04_Config/scripts/lib_persist.py` | Persistencia: dataset propio y bitácora de operaciones | producción | `cea9a34e13391b95af5591d6ee0120a00839f5ff86faffc9654d5b7d27f4cc4a` |
 | `04_Config/scripts/lib_scoring_multichain.py` | Scoring por tipo de activo (grupos b–i) | producción | `f216f81bb76e99adb7454b4b07afca4c74aa7ef076b66c09392ff4fed99098a3` |
 | `04_Config/scripts/lib_scoring_young.py` | Scorer joven young-0.4 (<60 min): pesos continuos por edad | producción | `e74f08934d1f0d2532447504b5dadfb92e0399c37bf881f73ff046cc943696b0` |
-| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `4bd153e6a866ad620fca857c079e9c6283988a1b2cac44fd87f6187146b4ef9e` |
+| `04_Config/scripts/lib_sources_store.py` | Almacén unificado src-1: merge, índice, query, compatibilidad con _items | rama | `f1c47ef21109321023caa3ec47b7a2983840ac5407aeba12a40a486b98340bfd` |
 | `04_Config/scripts/probe_inventario.py` | Sonda de disponibilidad de fuentes | producción | `c0446affa69deaa34c6d8a9cdcddbaba711ae82b66bf716114d68003397961bf` |
 | `04_Config/scripts/script_113_dossier_builder.py` | Dossier por activo (ruta de compra primero) | producción | `e2a6e6c8cb3c07ba7b0a5635876d0c677a38c6a06ab8cdf49449dec4d4fe1e4a` |
 | `04_Config/scripts/script_114_multichain_scanner.py` | Scanner multi-chain v0.2 | producción | `b6a7e96512d6975604d87b713c569ca4f3961034b0c79b9ec66ee8fdb666ecf3` |
 | `04_Config/scripts/script_115_narrative_collector.py` | Colector de menciones (solo identificadores) | producción | `2bc1d7310b927f183d77df05a992322e3f59a70364b0edc726e3326374f4ab6c` |
-| `04_Config/scripts/script_116_early_watch.py` | Early watch: PumpPortal WS + scorer joven + claims por mint; usa query() | producción (cambio D-035 en rama) | `a36d2744714b9efce7af0dafddd67f285b6a0127f90b1924ac030828efd1f150` |
+| `04_Config/scripts/script_116_early_watch.py` | Early watch: PumpPortal WS + scorer joven + claims por mint; usa query() | producción (cambio D-035 en rama) | `bab61b41d2429ee2d846032845fa135f2b964ef25b237dbcb9ed6d419e2b4d43` |
 | `04_Config/scripts/script_82_final_detection.py` | Detección final v7.2.1 (grupo i incluido) | producción | `b35c7d14fd2f37889c19e6a557a72e3af7186a5bf9e0158760fc37675e41c5ab` |
-| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `c9476ea1031e85c3e5cae00614b99343e26ae6cba3c3d042700eceace9006cb2` |
-| `04_Config/scripts/script_98_trust_scheduler.py` | Seguimiento de alertas (trust updates) | producción | `74288d4eb3ced1588ef0af4bb2a87e3ffaa3965455d22a54c032ccc20158f309` |
+| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `c5d6f8f276e6cc9f0764d0bdd36f2fceebe89f2ede37da1aab1e0c306ee248a7` |
+| `04_Config/scripts/script_98_trust_scheduler.py` | Seguimiento de alertas (trust updates) | producción | `126adf9ebc02430a5287c3b37c5f5ab153b3fc4e1ff6a06f3e5a9c7311e7d0cb` |
 | `04_Config/scripts/test_bot_influencer_tracker.py` | Tests de bot_influencer_tracker | test | `8f98497733ab957ba0d0d5c24ab98d40f32e0741207bb23241db87d3e6181dbb` |
 | `04_Config/scripts/test_d089_influencer_evaluacion.py` | Tests de la evaluación de cuentas y del extracto (D-089-R) | test | `a0d8670a6d03fde081fd5568ba7e956baac798f8bfb28200f8a9c0ed00cfc9d9` |
 | `04_Config/scripts/test_d089_prelaunch_fuentes.py` | Tests de CMC e ICO Drops en el calendario (D-089-R) | test | `81386b78da19d638e29b0ff225bb327a77d2b6aabe655d5eb9fd65d339f23fdc` |
@@ -119,10 +119,15 @@ Estados:
 | `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: bots + store + self-repair + coparticipación + preventa (§15–16) + patrimonio (§17) + X (§18) | diseño | `6c92f4fbbeb18965908016c2c7c23b5177fc7154f5c31a9f25903b5011a037eb` |
 | `El cerebro de dios/37_BOTS_AUTONOMIA.md` | Diseño de los 4 bots de autonomía: scout, evaluator, integrator, auditor (D-091) | diseño | `b92ab716fa3c9ef4ef68f636bd7eaa3a98e42ecc754e90697486c9ec3d7f7384` |
 | `README.md` | README raíz: qué es el proyecto, mapa del repo y cómo empezar (D-101) | doc | `268ef85f549fbdeae7c0a31435b1ae9b04536cb15129331c5fe067c21621a113` |
-| `04_Config/scripts/gen_project_manifest.py` | Genera _project_manifest.json y el catálogo de scripts desde el repo (D-101) | rama | `a0fd5bf9e6e687b63590b9bb2aab78e1f1f6f4bc2ab5ca202378cd00c8bbbdff` |
+| `04_Config/scripts/gen_project_manifest.py` | Genera _project_manifest.json y el catálogo de scripts desde el repo (D-101) | rama | `38840b67a1a3c49e5f16e6960e539150c7442b6ea7846d72fe39862b886489bd` |
 | `04_Config/scripts/test_gen_project_manifest.py` | Tests del generador del manifiesto (D-101) | test | `af0a93c2be8751bef6b1184f7bd182b67a9495b5b2219dd30ce448543e89d48b` |
 | `04_Config/scripts/test_d101_fixes.py` | Tests de los fixes A/B/C de D-101 (retención, preventa vs venta, falsos positivos) | test | `474677c0edb4673639181f9dfc4471d778ad9705e37a46f4fa0e4b7e6420bd55` |
-| `El cerebro de dios/38_ARQUITECTURA_DATOS.md` | Arquitectura de datos: 8 categorías, retención por carpeta, dueños, fixes D-101 | diseño | `7587fba32bb58e3f2e255ec680f193acb00b3dd523d8b80fc4827f223beadc30` |
+| `El cerebro de dios/38_ARQUITECTURA_DATOS.md` | Arquitectura de datos: 8 categorías, retención por carpeta, dueños, fixes D-101 | diseño | `156a716ffe2ffd3e99b5efb658802297466eb8d4a943c208a5a4fb2ce428f3b5` |
+| `04_Config/scripts/lib_paths.py` | Interfaz central de rutas: tabla PATHS, path/rel/register/validate (D-105) | rama | `bdfe215175f7ecacd87027d243e8e9c8b1d21aa872b7403cafcb81b01b75fcee` |
+| `04_Config/scripts/lib_alerts.py` | Dominio de alertas: lectura/escritura de _all_alerts.json, detalle y trust, con esquema (D-105) | rama | `e43a37c54d27ba725385c099f5588cda0d1aae1e9edfbf8064f5a739aadf31bf` |
+| `04_Config/scripts/lib_early_watch.py` | Dominio del early watch: _watch/_signals por instancia y rutas de git add (D-105) | rama | `3f083ecb4245fdf692c836e33c13e7fa907b57a2e296540a27f94e97d8398777` |
+| `04_Config/scripts/lib_sources_domain.py` | Dominio de fuentes: diarios src-1 y estados por bot (D-105) | rama | `000e11cf24ed10c07c811757f0abf6d370ab165b4637280462e6e6f7a2cd1718` |
+| `04_Config/scripts/test_modulos_autonomos.py` | Autonomía por módulo: SHOT_ROOT vacío, mover carpetas, compuerta de rutas (D-105) | test | `e707778cc3034a743082bb62a318c8f6d8fd98638247ccb0e79a147130497d8d` |
 
 ## 2. Lógica por archivo
 
