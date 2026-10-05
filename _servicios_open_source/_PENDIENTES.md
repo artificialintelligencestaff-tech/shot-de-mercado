@@ -81,3 +81,18 @@ Estado: `pendiente` | `en_curso` | `hecho` | `descartado`
 | requests-cache | `hecho` | Ficha `requests_cache.md`: caché SQLite + `stale_if_error`. Solo metadata y seguridad, nunca velas. P2 |
 | Healthchecks.io | `hecho` | Ficha `healthchecks_io.md`: vigilante externo de crons (quién vigila al reparador). P1, requiere cuenta + secrets |
 | Proxies públicos | `descartado` | Inestables, lentos y con riesgo de inyección (MITM) en datos de precio. Alternativa: respetar los límites con rate limiter + caché |
+## 07_portales (D-087, probados en vivo el 2026-10-04)
+
+| Servicio | Estado | Notas |
+|----------|--------|-------|
+| CoinMarketCap (data-api + ICO calendar) | `hecho` | Ficha `coinmarketcap_nuevos.md`: 200 sin key ni Cloudflare [V]; precio de preventa en `ico-calendar`. P1: fuente del calendario de preventa |
+| ICO Drops | `hecho` | Ficha `icodrops.md`: HTML 200, unos 90 activos en Upcoming + TGE [V]. P1: fuente del calendario de preventa |
+| CoinGecko (nuevos + trending) | `hecho` | Ficha `coingecko_nuevos.md`: sin "upcoming"; `coins/list/new` 401 (Pro) [V]; HTML de nuevos 200. P2 |
+| RWA.xyz | `hecho` | Ficha `rwa_xyz.md`: `__NEXT_DATA__` de 10 MB con 3.459 activos y flujos [V]. P2, snapshot diario |
+| DePINscan | `hecho` | Ficha `depinscan.md`: 440 proyectos DePIN sin key [V]. P2. Reemplaza a DePIN Ninja |
+| Tokenomist (Token Unlocks) | `pendiente` | Ficha `tokenunlocks_tokenomist.md`: API 401, HTML RSC frágil; DefiLlama unlocks 402. P3, solo con key |
+| CryptoRank | `descartado` | Ficha `cryptorank.md`: Cloudflare 403 + API 401 [V]. Reevaluar si Dirección crea la key |
+| Binance Research | `descartado` | Ficha `binance_research.md`: AWS WAF (202 vacío) [V]. Lo cubren las cuentas `binance` y `BinanceWallet` |
+| Dune Analytics | `descartado` | Ficha `dune_analytics.md`: plan Free view-only, API solo con trial o plan pago [V docs] |
+| Flipside Crypto | `descartado` | Ficha `flipside_crypto.md`: pivote a "edisyl", API sin DNS [V] |
+| DePIN Ninja | `descartado` | Ficha `depin_ninja.md`: dominio estacionado (`/lander`) [V] |

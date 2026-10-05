@@ -14,7 +14,12 @@ Ciclo de vida:  anunciado → confirmado → nacido → seguimiento → purgado 
 
 Fuentes [V 2026-10-03]: Hyperliquid (metaAndAssetCtxs) · Aevo (/markets) · Polymarket (public-search "FDV one day after
 launch") · Bybit (announcements new_crypto) · Binance CMS (catálogo 48; desde runners US puede dar 451 [P]) ·
-Bitcointalk board 159. Cada fuente falla sola: una caída no rompe la corrida.
+Bitcointalk board 159. D-089-R [V 2026-10-04]: CoinMarketCap (calendario ICO: ventas en curso y próximas con
+icoPriceUsd) · ICO Drops (lista "upcoming" + página de cada proyecto nuevo: ticker y precio de la venta pública, con
+caché de 7 d y tope de páginas por corrida). Cada fuente falla sola: una caída no rompe la corrida.
+
+Precio de preventa: el último precio de un perp de preventa (Hyperliquid/Aevo) manda; si no hay, el precio de la
+venta (CMC/ICO Drops). El de la venta queda además en `precio_venta`.
 
 "No nacido" [H]: ni Hyperliquid ni Aevo marcan la preventa en la API, así que un perp es preventa si su símbolo NO
 tiene spot en Bybit/OKX/Binance/Hyperliquid NI un par DEX con liquidez ≥ liq_born_usd (DexScreener). La regla sale
@@ -47,7 +52,7 @@ import lib_events as events  # noqa: E402
 import lib_normalize as norm  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
-VERSION = "prelaunch-1.0"
+VERSION = "prelaunch-1.1"
 DIR_REL = "02_Analisis/prelaunch"
 WRITER = "prelaunch_calendar"
 HEADERS = {"User-Agent": "ShotDeMercado-prelaunch/1.0 (+public data)"}
@@ -60,6 +65,9 @@ URLS = {
     "bybit": "https://api.bybit.com/v5/announcements/index?locale=en-US&type=new_crypto&limit=50",
     "binance": "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=48&pageNo=1&pageSize=50",
     "bitcointalk": "https://bitcointalk.org/index.php?board=159.0",
+    "coinmarketcap": "https://coinmarketcap.com/ico-calendar/",
+    "icodrops": "https://icodrops.com/category/upcoming-ico/",
+    "icodrops_project": "https://icodrops.com/{slug}/",
     "ref_bybit": "https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000",
     "ref_okx": "https://www.okx.com/api/v5/public/instruments?instType=SPOT",
     "ref_binance": "https://data-api.binance.vision/api/v3/exchangeInfo?permissions=SPOT",
@@ -76,6 +84,13 @@ BTT_RE = re.compile(r"\[ANN\][^A-Za-z0-9]*(?P<name>[^|()\[\]]+?)\s*\((?P<sym>[A-
 BTT_ALIVE = re.compile(r"\b(is live|live mainnet|mainnet|mined|mining|pool|exchange|market|wallets?)\b", re.IGNORECASE)
 PM_RE = re.compile(r"^(?P<name>.+?)\s+(?:market cap\s+)?\(?FDV\)?\s+one day after launch", re.IGNORECASE)
 NAME_NOISE = re.compile(r"\b(token|coin|protocol|network|labs|foundation|finance|the)\b")
+NEXT_RE = re.compile(r'<script id="__NEXT_DATA__" type="application/json"[^>]*>(.*?)</script>', re.S)
+ICD_ROW_RE = re.compile(r'<li class="Tbl-Row Tbl-Row--usual".*?(?=<li class="Tbl-Row Tbl-Row--usual"|\Z)', re.S)
+ICD_TITLE_RE = re.compile(r"<title>\s*(?P<name>[^<(]+?)\s*\((?P<sym>[A-Za-z0-9]{1,15})\)\s*-\s*All information", re.S)
+ICD_PRICE_RE = re.compile(r'Cpsl-Items__item--pale">\s*Price\s*</span>\s*<span class="Cpsl-Items__item">\s*\$\s*([\d.,]+)')
+PERP_PRICE = ("hyperliquid", "aevo")                 # precio de mercado antes de nacer
+SALE_PRICE = ("coinmarketcap", "icodrops")           # precio fijo de la venta (ICO/IDO)
+ICD_CACHE_S = 7 * 86400
 
 
 # ---------------------------------------------------------------------------
@@ -225,14 +240,103 @@ def parse_bitcointalk(html):
     return out
 
 
-def fetch_source(name, http):
+def _num_or_none(v):
+    try:
+        f = float(str(v).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+    return f if f > 0 else None
+
+
+def parse_coinmarketcap(html):
+    """Calendario ICO de CMC (`__NEXT_DATA__`): ventas `ongoing` y `upcoming` (las `ended` ya pasaron) con
+    `icoPriceUsd`, etapa, fechas, meta y launchpad. La red sale de `crypto.contracts[0].name`."""
+    m = NEXT_RE.search(html or "")
+    if not m:
+        raise ValueError("CMC sin __NEXT_DATA__")
+    pp = (json.loads(m.group(1)).get("props") or {}).get("pageProps") or {}
+    if "ongoing" not in pp and "upcoming" not in pp:
+        raise ValueError("CMC sin ongoing/upcoming")
+    out = []
+    for stage in ("ongoing", "upcoming"):
+        for it in (pp.get(stage) or {}).get("icoList") or []:
+            c = (it or {}).get("crypto") or {}
+            if not c.get("symbol") and not c.get("name"):
+                continue
+            contracts = c.get("contracts") or []
+            out.append(ob("coinmarketcap", c.get("symbol"), name=c.get("name"),
+                          chain=(contracts[0] or {}).get("name") if contracts else None,
+                          price=_num_or_none(it.get("icoPriceUsd")),
+                          url=f"https://coinmarketcap.com/currencies/{c.get('slug')}/" if c.get("slug") else None,
+                          etapa=stage, ronda=it.get("currentStage"), inicio=it.get("start"), fin=it.get("end"),
+                          meta_usd=it.get("goalUsd"), launchpad=(it.get("launchPad") or {}).get("exchangeName")))
+    return out
+
+
+def _cell(row, col):
+    m = re.search(r'Tbl-Row__item--' + col + r'"[^>]*>(.*?)</div>', row, re.S)
+    v = " ".join(re.sub(r"<[^>]+>|&nbsp;?", " ", m.group(1)).split()) if m else ""
+    return None if v in ("", "—", "-") else v
+
+
+def parse_icodrops_list(html):
+    """Lista "upcoming" de ICO Drops → [{"slug", "name", "ronda", "recaudado", "pre_valuacion", "fecha"}]. La
+    lista no trae ticker ni precio: están en la página de cada proyecto (parse_icodrops_project)."""
+    rows = ICD_ROW_RE.findall(html or "")
+    if not rows:
+        raise ValueError("ICO Drops sin filas")
+    out = []
+    for r in rows:
+        slug = re.search(r'href="/([a-z0-9][a-z0-9-]*)/"', r)
+        name = re.search(r'Cll-Project__name[^>]*>\s*(.*?)\s*</p>', r, re.S)
+        if slug and name:
+            out.append({"slug": slug.group(1), "name": " ".join(re.sub(r"<[^>]+>", " ", name.group(1)).split()),
+                        "ronda": _cell(r, "round"), "recaudado": _cell(r, "raised"),
+                        "pre_valuacion": _cell(r, "pre-valuation"), "fecha": _cell(r, "date")})
+    return out
+
+
+def parse_icodrops_project(html):
+    """Página de un proyecto: ticker (del título "Nombre (TICKER) - All information") y el primer precio de una
+    ronda ("Price $0.2"). Sin venta pública, no hay precio; sin ticker publicado, no hay símbolo."""
+    t, p = ICD_TITLE_RE.search(html or ""), ICD_PRICE_RE.search(html or "")
+    return {"symbol": norm_symbol(t.group("sym")) if t else None, "price": _num_or_none(p.group(1)) if p else None}
+
+
+def fetch_icodrops(http, ctx):
+    """Lista + página de cada proyecto que no esté en la caché (7 d), hasta `detalle_max` páginas por corrida;
+    los que exceden el tope salen solo con nombre y se completan en las corridas siguientes."""
+    st, body = http.get(URLS["icodrops"])
+    if st != 200 or body is None:
+        raise SourceError(st)
+    cache, now = ctx["cache"], ctx["now"]
+    budget, out = int(ctx.get("detalle_max", 15)), []
+    for row in parse_icodrops_list(body):
+        hit = cache.get(row["slug"])
+        if not (hit and now - hit.get("ts", 0) < ICD_CACHE_S) and budget > 0:
+            budget -= 1
+            ctx["sleep"](ctx.get("pause_s", 1))
+            pst, pbody = http.get(URLS["icodrops_project"].format(slug=row["slug"]))
+            hit = dict(parse_icodrops_project(pbody), ts=int(now)) if pst == 200 and pbody else None
+            if hit:
+                cache[row["slug"]] = hit
+        info = hit or {}
+        out.append(ob("icodrops", info.get("symbol"), name=row["name"], price=info.get("price"),
+                      url=f"https://icodrops.com/{row['slug']}/", ronda=row["ronda"], recaudado=row["recaudado"],
+                      pre_valuacion=row["pre_valuacion"], fecha=row["fecha"]))
+    return out
+
+
+def fetch_source(name, http, ctx=None):
     if name == "hyperliquid":
         return parse_hyperliquid(_json(*http.post(URLS[name], {"type": "metaAndAssetCtxs"})))
-    if name == "bitcointalk":
+    if name in ("bitcointalk", "coinmarketcap"):
         st, body = http.get(URLS[name])
         if st != 200 or body is None:
             raise SourceError(st)
-        return parse_bitcointalk(body)
+        return parse_bitcointalk(body) if name == "bitcointalk" else parse_coinmarketcap(body)
+    if name == "icodrops":
+        return fetch_icodrops(http, ctx or {"cache": {}, "now": time.time(), "sleep": lambda s: None})
     parser = {"aevo": parse_aevo, "polymarket": parse_polymarket, "bybit": parse_bybit, "binance": parse_binance}[name]
     return parser(_json(*http.get(URLS[name])))
 
@@ -388,8 +492,13 @@ class Calendar:
                 self.pending_new.append(a)                         # nuevo en esta corrida, con la clave definitiva
         src = a["sources"].setdefault(o["source"], {"first_seen": self.now})
         src.update(last_seen=self.now, url=o["url"], price=o["price"], extra=o["extra"])
-        if o["price"] is not None and o["source"] in ("hyperliquid", "aevo"):
-            a["precio_preventa"], a["precio_preventa_ts"] = o["price"], self.now
+        if o["price"] is not None and o["source"] in PERP_PRICE:
+            a["precio_preventa"], a["precio_preventa_ts"], a["precio_preventa_fuente"] = o["price"], self.now, o["source"]
+        elif o["price"] is not None and o["source"] in SALE_PRICE:
+            a["precio_venta"] = {"usd": o["price"], "fuente": o["source"], "ts": self.now}
+            if not a.get("precio_preventa") or a.get("precio_preventa_fuente") in SALE_PRICE:   # el perp manda
+                a["precio_preventa"], a["precio_preventa_ts"], a["precio_preventa_fuente"] = \
+                    o["price"], self.now, o["source"]
         if a["state"] == "anunciado" and len(a["sources"]) >= self.cfg.get("min_sources_confirm", 2):
             self.set_state(a, "confirmado")
             self.pending_conf.append(a)
@@ -498,6 +607,7 @@ def run(config, root=None, http=None, now=None, sleep=time.sleep, consume=True, 
     dex_cache = {k: v for k, v in (prev.get("dex_cache") or {}).items() if now - v.get("ts", 0) < DEX_CACHE_S}
     excluded = {norm_symbol(s) for s in config.get("excluir") or []}
     liq_min = float(config.get("liq_born_usd") or 100000)
+    icd_cache = {k: v for k, v in (prev.get("icodrops_cache") or {}).items() if now - v.get("ts", 0) < ICD_CACHE_S}
 
     # 1) fuentes, cada una por separado
     observed = []
@@ -505,8 +615,10 @@ def run(config, root=None, http=None, now=None, sleep=time.sleep, consume=True, 
         if not (spec or {}).get("enabled"):
             continue
         row = dict(health.get(name) or {}, checked_at=now)
+        ctx = {"cache": icd_cache, "now": now, "sleep": sleep, "pause_s": config.get("pause_s", 1),
+               "detalle_max": (spec or {}).get("detalle_max", 15)}
         try:
-            obs = fetch_source(name, http)
+            obs = fetch_source(name, http, ctx)
             observed += obs
             row.update(status=200, ok=True, items=len(obs), error=None, fails=0, last_ok=now)
         except SourceError as e:
@@ -566,7 +678,8 @@ def run(config, root=None, http=None, now=None, sleep=time.sleep, consume=True, 
     # 6) purga
     cal.purge_due()
     state = {"version": VERSION, "last_run": now, "sources": health, "born_reference": ref_status,
-             "dex_cache": dex_cache, "observed": len(observed), "emitted": len(cal.emitted)}
+             "dex_cache": dex_cache, "icodrops_cache": icd_cache, "observed": len(observed),
+             "emitted": len(cal.emitted)}
     if write:
         cal.save()
         state_path.parent.mkdir(parents=True, exist_ok=True)

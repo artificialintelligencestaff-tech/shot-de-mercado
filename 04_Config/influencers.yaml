@@ -1,0 +1,122 @@
+# Cuentas de X que sigue bot_influencer_tracker (D-087). Sumar cuenta = sumar línea; enabled: false la saca.
+# Cada cuenta: {cuenta, categoria, prioridad, fundamento}. Las 66 de esta lista se verificaron el 2026-10-04
+# contra la API pública de FxEmbed (perfil + últimas publicaciones) [V].
+#
+# prioridad [H] hasta medir lead-lag (doc 36):
+#   1 = señal directa de precio: listings de CEX, launchpads, rastreadores de ballenas que publican contrato,
+#       alertas de exploits, cuentas con impacto inmediato documentado
+#   2 = ecosistema, analistas y noticias
+#   3 = research, narrativa y sectores (DePIN, RWA, sintéticos)
+# El bot consulta primero las de prioridad 1 (si un límite corta la corrida, se pierden las de menor prioridad).
+#
+# Handles corregidos respecto de la lista de D-087 (el viejo da 404 o es otra cuenta, verificado 2026-10-04):
+#   aeyakovenko → toly · pumpdotfun → pumpfun · 0xMert_ → mert · OndoFinance → ondo · RenderToken → rendernetwork
+#   dYdX → dydxfoundation (dYdX: 6 mil seguidores, sin posts hace 37 días) · tayvano → tayvano_ · ArkhamIntel → arkham
+# Excluidas: spotonchain (la cuenta con ese handle tiene 204 seguidores: no es la oficial), CoinbaseAssets (último
+# post hace 390 días), tier10k (207 días), HsakaTrades (282 días), echodotxyz (331 días), Arthur_0x, bitgetglobal,
+# MEXC_Official, ethena_labs, DriftProtocol, heliuslabs, RaydiumProtocol (404).
+
+version: 1
+max_age_h: 720           # 30 d: se registra lo que entra en la ventana de evaluación (fijados viejos y timelines congelados, no)
+event_max_age_h: 2       # eventos solo para publicaciones de las últimas 2 h (sin ráfagas tras una caída)
+historia_dias: 31        # dedup contra los diarios propios de este lapso (tiene que cubrir max_age_h)
+dedup_hours: 72          # ids vistos en _state.json (respaldo del dedup por diarios)
+dup_horas: 72            # casi-duplicados: se compara el extracto con los posts de este lapso
+dup_umbral: 0.7          # Jaccard de n-gramas de caracteres de los extractos [H]
+pause_s: 1.0
+# Orden de consulta por cuenta. El siguiente se usa si el anterior falla, viene vacío o trae solo lo viejo.
+# fxembed: api.fxtwitter.com/2/profile/<cuenta>/statuses (fresco para casi todas las cuentas activas) [V]
+# syndication: timeline del widget de inserción (fresco solo para algunas cuentas; 30 req / 15 min por IP) [V]
+mecanismos: [fxembed, syndication]
+syndication_max_por_corrida: 20
+stale_dias: 7            # newest más viejo que esto: se prueba el mecanismo siguiente
+recheck_h: {vivo: 0, lento: 6, congelado: 24, vacio: 24}   # 0 = cada corrida
+fail_auto_off: 3         # fallas seguidas para apagar la cuenta
+auto_off_h: 6            # cuánto queda apagada antes de reintentar
+cashtags_mayores: [BTC, ETH, SOL, BNB, XRP, USDT, USDC, USD1, DOGE]   # mencion_token con severidad 0; no cuentan como aporte
+# Evaluación (D-089-R): SEÑALES para Yang, nunca acciones automáticas. El bot no saca ni apaga cuentas por esto.
+evaluacion:
+  ventana_dias: 30
+  dias_sin_post: 30          # evaluar: true si el último post es más viejo
+  dias_revision_yang: 60     # más inactiva que esto: revision_yang: true. Sacarla es decisión de Yang, no de la máquina (D-091)
+  posts_min_sin_aporte: 10   # evaluar: true si aporte_estimado = 0 con más posts que esto en la ventana
+  marginal_ratio: 0.10       # mecanismo marginal si posts frescos (30 d) / total < esto
+
+cuentas:
+  # --- analistas on-chain --------------------------------------------------------------------------------------
+  - {cuenta: lookonchain,     categoria: analista_onchain, prioridad: 1, fundamento: "ballenas y smart money con monto y contrato; 713 mil seguidores"}
+  - {cuenta: EmberCN,         categoria: analista_onchain, prioridad: 1, fundamento: "rastreo de ballenas e insiders, publica antes que los medios"}
+  - {cuenta: ai_9684xtpa,     categoria: analista_onchain, prioridad: 1, fundamento: "smart money y wallets de insiders en lanzamientos"}
+  - {cuenta: OnchainLens,     categoria: analista_onchain, prioridad: 1, fundamento: "wallets que compran memecoins nuevas (Solana/BSC) con contrato"}
+  - {cuenta: whale_alert,     categoria: analista_onchain, prioridad: 2, fundamento: "transferencias grandes desde y hacia exchanges; 2,9 M"}
+  - {cuenta: arkham,          categoria: analista_onchain, prioridad: 2, fundamento: "inteligencia on-chain con entidades etiquetadas; 1,5 M"}
+  - {cuenta: bubblemaps,      categoria: analista_onchain, prioridad: 2, fundamento: "concentración de holders y clusters de insiders en lanzamientos"}
+  # --- investigadores (seguridad e investigación) --------------------------------------------------------------
+  - {cuenta: PeckShieldAlert, categoria: investigador,     prioridad: 1, fundamento: "alertas de exploits en minutos: anticipan caídas"}
+  - {cuenta: zachxbt,         categoria: investigador,     prioridad: 2, fundamento: "investigaciones de rugs y estafas; 1,1 M"}
+  - {cuenta: tayvano_,        categoria: investigador,     prioridad: 3, fundamento: "seguridad: drenajes de wallets y hacks"}
+  - {cuenta: DefiIgnas,       categoria: investigador,     prioridad: 3, fundamento: "research DeFi y airdrops"}
+  - {cuenta: Route2FI,        categoria: investigador,     prioridad: 3, fundamento: "research de narrativas y airdrops"}
+  - {cuenta: TheDefiEdge,     categoria: investigador,     prioridad: 3, fundamento: "research DeFi"}
+  # --- Solana: fundadores, gurús y ecosistema ------------------------------------------------------------------
+  - {cuenta: blknoiz06,       categoria: solana,           prioridad: 1, fundamento: "Ansem: el influencer de memecoins de Solana con más impacto; 1,4 M"}
+  - {cuenta: toly,            categoria: solana,           prioridad: 2, fundamento: "Anatoly Yakovenko, cofundador de Solana (ex aeyakovenko); 2,8 M"}
+  - {cuenta: rajgokal,        categoria: solana,           prioridad: 2, fundamento: "Raj Gokal, cofundador de Solana; 2,4 M"}
+  - {cuenta: solana,          categoria: solana,           prioridad: 2, fundamento: "cuenta oficial de Solana; 4,2 M"}
+  - {cuenta: mert,            categoria: solana,           prioridad: 2, fundamento: "Mert, CEO de Helius (ex 0xMert_); 2,4 M"}
+  - {cuenta: JupiterExchange, categoria: solana,           prioridad: 2, fundamento: "agregador principal de Solana: listados, launchpad y airdrops"}
+  - {cuenta: Raydium,         categoria: solana,           prioridad: 2, fundamento: "AMM de Solana y LaunchLab: pools nuevos"}
+  - {cuenta: SolanaFloor,     categoria: solana,           prioridad: 2, fundamento: "noticias del ecosistema Solana"}
+  - {cuenta: SolBigBrain,     categoria: solana,           prioridad: 3, fundamento: "narrativa del ecosistema Solana"}
+  # --- launchpads y preventa -----------------------------------------------------------------------------------
+  - {cuenta: pumpfun,         categoria: launchpad,        prioridad: 1, fundamento: "Pump.fun oficial (ex pumpdotfun): lanzamientos de Solana"}
+  - {cuenta: bonkfun,         categoria: launchpad,        prioridad: 1, fundamento: "BONK.fun oficial: launchpad de Solana"}
+  - {cuenta: BinanceWallet,   categoria: launchpad,        prioridad: 1, fundamento: "Binance Alpha y TGEs exclusivos: preventa directa; 2,9 M"}
+  - {cuenta: MeteoraAG,       categoria: launchpad,        prioridad: 2, fundamento: "pools de lanzamiento (DLMM/DBC) de Solana"}
+  - {cuenta: legiondotcc,     categoria: launchpad,        prioridad: 2, fundamento: "ventas públicas de tokens (ICO)"}
+  - {cuenta: MetaDAOProject,  categoria: launchpad,        prioridad: 2, fundamento: "lanzamientos de ownership coins en Solana"}
+  # --- exchanges centralizados ---------------------------------------------------------------------------------
+  - {cuenta: binance,         categoria: cex,              prioridad: 1, fundamento: "anuncios de listing; 16 M"}
+  - {cuenta: coinbase,        categoria: cex,              prioridad: 1, fundamento: "anuncios de listing; 7,2 M"}
+  - {cuenta: krakenfx,        categoria: cex,              prioridad: 1, fundamento: "anuncios de listing; 1,8 M"}
+  - {cuenta: okx,             categoria: cex,              prioridad: 1, fundamento: "anuncios de listing; 5,6 M"}
+  - {cuenta: Bybit_Official,  categoria: cex,              prioridad: 1, fundamento: "anuncios de listing y pre-market; 4,9 M"}
+  - {cuenta: bitget,          categoria: cex,              prioridad: 2, fundamento: "listings tempranos (ex bitgetglobal); 4,3 M"}
+  - {cuenta: MEXC,            categoria: cex,              prioridad: 2, fundamento: "lista tokens antes que los grandes (ex MEXC_Official)"}
+  # --- narrativa y noticias ------------------------------------------------------------------------------------
+  - {cuenta: MustStopMurad,   categoria: narrativa,        prioridad: 2, fundamento: "narrativa de memecoins; 727 mil"}
+  - {cuenta: cobie,           categoria: narrativa,        prioridad: 3, fundamento: "narrativa de mercado; publica poco (último post hace 30 días)"}
+  - {cuenta: Rewkang,         categoria: narrativa,        prioridad: 3, fundamento: "Andrew Kang: tesis de mercado"}
+  - {cuenta: WuBlockchain,    categoria: noticias,         prioridad: 2, fundamento: "noticias rápidas de Asia y exchanges"}
+  # --- fundadores ----------------------------------------------------------------------------------------------
+  - {cuenta: cz_binance,      categoria: fundador,         prioridad: 1, fundamento: "CZ: sus menciones mueven precio de inmediato; 13 M"}
+  # --- DePIN ---------------------------------------------------------------------------------------------------
+  - {cuenta: helium,          categoria: depin,            prioridad: 3, fundamento: "DePIN de referencia"}
+  - {cuenta: hivemapper,      categoria: depin,            prioridad: 3, fundamento: "DePIN de mapas (publica poco: último post hace 66 días)"}
+  - {cuenta: rendernetwork,   categoria: depin,            prioridad: 3, fundamento: "Render Network (ex RenderToken)"}
+  # --- RWA -----------------------------------------------------------------------------------------------------
+  - {cuenta: ondo,            categoria: rwa,              prioridad: 3, fundamento: "Ondo Finance (ex OndoFinance): tokenización de bonos"}
+  - {cuenta: maplefinance,    categoria: rwa,              prioridad: 3, fundamento: "crédito on-chain"}
+  - {cuenta: centrifuge,      categoria: rwa,              prioridad: 3, fundamento: "activos reales tokenizados"}
+  # --- sintéticos y perpetuos ----------------------------------------------------------------------------------
+  - {cuenta: HyperliquidX,    categoria: sinteticos,       prioridad: 1, fundamento: "Hyperliquid: perpetuos pre-market de activos no nacidos"}
+  - {cuenta: dydxfoundation,  categoria: sinteticos,       prioridad: 3, fundamento: "dYdX Foundation (la cuenta dYdX no es la oficial activa)"}
+  - {cuenta: GMX_IO,          categoria: sinteticos,       prioridad: 3, fundamento: "perpetuos on-chain"}
+  - {cuenta: ethena,          categoria: sinteticos,       prioridad: 3, fundamento: "dólar sintético USDe (ex ethena_labs)"}
+  # --- candidatas verificadas, apagadas (Dirección decide) -----------------------------------------------------
+  - {cuenta: kucoincom,       categoria: cex,              prioridad: 2, fundamento: "listings; 3,5 M", enabled: false}
+  - {cuenta: gate,            categoria: cex,              prioridad: 2, fundamento: "listings tempranos; 2 M", enabled: false}
+  - {cuenta: nansen_ai,       categoria: analista_onchain, prioridad: 3, fundamento: "smart money y research", enabled: false}
+  - {cuenta: CertiKAlert,     categoria: investigador,     prioridad: 2, fundamento: "alertas de exploits y phishing", enabled: false}
+  - {cuenta: frankdegods,     categoria: solana,           prioridad: 3, fundamento: "narrativa NFT/memecoins de Solana", enabled: false}
+  - {cuenta: notthreadguy,    categoria: narrativa,        prioridad: 3, fundamento: "streams y narrativa de memecoins", enabled: false}
+  - {cuenta: WatcherGuru,     categoria: noticias,         prioridad: 2, fundamento: "titulares; 4,9 M", enabled: false}
+  - {cuenta: VitalikButerin,  categoria: fundador,         prioridad: 3, fundamento: "Ethereum", enabled: false}
+  - {cuenta: brian_armstrong, categoria: fundador,         prioridad: 2, fundamento: "CEO de Coinbase", enabled: false}
+  - {cuenta: jessepollak,     categoria: fundador,         prioridad: 2, fundamento: "Base: narrativa de memecoins de Base", enabled: false}
+  - {cuenta: ionet,           categoria: depin,            prioridad: 3, fundamento: "cómputo DePIN", enabled: false}
+  - {cuenta: plumenetwork,    categoria: rwa,              prioridad: 3, fundamento: "cadena de RWA", enabled: false}
+  - {cuenta: Securitize,      categoria: rwa,              prioridad: 3, fundamento: "emisor de fondos tokenizados", enabled: false}
+  - {cuenta: aevoxyz,         categoria: sinteticos,       prioridad: 3, fundamento: "pre-launch perps", enabled: false}
+  - {cuenta: coinlist,        categoria: launchpad,        prioridad: 3, fundamento: "ventas de tokens", enabled: false}
+  - {cuenta: phantom,         categoria: solana,           prioridad: 3, fundamento: "wallet principal de Solana", enabled: false}
