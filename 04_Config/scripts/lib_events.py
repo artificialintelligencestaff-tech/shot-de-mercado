@@ -31,9 +31,10 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 import lib_normalize as norm  # noqa: E402
+import lib_paths as P  # noqa: E402  D-111: interfaz común de rutas (doc 38 §6)
 
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
-EVENTS_REL = "02_Analisis/events"
+EVENTS_REL = P.rel("events.dir")
 SCHEMA = 1
 RETENTION_DAYS = 8
 DATA_MAX_BYTES = 4096
@@ -66,7 +67,7 @@ TYPES = {
 
 
 def events_dir(root=None):
-    return Path(root or ROOT) / EVENTS_REL
+    return P.path("events.dir", Path(root or ROOT))
 
 
 def _day(ts):

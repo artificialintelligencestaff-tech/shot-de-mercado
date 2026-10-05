@@ -240,7 +240,7 @@ PATHS_LIB = "04_Config/scripts/lib_paths.py"
 MODULOS_AUTONOMOS = tuple(f"04_Config/scripts/{n}.py" for n in (
     "script_97_emit_alerts", "script_98_trust_scheduler", "script_116_early_watch", "bot_orchestrator",
     "early_review", "bot_prelaunch_calendar", "lib_alerts", "lib_early_watch", "lib_sources_domain",
-    "lib_sources_store"))
+    "lib_sources_store", "lib_events"))      # lib_events: D-111
 
 
 def literal_paths(source):

@@ -62,7 +62,7 @@ Estados:
 | `04_Config/scripts/early_review.py` | Evaluación del early watch: primary rate, gate de edad, H-0 (Fisher) | producción | `8a1b09a5ca3f72f2c9b97655e02374f2635d34e21b18c8fb9504dfdbb2bcc480` |
 | `04_Config/scripts/latency_analysis.py` | Análisis de latencia y desfase de cron | producción | `aac96406c6367c2d919c2624513761fe9d3304e58284e1165a080fb33c9f1f08` |
 | `04_Config/scripts/lib_early_signals.py` | 5 señales de precio/volumen de anticipación | producción | `298ee897a84958ce447c23a4031a3dc34b99acc281001fb601a41f1f817067c6` |
-| `04_Config/scripts/lib_events.py` | Bus de eventos tipados con TTL (D-067); tipos de D-079 y D-087 | rama | `4974d0dd5c1c9cd05409b60da671269c5e9c745c824bbfa3d24c1330c6545948` |
+| `04_Config/scripts/lib_events.py` | Bus de eventos tipados con TTL (D-067); tipos de D-079 y D-087 | rama | `a9eb30c4d4373aa01273a8c7de85d88d4e6ed401dcdee030f4a8888380a367d7` |
 | `04_Config/scripts/lib_info_signals.py` | Señales informacionales y estructurales + tradability | producción | `f06fa94d98f8cdd01c00e0578465e418b59f8ad8992c32a2a0060e4b4ac74f6f` |
 | `04_Config/scripts/lib_patrimonio.py` | Valida y resume el inventario del patrimonio | rama | `6cf8b30c3c222916c5bbdd21e4511020c53267b618a6572da53d29222f49a5f2` |
 | `04_Config/scripts/lib_persist.py` | Persistencia: dataset propio y bitácora de operaciones | producción | `cea9a34e13391b95af5591d6ee0120a00839f5ff86faffc9654d5b7d27f4cc4a` |
