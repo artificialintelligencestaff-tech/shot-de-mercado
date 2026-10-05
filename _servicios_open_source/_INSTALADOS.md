@@ -23,6 +23,5 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-10-04 `telegram` sin ítems hace más de 24 h — último ítem: 2026-10-03 14:15 UTC
-- [P] 2026-10-04 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 19 corridas sin ítems
+- Sin problemas abiertos.
 <!-- /AUTO:repair -->
