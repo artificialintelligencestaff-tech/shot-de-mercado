@@ -1,6 +1,6 @@
 # Hyperliquid (HYPE) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $86.85 · mcap $19,318,166,833
-Detectado 01/10/2026 21:55 UTC · score 61 (scoring mc-d-0.2, cobertura 0.75)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $90.17 · mcap $20,060,049,269
+Detectado 05/10/2026 02:11 UTC · score 62 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | layer-1 |
-| Volumen 24 h | $941,183,555 |
-| Cambio 24 h / 7 d | -5.0886% / -7.3692% |
+| Volumen 24 h | $492,677,335 |
+| Cambio 24 h / 7 d | 0.62803% / -1.405% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -13.5% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | n/d | n/d | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.062% | -0.06 | 20 | Hyperliquid |
-| Momentum 24 h | -5.09% | -0.25 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | -19.0% anualizado | +1.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | -0.000 log | -0.00 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | -0.060% | -0.06 | 20 | Hyperliquid |
+| Momentum 24 h | +0.63% | +0.03 | 30 | CoinGecko |
 
-**Total: 61** (umbral 56, cobertura 0.75)
+**Total: 62** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/10/2026 21:55 UTC.
+- < 48 h desde 05/10/2026 02:11 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
-- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.2
+- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.3
