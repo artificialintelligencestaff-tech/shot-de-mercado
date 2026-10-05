@@ -18,8 +18,11 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
-ANALISIS_REL = "02_Analisis"
-INVENTARIO_REL = "02_Analisis/patrimonio/_inventario.json"
+sys.path.insert(0, str(SCRIPTS))
+import lib_paths as P  # noqa: E402  D-105: interfaz común de rutas
+
+ANALISIS_REL = P.rel("analisis.dir")
+INVENTARIO_REL = P.rel("patrimonio.inventario")
 CATEGORIAS = ("cuantitativo", "informativo", "calendario", "resultados")
 ESTADOS = ("vivo", "manual", "futuro", "legado", "archivado")   # archivado: 02_Analisis/_archivo_*/ (D-089-R)
 CAMPOS = ("ruta", "categoria", "estado", "dueno", "formato", "que")

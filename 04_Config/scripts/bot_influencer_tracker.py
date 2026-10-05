@@ -389,7 +389,8 @@ def vigentes(root=None, now=None, alert_days=30, majors=()):
     calendario de preventa sin purgar, alertas de los últimos `alert_days`, scan multichain (grupos, on-chain y
     acelerando), perps de Hyperliquid y watchlists del early watch. `names` = {forma del nombre: símbolo} (D-091,
     para "keyword sectorial + activo"). Un archivo que falta no rompe: aporta 0."""
-    base = Path(root or store.ROOT) / "02_Analisis"
+    import lib_paths as P   # D-105: interfaz común de rutas
+    base = P.path("analisis.dir", Path(root or store.ROOT))
     now = now if now is not None else time.time()
     syms, addrs, names, fuentes = set(), set(), {}, {}
     skip = {norm.cashtag(x) for x in majors}

@@ -21,6 +21,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS))
+import lib_paths as P  # noqa: E402  D-105: interfaz común de rutas
+
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
 MANIFEST_REL = "_project_manifest.json"
 CATALOG_REL = "El cerebro de dios/04_SCRIPTS_CATALOG.md"
@@ -87,7 +90,7 @@ def retention(root, ruta):
 
 def data_folders(root):
     try:
-        inv = json.loads((Path(root) / "02_Analisis" / "patrimonio" / "_inventario.json").read_text(encoding="utf-8"))
+        inv = json.loads(P.path("patrimonio.inventario", root).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
     out = []
@@ -95,10 +98,10 @@ def data_folders(root):
         if e.get("estado") == "archivado":
             continue
         row = {k: e.get(k) for k in ("ruta", "categoria", "estado", "dueno")}
-        if str(e.get("ruta", "")).startswith("02_Analisis/sources"):
+        if str(e.get("ruta", "")).startswith(P.rel("sources.dir")):
             row["retencion_dias"] = retention(root, e["ruta"])
         out.append(row)
-    sub = Path(root) / "02_Analisis" / "sources"
+    sub = P.path("sources.dir", root)
     for r in sorted(sub.glob("*/_retention.yaml")):
         rel = r.parent.relative_to(root).as_posix() + "/"
         out.append({"ruta": rel, "categoria": (_yaml(r).get("categoria")), "estado": "vivo",
