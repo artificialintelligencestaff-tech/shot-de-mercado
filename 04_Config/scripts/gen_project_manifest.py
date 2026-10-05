@@ -129,7 +129,7 @@ def build(root=None, now=None):
         "generated_at": now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "generated_by": "04_Config/scripts/gen_project_manifest.py (D-101)",
         "plataforma": "GitHub Actions (repo público); sin rutas locales",
-        "reglas": ["100% gratis", "un dueño por archivo (git add -- <ruta>)", "sin --force ni reset --hard",
+        "reglas": ["100% gratis", "un dueño por archivo (git add -- <ruta>)", "sin push forzado ni reset destructivo",
                    "numérico y escrito en archivos separados (doc 38)", "retención por _retention.yaml (doc 38 §2)"],
         "docs": {"indice": "El cerebro de dios/README.md", "lectura": ["35", "38", "34", "32"]},
         "workflows": wfs,
