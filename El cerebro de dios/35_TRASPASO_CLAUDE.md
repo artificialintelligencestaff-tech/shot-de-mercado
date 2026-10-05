@@ -54,9 +54,9 @@ Estados:
 | `02_Analisis/patrimonio/_inventario.json` | Patrimonio de datos: qué hay dónde en 02_Analisis (D-087) | rama | `015563b07c58b112447a03a41f1ea9569a9baf365ec941f5b4439bf23e7eb502` |
 | `04_Config/influencers.yaml` | Las 50 cuentas de X de bot_influencer_tracker (+16 apagadas) | rama | `322a1af03adaac375bf9de40765c8dcfdf881dd0d1840993f912704db77cc74f` |
 | `04_Config/inventario.json` | Inventario de fuentes y estado de cada una | producción | `0d823075337132638ab6e8787759e36d862b2d21c6929c6d5cdeb79f862bb1b0` |
-| `04_Config/scripts/bot_influencer_tracker.py` | Cuentas de X sin login (FxEmbed + syndication) → src-1 + eventos + evaluación para Yang (D-089-R, D-091) | rama | `d739bb8f33793ca8924271457b617d6d6b80c642544a8eefe7d4bb73a1fe46b4` |
-| `04_Config/scripts/bot_orchestrator.py` | Fusiona los diarios de bots, salud, poda y bloque AUTO de _INSTALADOS | rama | `e3763146f030644e33d71128cd4b3cbfd5d9ddf75197db605c8418cf96984e18` |
-| `04_Config/scripts/bot_prelaunch_calendar.py` | Calendario de activos no nacidos: 8 fuentes, precio de preventa (D-079, D-089-R) | rama | `96e84f25d6f55fb4adde407339a3b6937354a4a2faa839946af0e644cd8b1c45` |
+| `04_Config/scripts/bot_influencer_tracker.py` | Cuentas de X sin login (FxEmbed + syndication) → src-1 + eventos + evaluación para Yang (D-089-R, D-091) | rama | `dc9897039a1c7ca7b313ec42e853998b79d61eccd7accafdddb4e8fab2e358d1` |
+| `04_Config/scripts/bot_orchestrator.py` | Fusiona los diarios de bots, salud, poda y bloque AUTO de _INSTALADOS | rama | `49c8f76b3480b48f43206555125ecb53060eb357a7485c9d11d1cd888221278e` |
+| `04_Config/scripts/bot_prelaunch_calendar.py` | Calendario de activos no nacidos: 8 fuentes, precio de preventa (D-079, D-089-R) | rama | `d3821fac10af4e91a81e8e2e247425b3b224eedf271e774ec7b07a9bfa92ccad` |
 | `04_Config/scripts/bot_rss_news.py` | Bot RSS: 12 feeds → esquema src-1 | rama | `c70eb6728d5d9fe6f18188171f7f9db2d8938716b5535e6fd1fc7ff14673426a` |
 | `04_Config/scripts/dataset_builder.py` | Dataset histórico de alertas con resultado | producción | `e406e35486178078194a6d714f7f18a6f3638780850bdbb5e2114b6251f3db78` |
 | `04_Config/scripts/early_review.py` | Evaluación del early watch: primary rate, gate de edad, H-0 (Fisher) | producción | `c11852a02463a10bdb0d3bf38fa373331b3b49fa7ff5e99e12d20b517097cc01` |
@@ -75,12 +75,12 @@ Estados:
 | `04_Config/scripts/script_115_narrative_collector.py` | Colector de menciones (solo identificadores) | producción | `2bc1d7310b927f183d77df05a992322e3f59a70364b0edc726e3326374f4ab6c` |
 | `04_Config/scripts/script_116_early_watch.py` | Early watch: PumpPortal WS + scorer joven + claims por mint; usa query() | producción (cambio D-035 en rama) | `a36d2744714b9efce7af0dafddd67f285b6a0127f90b1924ac030828efd1f150` |
 | `04_Config/scripts/script_82_final_detection.py` | Detección final v7.2.1 (grupo i incluido) | producción | `b35c7d14fd2f37889c19e6a557a72e3af7186a5bf9e0158760fc37675e41c5ab` |
-| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `6f25ea7974c0ac84e47bbb3f1288a9d5d2bea17decd684fcb51a1bc8fc499e67` |
+| `04_Config/scripts/script_97_emit_alerts.py` | Emisión de alertas Telegram + dossier + hand-off/adopción early | producción (cambio D-035 en rama) | `c9476ea1031e85c3e5cae00614b99343e26ae6cba3c3d042700eceace9006cb2` |
 | `04_Config/scripts/script_98_trust_scheduler.py` | Seguimiento de alertas (trust updates) | producción | `74288d4eb3ced1588ef0af4bb2a87e3ffaa3965455d22a54c032ccc20158f309` |
 | `04_Config/scripts/test_bot_influencer_tracker.py` | Tests de bot_influencer_tracker | test | `8f98497733ab957ba0d0d5c24ab98d40f32e0741207bb23241db87d3e6181dbb` |
 | `04_Config/scripts/test_d089_influencer_evaluacion.py` | Tests de la evaluación de cuentas y del extracto (D-089-R) | test | `a0d8670a6d03fde081fd5568ba7e956baac798f8bfb28200f8a9c0ed00cfc9d9` |
-| `04_Config/scripts/test_d089_prelaunch_fuentes.py` | Tests de CMC e ICO Drops en el calendario (D-089-R) | test | `2f693544e2a3c6962747e1760061461dd651183a6533db03de465001eb2c5abf` |
-| `04_Config/scripts/test_d091_aporte.py` | Tests de la métrica de aporte ampliada y de la revisión de Yang (D-091) | test | `07e9b137e28e7f08e62a48651ef36ea898540eb7b11483d59868f357b8c48386` |
+| `04_Config/scripts/test_d089_prelaunch_fuentes.py` | Tests de CMC e ICO Drops en el calendario (D-089-R) | test | `81386b78da19d638e29b0ff225bb327a77d2b6aabe655d5eb9fd65d339f23fdc` |
+| `04_Config/scripts/test_d091_aporte.py` | Tests de la métrica de aporte ampliada y de la revisión de Yang (D-091) | test | `fa3ae609647fd41d1a3e9f1e054653b07ef263dd5cd7de901eaa5111a21ff901` |
 | `04_Config/scripts/test_datasets_persist.py` | Tests de datasets_persist | test | `d957c7f249d3651defae3aa474be1c848d60ae12f7720e25c741638a77986512` |
 | `04_Config/scripts/test_early_review.py` | Tests de early_review | test | `0c304d3895d4230956e669e03720aeca931753afbfcf8c6427b329f7d2b04d53` |
 | `04_Config/scripts/test_latency_analysis.py` | Tests de latency_analysis | test | `9c7243ed56294316ba3f97edc7c610118f9ef27b3d8349b3a54404bb1506568b` |
@@ -107,7 +107,7 @@ Estados:
 | `04_Config/sources/keywords.yaml` | Palabras clave por grupo a–i | rama | `37ba02cf8f82cbacce9bf6701a7a82cfa3192174abd46e0f6cf51c1e1d3d8e6f` |
 | `04_Config/sources/prelaunch.yaml` | Fuentes y umbrales del calendario de preventa | rama | `d6003fb7754029be870821d83f22afba243b8903e6d3ac195d234bf3ee331a62` |
 | `04_Config/sources/rss.yaml` | Los 12 feeds de bot_rss_news | rama | `ff45ece2cd810477dc60483b933b24b753a755d00eccb0774e9ee2021ebb5d54` |
-| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `735b97065fd27e105d76e9a93e2cb827b7cee5c11299db4f750c7422fd160886` |
+| `El cerebro de dios/22_MEMORIA_CLAUDE.md` | Memoria de Claude: una fila por directiva | doc | `537497a62e303014993138d918461bc310d265f8bab3a7d53839f34b04913009` |
 | `El cerebro de dios/24_DOSSIER_POR_ACTIVO.md` | Diseño del dossier por activo | doc | `db128d3ad8b27469ce0a16232f2f94c41cb4af6acb8026c3ae89f13cf87e4c21` |
 | `El cerebro de dios/26_METRICA_REPETICION.md` | Métrica de repetición de menciones (rep-0.1) | doc | `b55d49cef4bcccf1b53ea0e8989621b303dc4574e8ae455436a5de20e45218b2` |
 | `El cerebro de dios/27_SCORING_MULTICHAIN.md` | Scoring por tipo, grupo i, caso arc | doc | `3816a9a8cadc8e6ed102570fcefe9552e403138b00c486cd2c51ecfcd2cefc23` |
@@ -116,8 +116,13 @@ Estados:
 | `El cerebro de dios/31_DETECCION_TEMPRANA.md` | Early watch: diseño, hand-off, claims, gate | doc | `e9385fe9a3d5f9f18af4ce4d22e684af3b112e729fd745477ae61fdd29ba47d3` |
 | `El cerebro de dios/32_SCORER_JOVENES.md` | Scorer joven v0.5, H-0, v7.2.2 aprobado, arquitectura Yin-Claude | doc | `af3fd1533292401ad0797a1e35a70aca2b893cc45a6a2aa531cc6fb82a3139a9` |
 | `El cerebro de dios/_historico/33_ARQUITECTURA_MULTIBOT.md` | Investigación de fuentes (RSS, MCP, Reddit, Nitter) | doc (diseño reemplazado por 34) | `50131aa522f8c1a81be690f4091da85854b9b3bc4a1425eb328a167e7398090c` |
-| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: bots + store + self-repair + coparticipación + preventa (§15–16) + patrimonio (§17) + X (§18) | diseño | `4b5380b6c7bd62af9a26ee502787ed9ea68918eb52727d977d92e993553e49b7` |
+| `El cerebro de dios/34_SISTEMA_MULTIBOT.md` | Sistema multi-bot: bots + store + self-repair + coparticipación + preventa (§15–16) + patrimonio (§17) + X (§18) | diseño | `6c92f4fbbeb18965908016c2c7c23b5177fc7154f5c31a9f25903b5011a037eb` |
 | `El cerebro de dios/37_BOTS_AUTONOMIA.md` | Diseño de los 4 bots de autonomía: scout, evaluator, integrator, auditor (D-091) | diseño | `b92ab716fa3c9ef4ef68f636bd7eaa3a98e42ecc754e90697486c9ec3d7f7384` |
+| `README.md` | README raíz: qué es el proyecto, mapa del repo y cómo empezar (D-101) | doc | `268ef85f549fbdeae7c0a31435b1ae9b04536cb15129331c5fe067c21621a113` |
+| `04_Config/scripts/gen_project_manifest.py` | Genera _project_manifest.json y el catálogo de scripts desde el repo (D-101) | rama | `a0fd5bf9e6e687b63590b9bb2aab78e1f1f6f4bc2ab5ca202378cd00c8bbbdff` |
+| `04_Config/scripts/test_gen_project_manifest.py` | Tests del generador del manifiesto (D-101) | test | `af0a93c2be8751bef6b1184f7bd182b67a9495b5b2219dd30ce448543e89d48b` |
+| `04_Config/scripts/test_d101_fixes.py` | Tests de los fixes A/B/C de D-101 (retención, preventa vs venta, falsos positivos) | test | `474677c0edb4673639181f9dfc4471d778ad9705e37a46f4fa0e4b7e6420bd55` |
+| `El cerebro de dios/38_ARQUITECTURA_DATOS.md` | Arquitectura de datos: 8 categorías, retención por carpeta, dueños, fixes D-101 | diseño | `7587fba32bb58e3f2e255ec680f193acb00b3dd523d8b80fc4827f223beadc30` |
 
 ## 2. Lógica por archivo
 
