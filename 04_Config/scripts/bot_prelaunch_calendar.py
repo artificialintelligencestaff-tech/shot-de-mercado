@@ -54,7 +54,9 @@ import lib_normalize as norm  # noqa: E402
 import lib_sources_store as store  # noqa: E402
 
 VERSION = "prelaunch-1.1"
-DIR_REL = "02_Analisis/prelaunch"
+import lib_paths as P  # noqa: E402  D-105: interfaz común de rutas
+
+DIR_REL = P.rel("prelaunch.dir")
 WRITER = "prelaunch_calendar"
 HEADERS = {"User-Agent": "ShotDeMercado-prelaunch/1.0 (+public data)"}
 TIMEOUT_S = 25
@@ -415,7 +417,7 @@ def names_match(a, b):
 class Calendar:
     def __init__(self, root, config, now, emit=True):
         self.root, self.cfg, self.now, self.emit = Path(root), config, int(now), emit
-        self.dir = self.root / DIR_REL
+        self.dir = P.path("prelaunch.dir", self.root)
         self.doc = self._read("_calendar.json", {"assets": {}, "purged": {}})
         self.doc.setdefault("assets", {})
         self.doc.setdefault("purged", {})
@@ -616,7 +618,7 @@ def run(config, root=None, http=None, now=None, sleep=time.sleep, consume=True, 
     http = http or HTTP()
     now = int(now if now is not None else time.time())
     cal = Calendar(root, config, now, emit=write)
-    state_path = root / DIR_REL / "_state.json"
+    state_path = P.path("prelaunch.state", root)
     try:
         prev = json.loads(state_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):

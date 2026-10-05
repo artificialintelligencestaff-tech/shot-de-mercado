@@ -1,8 +1,8 @@
 ---
 owner: Claude Code (Claude1) — pendiente auditoría YANG
-status: DISEÑO + fase 1 implementada (D-101): retención por carpeta, precio de preventa vs venta, filtros de falsos positivos
+status: DISEÑO + fase 1 (D-101: retención, preventa vs venta, falsos positivos) + módulos autónomos (D-105: lib_paths y libs de dominio)
 last_updated: 2026-10-05
-version: 0.1
+version: 0.2
 relacionados: doc 34 (sistema multi-bot), doc 34 §17 / 02_Analisis/patrimonio (inventario), doc 35 (traspaso)
 ---
 
@@ -38,7 +38,7 @@ Mover las rutas físicas a `01_…/07_…` sí se puede. El riesgo concreto es e
 2. **La retención va por archivo `_retention.yaml`** en cada carpeta (§2). Es lo que separa en la práctica "temporal" de "contexto" de "patrimonio", sin mover nada.
 
 **Fase 2 (propuesta, [P] Dirección):** migración física, carpeta por carpeta.
-1. Primero, `lib_paths.py`: una sola tabla de rutas que importan todos los scripts. Hoy cada script arma su ruta a mano [V].
+1. Primero, `lib_paths.py`: una sola tabla de rutas que importan todos los scripts. **Hecho en D-105** para los 6 scripts críticos (§6).
 2. Después, por cada carpeta, en una ventana con su workflow desactivado:
    - `git mv` de la carpeta;
    - un cambio en `lib_paths`;
@@ -150,9 +150,67 @@ Las carpetas fuera de `sources/` ya tienen su política en el dueño:
 - **Cuándo se cambia:** la muestra real la etiqueta Yang a medida que el bot corre [P]. Los umbrales siguen [H] hasta tener esa muestra.
 - **Tests:** 6, dos por capa.
 
-## 6. Pendientes [P]
+## 6. Módulos autónomos (D-105)
 
-- Fase 2 de §1: `lib_paths.py` y migración física por carpeta (Dirección decide).
+Principio de Dirección: **cada módulo es autónomo; ninguna falla arrastra a otra.** Ningún módulo depende de la ruta
+física de otro: todos dependen de una interfaz común.
+
+### Reglas
+
+1. **Ningún módulo arma la ruta de otro.** Todos importan `lib_paths` y piden una clave:
+   - `P.path("alerts.all", root)` para leer o escribir;
+   - `P.rel("early.watch", inst="a")` para las listas de `git add`.
+   La tabla `PATHS` es la única que contiene el prefijo de datos. Mover una carpeta es cambiar una línea de `PATHS`,
+   y lo prueban los tests de `test_modulos_autonomos` (§ abajo).
+2. **Cada dominio tiene su lib con contrato de esquema.** Los scripts críticos no leen esos archivos con `open()` ni con
+   `path()` directo: llaman a la lib. Si cambia el esquema, se cambia la lib y los consumidores no se tocan.
+
+   | Lib | Dominio | API | Contrato |
+   |---|---|---|---|
+   | `lib_alerts` | `alerts/` | `read_alerts`, `write_alerts`, `write_alert`, `read_detail`, `write_detail`, `write_trust` | `SCHEMA_VERSION = alerts-1`. La lista vive en `_all_alerts.json`. Ilegible → `CorruptAlertsError`: el emisor no pisa el historial |
+   | `lib_early_watch` | `early/` | `read_watch`, `write_watch`, `read_signals`, `write_signals`, `rel_*` | `early-watch-1`, un archivo por instancia |
+   | `lib_sources_domain` | `sources/` | `read_sources`, `write_sources`, `read_state`, `write_state` | `src-1` (doc 34 §4) |
+
+3. **Ningún test fija rutas literales.** Todos usan una `SHOT_ROOT` temporal y le piden las rutas a `lib_paths`.
+   `lib_paths.root()` lee `SHOT_ROOT` en cada llamada (no al importar), y por eso un test puede cambiarla.
+4. **Lectura tolerante en los consumidores, estricta en el dueño.**
+   - Un consumidor (early watch, early_review) que encuentra un archivo ajeno roto o ausente sigue con vacío.
+   - El dueño (script_97 sobre `_all_alerts.json`) se detiene antes de pisar un historial ilegible.
+
+### Interfaz (`04_Config/scripts/lib_paths.py`, `paths-1`)
+
+| Función | Qué hace |
+|---|---|
+| `root()` | Raíz del repo: `SHOT_ROOT` o la ubicación del archivo |
+| `path(key, root=None, **fmt)` | Devuelve un `Path`. Con una clave desconocida o un campo de plantilla faltante, `KeyError` explícito |
+| `path_str(key, ...)` | Lo mismo, como `str` |
+| `rel(key, **fmt)` | Ruta relativa al repo, para `git add` |
+| `register(key, rel, kind, pending)` | Un módulo agrega sus rutas propias. Repetir la misma ruta es idempotente; otra ruta para la misma clave es `ValueError` |
+| `validate(root)` | Lista las claves que no existen y no están marcadas `pending_creation`. Hoy, sobre el repo, da 0 |
+
+Dominios cubiertos: alerts, early, multichain, narrative, sources, events, prelaunch, patrimonio, diagnostics,
+shadow_v4, dossiers, datasets, operations.
+
+### Estado de la migración [V]
+
+- **Rutas literales con el prefijo de datos fuera de docstrings y comentarios:**
+  - en los 6 scripts críticos (script_97, script_98, script_116, bot_orchestrator, early_review, bot_prelaunch_calendar), más las libs de dominio y `lib_sources_store`: **0** (antes, 28 en los 6 scripts);
+  - en todo el código de producción: de 146 a 117.
+  - Lo que queda está en scripts todavía no migrados; la mayoría no tiene workflow (doc 04).
+- **Compuerta:** `audit_gate prohibited` incluye el chequeo de rutas literales.
+  - En los módulos migrados (`MODULOS_AUTONOMOS`) exige cero en todo el archivo.
+  - En el resto aplica un trinquete: no se pueden **sumar** rutas literales en líneas nuevas.
+  - Excepciones: docstrings, comentarios, YAML, tests y `lib_paths.py`.
+- **Tests:** `test_modulos_autonomos.py` (12).
+  - Cada script crítico corre con `SHOT_ROOT` vacía.
+  - Un `_all_alerts.json` roto no frena al early watch ni a early_review.
+  - Mover alertas, early watch y fuentes no requiere editar los scripts.
+  - La compuerta detecta rutas literales y respeta sus excepciones.
+
+## 7. Pendientes [P]
+
+- Fase 2 de §1: migración física por carpeta (Dirección decide). `lib_paths` ya está (§6).
+- Migrar a `lib_paths` los scripts restantes que corren en workflows (script_114, script_115, bot_runner, bots de fuentes, early watch helpers): hoy los ataja el trinquete de la compuerta.
 - Regla 2: separar la salida numérica de las recetas (`dexpaprika`).
 - `audit_gate`: rechazar `git add -A` sin ruta y gitlinks (D-072, medio 2).
 - Muestra real etiquetada de falsos positivos (Yang).

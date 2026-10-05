@@ -27,7 +27,11 @@ sys.path.insert(0, str(SCRIPTS))
 
 ROOT = Path(os.environ.get("SHOT_ROOT") or SCRIPTS.parents[1])
 VERSION = "review-1.0"
-EARLY_DIR_REL = "02_Analisis/early"
+import lib_alerts  # noqa: E402  D-105: dominio de alertas
+import lib_early_watch as ew  # noqa: E402  D-105: dominio del early watch
+import lib_paths as P  # noqa: E402  D-105: interfaz común de rutas
+
+EARLY_DIR_REL = P.rel("early.dir")
 TRIAL_GATE_MAX = 10          # alertas emitidas con edad mínima <= 10 min
 TRIAL_HOURS = 24
 PRIMARY_MIN = 0.40
@@ -89,7 +93,7 @@ def coverage(by_instance, now, hours=COVERAGE_HOURS):
 
 def load_intervals(root):
     out = {}
-    for path in sorted((Path(root) / EARLY_DIR_REL).glob("_watch_*.json")):
+    for path in sorted(P.path("early.dir", root).glob("_watch_*.json")):
         data = read_json(path, {})
         inst = data.get("instance") or path.stem.split("_")[-1]
         out[inst] = [i for i in data.get("listener_intervals") or [] if isinstance(i, list) and len(i) == 2]
@@ -103,9 +107,9 @@ def load_intervals(root):
 def early_records(root):
     root = Path(root)
     recs = []
-    legacy = read_json(root / EARLY_DIR_REL / "_early_alerts.json", [])
+    legacy = read_json(P.path("early.alerts_legacy", root), [])
     recs += [r for r in legacy if isinstance(r, dict)] if isinstance(legacy, list) else []
-    for path in sorted((root / EARLY_DIR_REL / "alerts").glob("*.json")):
+    for path in sorted(P.path("early.alerts_dir", root).glob("*.json")):
         r = read_json(path, None)
         if isinstance(r, dict):
             recs.append(r)
@@ -118,7 +122,7 @@ def trial_rows(root, gate_max=TRIAL_GATE_MAX):
         gate = r.get("gate_min")
         if not isinstance(gate, (int, float)) or gate > gate_max:
             continue
-        detail = read_json(Path(root) / "02_Analisis" / "alerts" / f"alert_{r.get('mint')}_{r.get('timestamp')}.json", {})
+        detail = lib_alerts.read_detail(r.get('mint'), r.get('timestamp'), {}, root)
         dx = detail.get("dexscreener") or {}
         rows.append({"mint": r.get("mint"), "symbol": r.get("symbol"), "alert_ts": r.get("timestamp"),
                      "t0": alert_epoch(r.get("timestamp")), "price": r.get("initial_price"),
@@ -133,7 +137,7 @@ def h0_rows(root):
     for r in early_records(root):
         if r.get("h0_group") not in ("info_ge20", "info_lt20"):
             continue
-        detail = read_json(Path(root) / "02_Analisis" / "alerts" / f"alert_{r.get('mint')}_{r.get('timestamp')}.json", {})
+        detail = lib_alerts.read_detail(r.get('mint'), r.get('timestamp'), {}, root)
         rows.append({"mint": r.get("mint"), "symbol": r.get("symbol"), "alert_ts": r.get("timestamp"),
                      "t0": alert_epoch(r.get("timestamp")), "price": r.get("initial_price"),
                      "pool": (detail.get("dexscreener") or {}).get("pairAddress"), "h0_group": r["h0_group"],
@@ -214,7 +218,7 @@ def decide(rows, gate, now, trial_hours=TRIAL_HOURS, primary_min=PRIMARY_MIN, mi
 def run(root=None, source=None, now=None, dry_run=False):
     root = Path(root or ROOT)
     now = now or time.time()
-    gate_path = root / EARLY_DIR_REL / "_gate.json"
+    gate_path = P.path("early.gate", root)
     gate = read_json(gate_path, {})
     rows = trial_rows(root)
     if source is not None:
@@ -232,7 +236,7 @@ def run(root=None, source=None, now=None, dry_run=False):
                                          "by": "early_review.py", "evidence": decision}, indent=1,
                                         ensure_ascii=False) + "\n", encoding="utf-8")
     if not dry_run:
-        out = root / "02_Analisis" / "diagnostics" / "early_review.json"
+        out = P.path("diagnostics.early_review", root)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         try:

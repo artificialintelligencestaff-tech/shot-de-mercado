@@ -8,7 +8,7 @@ last_updated: 2026-10-05
 
 No se edita a mano: `python 04_Config/scripts/gen_project_manifest.py --catalog`.
 
-Resumen: 24 los corre un workflow · 15 los importa uno que corre · 121 sin uso (candidatos a `04_Config/scripts/_archivo/`).
+Resumen: 24 los corre un workflow · 19 los importa uno que corre · 121 sin uso (candidatos a `04_Config/scripts/_archivo/`).
 
 ## Los corre un workflow (24)
 
@@ -39,23 +39,27 @@ Resumen: 24 los corre un workflow · 15 los importa uno que corre · 121 sin uso
 | `script_97_emit_alerts.py` | pipeline_t0.yml, telegram_test_send.yml |
 | `script_98_trust_scheduler.py` | trust_update.yml |
 
-## Importados por scripts vivos (15)
+## Importados por scripts vivos (19)
 
 | Script | Workflow(s) |
 |---|---|
 | `calibrate_threshold_v72.py` | — |
+| `lib_alerts.py` | — |
 | `lib_audit.py` | — |
 | `lib_early_signals.py` | — |
+| `lib_early_watch.py` | — |
 | `lib_episodic_memory.py` | — |
 | `lib_events.py` | — |
 | `lib_info_signals.py` | — |
 | `lib_knowledge_graph.py` | — |
 | `lib_normalize.py` | — |
 | `lib_ops.py` | — |
+| `lib_paths.py` | — |
 | `lib_persist.py` | — |
 | `lib_repetition.py` | — |
 | `lib_scoring_multichain.py` | — |
 | `lib_scoring_young.py` | — |
+| `lib_sources_domain.py` | — |
 | `lib_sources_store.py` | — |
 | `script_113_dossier_builder.py` | — |
 

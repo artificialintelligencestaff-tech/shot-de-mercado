@@ -16,9 +16,13 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 # Trust updates = mensajes de mercado: van SOLO al grupo (TELEGRAM_PUBLIC_CHAT_ID). El chat personal
 # (TELEGRAM_CHAT_ID) está deprecado y no se lee. El bot es solo emisor: no lee updates ni comandos.
 TELEGRAM_PUBLIC_CHAT_ID = os.getenv("TELEGRAM_PUBLIC_CHAT_ID")
-ALERTS_DIR = str(PROJECT_ROOT / "02_Analisis" / "alerts")
-ALL_ALERTS_FILE = os.path.join(ALERTS_DIR, "_all_alerts.json")
-PRECISION_LOG = os.path.join(ALERTS_DIR, "_precision_log.json")
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))
+import lib_alerts   # noqa: E402  D-105: dominio de alertas
+import lib_paths as P   # noqa: E402  D-105: interfaz común de rutas
+
+ALERTS_DIR = P.path_str("alerts.dir", PROJECT_ROOT)
+ALL_ALERTS_FILE = P.path_str("alerts.all", PROJECT_ROOT)
+PRECISION_LOG = P.path_str("alerts.precision_log", PROJECT_ROOT)
 DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens/"
 
 def send_telegram(text):
@@ -90,8 +94,7 @@ def main():
         print("[INFO] No hay alertas en _all_alerts.json para actualizar.")
         return
 
-    with open(ALL_ALERTS_FILE, "r") as f:
-        all_alerts = json.load(f)
+    all_alerts = lib_alerts.read_alerts(ALL_ALERTS_FILE)
 
     updated_any = False
     outcomes_logged = 0
@@ -204,18 +207,14 @@ def main():
                     alert["final_verdict"] = max(_all_verdicts, key=lambda v: _priority.get(v, 0))
 
                 # Save individual trust file
-                safe_mint = re.sub(r"[^A-Za-z0-9]+", "_", mint)
-                trust_file = os.path.join(ALERTS_DIR, f"trust_{safe_mint}.json")
-                with open(trust_file, "w") as f:
-                    json.dump(trust_updates, f, indent=2)
+                lib_alerts.write_trust(mint, trust_updates, root=PROJECT_ROOT)
 
                 # Fix Ciclo 18.1: solo procesar UN stage por ejecución.
                 # Los stages atrasados se procesan en ejecuciones posteriores (cada 20 min).
                 break
 
     if updated_any:
-        with open(ALL_ALERTS_FILE, "w") as f:
-            json.dump(all_alerts, f, indent=2)
+        lib_alerts.write_alerts(all_alerts, ALL_ALERTS_FILE)
         print("[INFO] _all_alerts.json actualizado con nuevos trust updates.")
     else:
         print("[INFO] Ningún trust update pendiente en este momento.")

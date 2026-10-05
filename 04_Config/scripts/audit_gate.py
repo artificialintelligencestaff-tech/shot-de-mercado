@@ -9,6 +9,7 @@ Sin LLM. Lo llama .github/workflows/audit_gate.yml; cada subcomando sale con có
                                 mismo contenido en Windows y en Linux). --update reescribe los hashes desde el blob.
   prohibited --base B           líneas AGREGADAS en el PR: --force / reset --hard en comandos, TELEGRAM_CHAT_ID en
                                 código, secretos con forma conocida, archivos .env
+                                rutas literales de datos (D-105): cero en MODULOS_AUTONOMOS, ninguna nueva en el resto
   touched --base B              workflows y archivos de producción (doc 35) tocados (informativo)
   bundle --base B --out F       audit_bundle.md: stat + diff de código sin 02_Analisis/ + resultados
 Solo biblioteca estándar.
@@ -229,6 +230,64 @@ def scan(diff_text):
 
 
 # ---------------------------------------------------------------------------
+# c2) rutas literales (D-105, doc 38 §6): ningún módulo arma la ruta física de otro; todas salen de lib_paths
+# ---------------------------------------------------------------------------
+
+DATA_ROOT = "02_" + "Analisis"            # partido: este archivo no se marca a sí mismo
+PATHS_LIB = "04_Config/scripts/lib_paths.py"
+# Módulos migrados a lib_paths: CERO rutas literales en todo el archivo (estricto). El resto del código de
+# producción tiene trinquete: no puede SUMAR rutas literales en líneas nuevas.
+MODULOS_AUTONOMOS = tuple(f"04_Config/scripts/{n}.py" for n in (
+    "script_97_emit_alerts", "script_98_trust_scheduler", "script_116_early_watch", "bot_orchestrator",
+    "early_review", "bot_prelaunch_calendar", "lib_alerts", "lib_early_watch", "lib_sources_domain",
+    "lib_sources_store"))
+
+
+def literal_paths(source):
+    """[(línea, fragmento)] de strings del código (no docstrings ni comentarios) que contienen el prefijo de datos
+    o la ruta con barra invertida. Excepción: lib_paths (la tabla) la filtra quien llama."""
+    import ast
+    import io
+    import tokenize
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return [(0, "no parsea")]
+    docs = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and isinstance(getattr(first, "value", None), ast.Constant) \
+                    and isinstance(first.value.value, str):
+                docs.update(range(first.lineno, (first.end_lineno or first.lineno) + 1))
+    out = []
+    for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+        if tok.type == tokenize.STRING and DATA_ROOT in tok.string and tok.start[0] not in docs:
+            out.append((tok.start[0], tok.string.strip()[:120]))
+    return out
+
+
+def check_rutas(read, changed_lines=None):
+    """read(ruta) -> texto o None. Estricto en MODULOS_AUTONOMOS; trinquete en las líneas agregadas del resto."""
+    hits = []
+    for path in MODULOS_AUTONOMOS:
+        text = read(path)
+        for n, frag in literal_paths(text) if text is not None else []:
+            hits.append({"rule": "ruta_literal", "path": path, "line": n, "text": frag})
+    for path, rows in sorted((changed_lines or {}).items()):
+        name = path.rsplit("/", 1)[-1]
+        if (not path.endswith(".py") or path in MODULOS_AUTONOMOS or path == PATHS_LIB or name.startswith("test_")
+                or path in SELF or path.startswith(DATA_PREFIXES)):
+            continue
+        text = read(path)
+        added = {n for n, _ in rows}
+        for n, frag in literal_paths(text) if text is not None else []:
+            if n in added:
+                hits.append({"rule": "ruta_literal_nueva", "path": path, "line": n, "text": frag})
+    return hits
+
+
+# ---------------------------------------------------------------------------
 # d) tocados · e) bundle
 # ---------------------------------------------------------------------------
 
@@ -340,7 +399,10 @@ def main(argv=None):
         return 1 if bad else 0
     mb, changed = changed_files(a.base, a.head)
     if a.cmd == "prohibited":
-        hits = scan(git("diff", "-U0", mb, a.head))
+        diff = git("diff", "-U0", mb, a.head)
+        hits = scan(diff)
+        hits += check_rutas(lambda p: (git_blob(a.head, p) or b"").decode("utf-8", "replace") or None,
+                            added_lines(diff)[0])           # D-105: rutas literales
         print(f"prohibidos: {len(hits)} hallazgos en {len(changed)} archivos cambiados")
         for h in hits:
             print(f"::error file={h['path']},line={h['line']}::{h['rule']}: {h['text']}")

@@ -26,6 +26,8 @@ SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 import lib_audit as audit  # noqa: E402
 import lib_knowledge_graph as kg  # noqa: E402
+import lib_paths as P  # noqa: E402  D-105: interfaz común de rutas
+import lib_sources_domain as domain  # noqa: E402  D-105: dominio de fuentes
 import lib_sources_store as store  # noqa: E402
 
 VERSION = "orch-0.1"
@@ -107,7 +109,7 @@ def retention_for(folder, root, default=KEEP_DAYS, cache=None):
     """Días de retención de una carpeta (doc 38 §2): el _retention.yaml más cercano subiendo hasta 02_Analisis/.
     `keep_days: null` = sin poda (None). Sin archivo, o con uno roto, rige `default`."""
     import yaml
-    stop = (Path(root) / "02_Analisis").resolve()
+    stop = P.path("analisis.dir", root).resolve()
     cache = {} if cache is None else cache
     d = Path(folder).resolve()
     while True:
@@ -176,7 +178,7 @@ def run(root, now=None, write=True):
     t_start = time.time()
     base = store.sources_dir(root)
     registry = load_registry(root)
-    prev_doc = read_json(base / "_health.json", {}) or {}
+    prev_doc = domain.read_state(None, "_health.json", {}, root) or {}
     prev = prev_doc.get("bots") or {}
     health = {n: bot_health(n, cfg, read_bot_state(base, n), prev.get(n), now) for n, cfg in registry.items()}
     stats = {}
@@ -189,8 +191,7 @@ def run(root, now=None, write=True):
     if write:
         graph = kg.write_graph(store.read_jsonl(base / "_merged.jsonl"), now, root).to_json()["counts"]
         pruned = prune(root, now)
-        (base / "_health.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True),
-                                           encoding="utf-8")
+        domain.write_state(None, doc, "_health.json", root)
         changed = {n: h["status"] for n, h in health.items()} != {n: (h or {}).get("status") for n, h in prev.items()}
         if changed:
             installed = update_installed(Path(root) / "_servicios_open_source" / "_INSTALADOS.md", health)
