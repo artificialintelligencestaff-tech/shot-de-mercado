@@ -24,5 +24,7 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- Sin problemas abiertos.
+- [P] 2026-10-05 `workflow` workflow early_watch.yml con 4 fallas seguidas — https://github.com/artificialintelligencestaff-tech/shot-de-mercado/actions/runs/37372157844
+- [P] 2026-10-05 `workflow` workflow early_watch_b.yml con 5 fallas seguidas — https://github.com/artificialintelligencestaff-tech/shot-de-mercado/actions/runs/37373112035
+- [P] 2026-10-05 `workflow` workflow sources_self_repair.yml con 4 fallas seguidas — https://github.com/artificialintelligencestaff-tech/shot-de-mercado/actions/runs/37373193658
 <!-- /AUTO:repair -->
