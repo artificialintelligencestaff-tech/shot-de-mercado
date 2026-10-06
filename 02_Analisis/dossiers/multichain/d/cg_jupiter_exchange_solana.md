@@ -1,6 +1,6 @@
 # Jupiter (JUP) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.329709 · mcap $1,095,228,795
-Detectado 02/10/2026 11:55 UTC · score 67 (scoring mc-d-0.3, cobertura 0.75)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.349637 · mcap $1,160,684,795
+Detectado 06/10/2026 10:57 UTC · score 56 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | decentralized-perpetuals |
-| Volumen 24 h | $82,667,125 |
-| Cambio 24 h / 7 d | 1.819% / 4.4179% |
+| Volumen 24 h | $97,649,893 |
+| Cambio 24 h / 7 d | 4.88766% / 7.067% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -18.3% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | n/d | n/d | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.097% | -0.10 | 20 | Hyperliquid |
-| Momentum 24 h | +1.82% | +0.09 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | +11.0% anualizado | +0.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | +0.066 log | +0.13 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | +0.054% | +0.05 | 20 | Hyperliquid |
+| Momentum 24 h | +4.89% | +0.24 | 30 | CoinGecko |
 
-**Total: 67** (umbral 56, cobertura 0.75)
+**Total: 56** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 02/10/2026 11:55 UTC.
+- < 48 h desde 06/10/2026 10:57 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
