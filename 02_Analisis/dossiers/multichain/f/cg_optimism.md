@@ -1,6 +1,6 @@
 # Optimism (OP) — dossier multi-chain
-🎴 Grupo f (6: L1/L2 o token nativo de una chain) · chain optimism · precio $0.134063 · mcap $308,294,432
-Detectado 04/10/2026 22:12 UTC · score 58 (scoring mc-f-0.3, cobertura 1.00)
+🎴 Grupo f (6: L1/L2 o token nativo de una chain) · chain optimism · precio $0.131011 · mcap $301,249,738
+Detectado 06/10/2026 22:36 UTC · score 65 (scoring mc-f-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | optimism |
 | Categoría | layer-2 |
-| Volumen 24 h | $48,247,055 |
-| Cambio 24 h / 7 d | -1.0904% / -8.0223% |
+| Volumen 24 h | $66,738,113 |
+| Cambio 24 h / 7 d | -6.65876% / 1.4526% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Momentum de TVL (g₇) | +0.0244 | +0.24 | 25 | DefiLlama historicalChainTvl |
-| Aceleración de TVL (a₇) | -0.0177 | -0.35 | 15 | DefiLlama historicalChainTvl |
-| Actividad DEX/TVL (ranking entre chains) | 0.997 · percentil 1.00 | +1.00 | 20 | DefiLlama overview/dexs |
-| Fees/TVL anualizado (ranking entre chains) | 13.89% · percentil 0.71 | +0.43 | 15 | DefiLlama overview/fees |
-| Momentum relativo vs ETH (7d) | -8.02% − ETH +0.52% = -8.55 pp | -0.43 | 25 | CoinGecko |
+| Momentum de TVL (g₇) | +0.0349 | +0.35 | 25 | DefiLlama historicalChainTvl |
+| Aceleración de TVL (a₇) | +0.0325 | +0.65 | 15 | DefiLlama historicalChainTvl |
+| Actividad DEX/TVL (ranking entre chains) | 0.056 · percentil 0.57 | +0.14 | 20 | DefiLlama overview/dexs |
+| Fees/TVL anualizado (ranking entre chains) | 13.25% · percentil 0.71 | +0.43 | 15 | DefiLlama overview/fees |
+| Momentum relativo vs ETH (7d) | +1.45% − ETH +0.32% = +1.13 pp | +0.06 | 25 | CoinGecko |
 
-**Total: 58** (umbral 56, cobertura 1.00)
+**Total: 65** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 04/10/2026 22:12 UTC.
+- < 48 h desde 06/10/2026 22:36 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
