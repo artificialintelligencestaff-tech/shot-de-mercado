@@ -1,12 +1,12 @@
 {
  "version": "review-1.0",
- "generated_at": "2026-10-05T12:59:57+00:00",
+ "generated_at": "2026-10-06T00:57:31+00:00",
  "gate": {
-  "n_alerts": 71,
-  "n_resolved": 65,
-  "k_hit": 39,
-  "rate": 0.6,
-  "elapsed_h": 86.6,
+  "n_alerts": 75,
+  "n_resolved": 68,
+  "k_hit": 40,
+  "rate": 0.5882,
+  "elapsed_h": 98.6,
   "criterion": "primaria < 40% tras 24 h -> gate 15 min",
   "current_gate": 10,
   "decision": "mantener"
@@ -15,7 +15,7 @@
   "hypothesis": "H-0: info_score >= 20 no supera a info_score < 20 en tasa primaria (tokens < 60 min)",
   "min_n": 40,
   "alpha": 0.1,
-  "n_resolved": 5,
+  "n_resolved": 7,
   "groups": {
    "info_ge20": {
     "n": 1,
@@ -23,22 +23,22 @@
     "rate": 1.0
    },
    "info_lt20": {
-    "n": 4,
+    "n": 6,
     "k_hit": 1,
-    "rate": 0.25
+    "rate": 0.1667
    }
   },
   "verdict": "pendiente"
  },
  "coverage_pumpportal": {
   "window_h": 24,
-  "from": "2026-10-04T12:59:57+00:00",
-  "to": "2026-10-05T12:59:57+00:00",
+  "from": "2026-10-05T00:57:31+00:00",
+  "to": "2026-10-06T00:57:31+00:00",
   "by_instance": {
-   "a": 0.6595,
-   "b": 0.6817
+   "a": 0.8842,
+   "b": 0.8883
   },
-  "union": 0.7281,
+  "union": 0.9134,
   "reference_script_82": 0.25
  },
  "rows": [
@@ -88,7 +88,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": 0.15,
-   "min_ret": -0.9789
+   "min_ret": -0.9791
   },
   {
    "mint": "2bHz7Uq8arFttDotBgGFsVKXxN2n7hM39Cktna69pump",
@@ -120,7 +120,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": 0.121,
-   "min_ret": -0.9801
+   "min_ret": -0.9805
   },
   {
    "mint": "3DVcRFGfEj26XVTJ7FyzJNmbxRuh9hmtWWDHXERFpump",
@@ -264,7 +264,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": 0.5978,
-   "min_ret": -0.9013
+   "min_ret": -0.9516
   },
   {
    "mint": "6ayky7LvF5zZ4d34o8VTb58AgDgjSeMMKhk1K3hpump",
@@ -297,6 +297,22 @@
    "primary": "hit",
    "max_ret": 0.5792,
    "min_ret": -0.9876
+  },
+  {
+   "mint": "76fvXLL5hPsr6CQUs6PrXTY7VgdyY5tPidjPrpaepump",
+   "symbol": "ore",
+   "alert_ts": "2026-10-05_145155",
+   "t0": 1791211915.0,
+   "price": 0.000248,
+   "pool": "7LKLcSiDQw9zEpM6hXekDwWqxEkw4jUcGcGVR28s86AR",
+   "gate_min": 10,
+   "age_min_at_alert": 10.0,
+   "score": 48,
+   "early_bonus": 0,
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": 0.2873,
+   "min_ret": -0.8726
   },
   {
    "mint": "7fk4C9dUcDMECAKrScaMK6wiFWrXweTDavaDXM4udbCb",
@@ -375,8 +391,8 @@
    "early_bonus": 1,
    "status": "ok",
    "primary": "hit",
-   "max_ret": 0.8852,
-   "min_ret": 0.2914
+   "max_ret": 2.7937,
+   "min_ret": -0.4737
   },
   {
    "mint": "8Y6pHi3cMhxhtHuzgGAsWgAJMyw3zaQLeFFf3qvRpump",
@@ -395,6 +411,36 @@
    "min_ret": -0.7825
   },
   {
+   "mint": "8hEayU8G9VKXA3QFb6LVZt5esWJGRVJoTabXR6pdpump",
+   "symbol": "PUMPLIFE",
+   "alert_ts": "2026-10-05_175033",
+   "t0": 1791222633.0,
+   "price": 0.0001519,
+   "pool": "Hjr4kA2txKhPcMnTqAeKvJS5ExbtHmpV95biv6dPqC8d",
+   "gate_min": 10,
+   "age_min_at_alert": 10.3,
+   "score": 45,
+   "early_bonus": 0,
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": -0.9847,
+   "min_ret": -0.9849
+  },
+  {
+   "mint": "8vDuxcypxP1W7QzDs537zUqnLbxPbyD6G1i7q49Vpump",
+   "symbol": "XMAN",
+   "alert_ts": "2026-10-05_233448",
+   "t0": 1791243288.0,
+   "price": 2.851e-06,
+   "pool": "CAgJ6EZgBTAgh6NLMgunPkxJ81zWrVoNWfHJi87U8zUQ",
+   "gate_min": 10,
+   "age_min_at_alert": 1152.0,
+   "score": 100,
+   "early_bonus": 0,
+   "status": "http_429",
+   "primary": "sin_datos"
+  },
+  {
    "mint": "9BMbyUfW6g4ptTGqyZeLdKRMz9tM4ssSgUEKYK94hook",
    "symbol": "HOOKER",
    "alert_ts": "2026-10-04_230006",
@@ -407,8 +453,8 @@
    "early_bonus": 0,
    "status": "ok",
    "primary": "hit",
-   "max_ret": 0.3859,
-   "min_ret": -0.8633
+   "max_ret": 0.5547,
+   "min_ret": -0.9383
   },
   {
    "mint": "9F6713o2fVuKtfT2MdAcAPE8CZpo3VxwssqFV5skjX4t",
@@ -475,6 +521,20 @@
    "min_ret": -0.1239
   },
   {
+   "mint": "BrUimx7KncgRNTggAdZdaX2s5XUqQyR6XMRmEg4mpump",
+   "symbol": "MINTRO",
+   "alert_ts": "2026-10-05_235248",
+   "t0": 1791244368.0,
+   "price": 0.003234,
+   "pool": "8t34p7n94man8wcmFdHedYkJaWEhA9nKGJMLZyZUzbn",
+   "gate_min": 10,
+   "age_min_at_alert": 315.6,
+   "score": 100,
+   "early_bonus": 0,
+   "status": "http_429",
+   "primary": "sin_datos"
+  },
+  {
    "mint": "CZJfrAmMs5Cz4H22PWzfqTJu5FkP7Q2Vvx1oPVL9pump",
    "symbol": "AGENTCAT",
    "alert_ts": "2026-10-04_225402",
@@ -485,10 +545,8 @@
    "age_min_at_alert": 1441.1,
    "score": 66,
    "early_bonus": 0,
-   "status": "ok",
-   "primary": "hit",
-   "max_ret": 1.1249,
-   "min_ret": -0.0691
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "CoiSNW851GsdvicYbjDtUFUYPA3uoCyXohxNgwS9pump",
@@ -741,10 +799,8 @@
    "age_min_at_alert": 60.6,
    "score": 100,
    "early_bonus": 0,
-   "status": "ok",
-   "primary": "pending",
-   "max_ret": 0.0625,
-   "min_ret": -0.0079
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "HBW95z38vnFNn6tt22JxRnANoH6mKmtDW7A4qTEpump",
@@ -867,8 +923,10 @@
    "age_min_at_alert": 11.1,
    "score": 62,
    "early_bonus": 2,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "hit",
+   "max_ret": 0.5733,
+   "min_ret": 0.0018
   },
   {
    "mint": "UuixLakpdyvT54pM7CPxHqX5o8KDyY3cBL1syExpump",
@@ -992,8 +1050,8 @@
    "score": 100,
    "early_bonus": 0,
    "status": "ok",
-   "primary": "pending",
-   "max_ret": 0.0698,
+   "primary": "hit",
+   "max_ret": 0.2827,
    "min_ret": -0.0069
   },
   {
@@ -1167,8 +1225,8 @@
    "early_bonus": 0,
    "status": "ok",
    "primary": "hit",
-   "max_ret": 2.7589,
-   "min_ret": 0.0004
+   "max_ret": 3.9719,
+   "min_ret": -1.0
   }
  ]
 }
