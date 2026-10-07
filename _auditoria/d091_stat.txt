@@ -1,0 +1,244 @@
+ .github/workflows/sources_x_influencers.yml        |    64 +
+ 01_Datos_Crudos/cache/early_review_candles.json    |     2 +-
+ .../detection_2026-10-04_212141.json               |  8526 ---
+ .../detection_2026-10-04_215205.json               |  8332 ---
+ .../detection_2026-10-04_220652.json               |  9522 ---
+ .../detection_2026-10-04_223017.json               |  7579 ---
+ 02_Analisis/_archivo_2026_Q3/README.md             |    80 +
+ .../_contracts/_contract_98b.json                  |     0
+ 02_Analisis/{ => _archivo_2026_Q3}/_cycle_log.json |     0
+ ...20260924T024826Z_script_98_trust_scheduler.json |     0
+ .../{ => _archivo_2026_Q3}/_precision_log.json     |     0
+ .../{ => _archivo_2026_Q3}/_state_manifest.json    |     0
+ .../airdrop_api_2026-09-20_043748.json             |     0
+ .../airdrops_parsed_2026-09-20_040504.json         |     0
+ .../airdrops_selenium_2026-09-20_042813.json       |     0
+ .../deep_dive_movers_2026-09-16_223923.json        |     0
+ .../historical_audit_2026-09-16_231902.json        |     0
+ .../casos_historicos_2026-09-17_203759.json        |     0
+ .../crypto_signals/signals_2026-09-23_024338.json  |     0
+ .../signals_daemon_2026-09-23_030257.json          |     0
+ .../whale_insights_2026-09-23_030358.json          |     0
+ .../deep_dive_deficlaw_2026-09-17_174613.json      |     0
+ .../deep_dive_verified_2026-09-17_175920.json      |     0
+ .../deep_dive_verified_2026-09-17_181056.json      |     0
+ .../detection_v3_2026-09-23_045440.json            |     0
+ .../detection_v4_2026-09-23_062521.json            |     0
+ .../detection_v4_2026-09-23_063805.json            |     0
+ .../detection_v5_2026-09-23_184714.json            |     0
+ .../detection_v6/partial_2026-09-23_190034.json    |     0
+ .../detection_v6/partial_2026-09-23_190136.json    |     0
+ .../detection_v6/partial_2026-09-23_190242.json    |     0
+ .../detection_v6/partial_2026-09-23_190350.json    |     0
+ .../detection_v6/partial_2026-09-23_190502.json    |     0
+ .../detection_v6/partial_2026-09-23_190618.json    |     0
+ .../detection_v6/partial_2026-09-23_190732.json    |     0
+ .../detection_v6/partial_2026-09-23_190851.json    |     0
+ .../detection_v6/partial_2026-09-23_191017.json    |     0
+ .../detection_v6/partial_2026-09-23_191142.json    |     0
+ .../detection_v6/partial_2026-09-23_191311.json    |     0
+ .../detection_v6/partial_2026-09-23_191438.json    |     0
+ .../dual_scoring/dual_2026-09-23_044230.json       |     0
+ .../adaptive_filter_2026-09-20_035006.json         |     0
+ .../early_detection_2026-09-18_013506.json         |     0
+ .../early_filtered_2026-09-20_033353.json          |     0
+ .../early_radar/early_radar_2026-09-23_011819.json |     0
+ .../enriched_2026-09-20_045451.json                |     0
+ .../holder_analysis_2026-09-18_011713.json         |     0
+ .../inspect_threews/inspect_2026-09-23_033327.json |     0
+ .../mcp_stdio_tools_2026-09-17_170813.json         |     0
+ .../ai_agents_tokens_2026-09-17_041433.json        |     0
+ .../narrativescope_2026-09-17_031105.json          |     0
+ .../narrativescope_2026-09-17_061322.json          |     0
+ .../narrativescope_2026-09-17_172544.json          |     0
+ .../panorama/candidatos_2026-09-17_193443.json     |     0
+ .../panorama/panorama_2026-09-17_191549.json       |     0
+ .../panorama_completo_2026-09-17_193808.json       |     0
+ .../pre_launch/_prelaunch_accumulated.json         |     0
+ .../honest_risk_tools_2026-09-17_043443.json       |     0
+ .../riesgo/position_size_2026-09-17_043443.json    |     0
+ .../riesgo/zarq/zarq_2026-09-17_044455.json        |     0
+ .../risk_check/cryptoguard_2026-09-23_011829.json  |     0
+ .../shadow_mode/candidates_2026-09-23_223928.json  |     0
+ .../shadow_v2/_accumulated.json                    |     0
+ .../shadow_v2/final_2026-09-23_231234.json         |     0
+ .../shadow_v2/partial_2026-09-23_225334.json       |     0
+ .../shadow_v2/partial_2026-09-23_225435.json       |     0
+ .../shadow_v2/partial_2026-09-23_225536.json       |     0
+ .../shadow_v2/partial_2026-09-23_225638.json       |     0
+ .../shadow_v2/partial_2026-09-23_225739.json       |     0
+ .../shadow_v2/partial_2026-09-23_225840.json       |     0
+ .../shadow_v2/partial_2026-09-23_225945.json       |     0
+ .../shadow_v2/partial_2026-09-23_230056.json       |     0
+ .../shadow_v2/partial_2026-09-23_230158.json       |     0
+ .../shadow_v2/partial_2026-09-23_230301.json       |     0
+ .../shadow_v2/partial_2026-09-23_230402.json       |     0
+ .../shadow_v2/partial_2026-09-23_230502.json       |     0
+ .../shadow_v2/partial_2026-09-23_230605.json       |     0
+ .../shadow_v2/partial_2026-09-23_230707.json       |     0
+ .../shadow_v2/partial_2026-09-23_230809.json       |     0
+ .../shadow_v2/partial_2026-09-23_230910.json       |     0
+ .../shadow_v2/partial_2026-09-23_231012.json       |     0
+ .../shadow_v2/partial_2026-09-23_231113.json       |     0
+ .../shadow_v2/partial_2026-09-23_231214.json       |     0
+ .../{ => _archivo_2026_Q3}/shadow_v3/_api_log.json |     0
+ .../{ => _archivo_2026_Q3}/shadow_v3/_cache.db     |   Bin
+ .../shadow_v5/_accumulated.json                    |     0
+ .../{ => _archivo_2026_Q3}/shadow_v5/_cache.db     |   Bin
+ .../tge_parsed/tge_parsed_2026-09-20_040459.json   |     0
+ .../tge_parsed/tge_selenium_2026-09-20_042630.json |     0
+ .../token_intel/token_intel_2026-09-23_024412.json |     0
+ .../tracking/price_tracking_2026-09-17_181921.json |     0
+ .../tracking_degradacion_2026-09-17_190715.json    |     0
+ .../dexscreener_data_2026-09-23_222147.json        |     0
+ .../madeonsol_data_2026-09-23_222132.json          |     0
+ .../validation_v7/report_2026-09-23_223121.json    |     0
+ .../paquetes_2026-09-17_161916.json                |     0
+ .../registries_2026-09-17_162337.json              |     0
+ .../volume_anomaly_2026-09-18_011726.json          |     0
+ 02_Analisis/alerts/_all_alerts.json                |   246 +-
+ 02_Analisis/alerts/_cycle_log.json                 |    25 +-
+ ...sahAng1XPbjfT6kMNrFYpump_2026-10-04_215838.json |    84 -
+ .../alerts/alert_cg_bitcoin_2026-10-04_215731.json |    84 -
+ .../alert_cg_lido_dao_2026-10-04_223542.json       |    71 -
+ .../alerts/alert_cg_monad_2026-10-04_215731.json   |    73 -
+ .../alert_cg_optimism_2026-10-04_221219.json       |    71 -
+ .../alerts/alert_cg_solana_2026-10-04_221219.json  |    85 -
+ ...ixbp4noymaazXvuNqjdHqaeYG7YVhpfcw5APxYAQk1.json |    11 -
+ ...6pHi3cMhxhtHuzgGAsWgAJMyw3zaQLeFFf3qvRpump.json |     9 -
+ ...KZDfZnkHZxd9agRDNPyDv4iT6LmAurJnpRtj9wpump.json |    20 -
+ 02_Analisis/alerts/trust_cg_akash_network.json     |    11 -
+ 02_Analisis/alerts/trust_cg_iota.json              |    11 -
+ ...XJ9cYmX2Mp7JFhwZWz9NESbVes3VFAEGPf3rgKpump.json |     9 -
+ 02_Analisis/datasets/historical_alerts.jsonl       |     7 -
+ 02_Analisis/diagnostics/early_review.json          |   178 +-
+ 02_Analisis/diagnostics/shadow_monitor.json        |     2 +-
+ 02_Analisis/dossiers/multichain/c/cg_lido_dao.md   |    18 +-
+ 02_Analisis/dossiers/multichain/f/cg_monad.md      |    24 +-
+ 02_Analisis/dossiers/multichain/f/cg_optimism.md   |    51 -
+ 02_Analisis/dossiers/multichain/h/cg_bitcoin.md    |    24 +-
+ 02_Analisis/dossiers/multichain/h/cg_solana.md     |    26 +-
+ ...B13v6vJ1HTmuzbwujYsahAng1XPbjfT6kMNrFYpump.json |   756 -
+ ...2YB13v6vJ1HTmuzbwujYsahAng1XPbjfT6kMNrFYpump.md |   166 -
+ 02_Analisis/early/_signals_a.json                  |   340 +-
+ 02_Analisis/early/_signals_b.json                  |   252 +-
+ 02_Analisis/early/_watch_a.json                    | 60142 +++++++++++++++++--
+ 02_Analisis/early/_watch_b.json                    | 39434 +++++++-----
+ ...B13v6vJ1HTmuzbwujYsahAng1XPbjfT6kMNrFYpump.json |    28 -
+ 02_Analisis/early/young/a_2026-10-04.jsonl         |  1172 -
+ 02_Analisis/early/young/b_2026-10-04.jsonl         |  1559 -
+ .../events/_cursors/prelaunch_calendar.json        |    54 +-
+ 02_Analisis/events/early_watch_a/2026-10-04.jsonl  |    34 -
+ 02_Analisis/events/early_watch_b/2026-10-04.jsonl  |    47 -
+ 02_Analisis/multichain/_categories.json            |   318 +-
+ 02_Analisis/multichain/_governance.json            |   796 +-
+ 02_Analisis/multichain/_history.jsonl              |     2 -
+ 02_Analisis/multichain/_perps.json                 |  5382 +-
+ 02_Analisis/multichain/_protocols.json             |   327 +-
+ 02_Analisis/multichain/_scores.json                |  1826 +-
+ 02_Analisis/multichain/arbitrum.json               |    84 +-
+ 02_Analisis/multichain/base.json                   |    66 +-
+ 02_Analisis/multichain/bitcoin.json                |    50 +-
+ 02_Analisis/multichain/blast.json                  |    92 +-
+ 02_Analisis/multichain/ethereum.json               |   116 +-
+ 02_Analisis/multichain/monad.json                  |    80 +-
+ 02_Analisis/multichain/optimism.json               |    80 +-
+ 02_Analisis/multichain/scan_latest.json            |  5122 +-
+ 02_Analisis/multichain/solana.json                 |   122 +-
+ ...EX32B4LLr2hL4tzdgz724rSYXGccAGT8MRSUaNpump.json |    48 +-
+ ...6pHi3cMhxhtHuzgGAsWgAJMyw3zaQLeFFf3qvRpump.json |    47 +-
+ ...RCn9rGT8V2imeM2BaKs13yhMEais3ruM3rPvTGpump.json |    47 +-
+ ...66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump.json |    48 +-
+ ...dAua8qfnwFKZxKEnDqTcJz5jQ81NURPWBK1qDzpump.json |    47 +-
+ ...KZDfZnkHZxd9agRDNPyDv4iT6LmAurJnpRtj9wpump.json |    51 +-
+ ...uixLakpdyvT54pM7CPxHqX5o8KDyY3cBL1syExpump.json |    48 +-
+ 02_Analisis/narrative/_index.json                  |   286 +-
+ 02_Analisis/narrative/_items.json                  |    64 +-
+ ...XJ9cYmX2Mp7JFhwZWz9NESbVes3VFAEGPf3rgKpump.json |    47 +-
+ 02_Analisis/operations/early_review.jsonl          |     1 -
+ 02_Analisis/operations/early_watch_a.jsonl         |     2 -
+ 02_Analisis/operations/early_watch_b.jsonl         |     2 -
+ 02_Analisis/operations/emission_cycle.jsonl        |     4 -
+ 02_Analisis/operations/trust_cycle.jsonl           |     4 -
+ 02_Analisis/patrimonio/README.md                   |    24 +
+ 02_Analisis/patrimonio/_inventario.json            |   749 +
+ 02_Analisis/patrimonio/calendario/README.md        |     4 +
+ 02_Analisis/patrimonio/cuantitativo/README.md      |     4 +
+ 02_Analisis/patrimonio/informativo/README.md       |     4 +
+ 02_Analisis/patrimonio/resultados/README.md        |     4 +
+ 02_Analisis/prelaunch/_calendar.json               |     6 +-
+ 02_Analisis/prelaunch/_state.json                  |    32 +-
+ 02_Analisis/shadow_v4/_accumulated.json            |  9806 +--
+ 02_Analisis/sources/_episodes_self_repair.jsonl    |     4 -
+ 02_Analisis/sources/_graph.json                    |     2 +-
+ 02_Analisis/sources/_health.json                   |    71 +-
+ 02_Analisis/sources/_index.json                    |     2 +-
+ 02_Analisis/sources/_merged.jsonl                  |   512 +-
+ 02_Analisis/sources/_repair_log.jsonl              |     7 -
+ 02_Analisis/sources/_repair_state.json             |    24 +-
+ .../sources/bitcointalk_ann/2026-10-04.jsonl       |     2 -
+ 02_Analisis/sources/bitcointalk_ann/_audit.jsonl   |     2 -
+ 02_Analisis/sources/bitcointalk_ann/_metrics.json  |     2 +-
+ 02_Analisis/sources/bitcointalk_ann/_state.json    |    10 +-
+ 02_Analisis/sources/dexpaprika/2026-10-04.jsonl    |   200 -
+ 02_Analisis/sources/dexpaprika/_audit.jsonl        |     4 -
+ 02_Analisis/sources/dexpaprika/_metrics.json       |     2 +-
+ 02_Analisis/sources/dexpaprika/_state.json         |   208 +-
+ 02_Analisis/sources/goplus_security/_audit.jsonl   |     4 -
+ 02_Analisis/sources/goplus_security/_metrics.json  |     2 +-
+ 02_Analisis/sources/goplus_security/_state.json    |     4 +-
+ 02_Analisis/sources/orchestrator/_audit.jsonl      |     4 -
+ 02_Analisis/sources/orchestrator/_metrics.json     |     2 +-
+ 02_Analisis/sources/pumpfun_datos/2026-10-04.jsonl |   350 -
+ 02_Analisis/sources/pumpfun_datos/_audit.jsonl     |     7 -
+ 02_Analisis/sources/pumpfun_datos/_metrics.json    |     2 +-
+ 02_Analisis/sources/pumpfun_datos/_state.json      |   358 +-
+ 02_Analisis/sources/rss/2026-10-04.jsonl           |    57 -
+ 02_Analisis/sources/rss/_audit.jsonl               |     5 -
+ 02_Analisis/sources/rss/_metrics.json              |     2 +-
+ 02_Analisis/sources/rss/_state.json                |   119 +-
+ 02_Analisis/sources/telegram/2026-10-04_a.jsonl    |    10 -
+ 02_Analisis/sources/telegram/2026-10-04_b.jsonl    |     9 -
+ 02_Analisis/sources/telegram/_audit_a.jsonl        |     1 -
+ 02_Analisis/sources/telegram/_audit_b.jsonl        |     1 -
+ 02_Analisis/sources/telegram/_metrics_a.json       |     2 +-
+ 02_Analisis/sources/telegram/_metrics_b.json       |     2 +-
+ 02_Analisis/sources/telegram/_state_a.json         |    86 +-
+ 02_Analisis/sources/telegram/_state_b.json         |    85 +-
+ .../shot_final_2026-10-04_212141.json              |  1198 -
+ .../shot_final_2026-10-04_215205.json              |  1742 -
+ .../shot_final_2026-10-04_220652.json              |  1621 -
+ .../shot_final_2026-10-04_223017.json              |  1441 -
+ 04_Config/influencers.yaml                         |   122 +
+ 04_Config/scripts/bot_influencer_tracker.py        |   872 +
+ 04_Config/scripts/bot_prelaunch_calendar.py        |   131 +-
+ 04_Config/scripts/lib_events.py                    |     4 +
+ 04_Config/scripts/lib_patrimonio.py                |   120 +
+ 04_Config/scripts/test_bot_influencer_tracker.py   |   313 +
+ .../scripts/test_d089_influencer_evaluacion.py     |   206 +
+ 04_Config/scripts/test_d089_prelaunch_fuentes.py   |   149 +
+ 04_Config/scripts/test_d091_aporte.py              |   129 +
+ 04_Config/scripts/test_lib_patrimonio.py           |    78 +
+ 04_Config/sources/_bots.yaml                       |     1 +
+ 04_Config/sources/prelaunch.yaml                   |     3 +
+ El cerebro de dios/22_MEMORIA_CLAUDE.md            |     3 +
+ El cerebro de dios/34_SISTEMA_MULTIBOT.md          |   147 +
+ El cerebro de dios/35_TRASPASO_CLAUDE.md           |    21 +-
+ El cerebro de dios/37_BOTS_AUTONOMIA.md            |   216 +
+ _servicios_open_source/02_social_x/fxembed_api.md  |     6 +-
+ .../02_social_x/x_syndication_timeline.md          |     6 +-
+ .../07_portales/binance_research.md                |    13 +
+ .../07_portales/coingecko_nuevos.md                |    17 +
+ .../07_portales/coinmarketcap_nuevos.md            |    17 +
+ _servicios_open_source/07_portales/cryptorank.md   |    13 +
+ _servicios_open_source/07_portales/depin_ninja.md  |    10 +
+ _servicios_open_source/07_portales/depinscan.md    |    16 +
+ .../07_portales/dune_analytics.md                  |    12 +
+ .../07_portales/flipside_crypto.md                 |    11 +
+ _servicios_open_source/07_portales/icodrops.md     |    15 +
+ _servicios_open_source/07_portales/rwa_xyz.md      |    18 +
+ .../07_portales/tokenunlocks_tokenomist.md         |    15 +
+ _servicios_open_source/README.md                   |    13 +-
+ _servicios_open_source/_INSTALADOS.md              |     8 +-
+ _servicios_open_source/_PENDIENTES.md              |    17 +-
+ 243 files changed, 90957 insertions(+), 85002 deletions(-)
