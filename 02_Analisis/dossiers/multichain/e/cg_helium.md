@@ -1,6 +1,6 @@
 # Helium (HNT) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.574146 · mcap $111,199,850
-Detectado 05/10/2026 04:15 UTC · score 76 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.529259 · mcap $102,873,051
+Detectado 07/10/2026 22:12 UTC · score 67 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $22,084,677 |
-| Cambio 24 h / 7 d | 14.77596% / 19.8922% |
+| Volumen 24 h | $9,430,854 |
+| Cambio 24 h / 7 d | 1.27336% / 13.9602% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.1986 vs mediana 0.0425 | +1.00 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0917 vs mediana 0.0448 | +0.65 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.00 | +0.00 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.00 pp | +0.00 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +16.47 pp | +0.82 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.97 pp | -0.19 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +14.82 pp | +0.74 | 15 | CoinGecko |
 
-**Total: 76** (umbral 56, cobertura 0.80)
+**Total: 67** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 05/10/2026 04:15 UTC.
+- < 48 h desde 07/10/2026 22:12 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
