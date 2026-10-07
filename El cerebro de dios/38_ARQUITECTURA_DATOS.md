@@ -201,6 +201,12 @@ shadow_v4, dossiers, datasets, operations.
   - En los módulos migrados (`MODULOS_AUTONOMOS`) exige cero en todo el archivo.
   - En el resto aplica un trinquete: no se pueden **sumar** rutas literales en líneas nuevas.
   - Excepciones: docstrings, comentarios, YAML, tests y `lib_paths.py`.
+- **Compuerta extendida (D-116):** `lib_guard` verifica en pre-push:
+  - gitlinks (modo 160000) — `check_gitlinks()`;
+  - secretos hardcodeados — `check_secretos_fuera_dominio()`;
+  - rutas literales `02_Analisis/` — `check_rutas_literales()`;
+  - número excesivo de archivos (posible `git add -A`) — `check_excesivos_archivos()`.
+  Se integra en `audit_gate` y en workflows críticos.
 - **Tests:** `test_modulos_autonomos.py` (12).
   - Cada script crítico corre con `SHOT_ROOT` vacía.
   - Un `_all_alerts.json` roto no frena al early watch ni a early_review.
