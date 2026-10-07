@@ -1,0 +1,84 @@
+name: sources_curator
+
+# Curador de dataset patrimonial (patrimonio).
+# Ejecuta cada 30 min:
+# 1. bootstrap_from_alerts() — idempotente
+# 2. ingest_mentions_from_events()
+# 3. resolve_outcomes(max_age_hours=72) — max 100 por corrida
+# 4. compute_lift_by_source()
+# Commitea solo a 02_Analisis/patrimonio/ y 02_Analisis/diagnostics/lift_by_source.json
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # cada 30 minutos
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: curator-write
+  cancel-in-progress: false
+
+jobs:
+  curate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Curator — bootstrap + ingest + resolve + lift
+        env:
+          PYTHONUNBUFFERED: "1"
+          SHOT_ROOT: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          python 04_Config/scripts/bot_curator.py bootstrap
+          python 04_Config/scripts/bot_curator.py ingest
+          python 04_Config/scripts/bot_curator.py resolve 72
+          python 04_Config/scripts/bot_curator.py lift
+
+      - name: Commit curated dataset + lift
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+
+          # Solo rutas declaradas (regla doc 38)
+          for p in \
+            02_Analisis/patrimonio/dataset_curado.jsonl \
+            02_Analisis/diagnostics/lift_by_source.json; do
+            if [ -e "$p" ]; then
+              git add -- "$p"
+            fi
+          done
+
+          if git diff --staged --quiet; then
+            echo "Sin cambios"
+            exit 0
+          fi
+
+          git commit -q -m "sources_curator: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 10))
+          done
+          echo "::error::No se pudo pushear el dataset curado tras 4 intentos"
+          exit 1

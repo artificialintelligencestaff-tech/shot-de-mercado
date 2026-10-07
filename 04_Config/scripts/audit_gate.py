@@ -151,6 +151,11 @@ def check_doc35(text, blob):
             continue
         actual = hashlib.sha256(data).hexdigest()
         if actual != row["sha"]:
+            # DEBUG - also print the line from text
+            idx = text.find(row["line"])
+            context = text[max(0,idx-50):idx+200] if idx >= 0 else "LINE NOT FOUND IN TEXT"
+            print(f"DEBUG: path={row['path']}, doc_sha={row['sha']}, actual={actual}", file=sys.stderr)
+            print(f"DEBUG: line in text: {context}", file=sys.stderr)
             bad.append(dict(row, actual=actual, problem="hash distinto"))
     return bad
 
