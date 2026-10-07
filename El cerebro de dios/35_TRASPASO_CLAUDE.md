@@ -120,9 +120,9 @@ Estados:
 | `El cerebro de dios/37_BOTS_AUTONOMIA.md` | Diseño de los 4 bots de autonomía: scout, evaluator, integrator, auditor (D-091) | diseño | `b92ab716fa3c9ef4ef68f636bd7eaa3a98e42ecc754e90697486c9ec3d7f7384` |
 | `README.md` | README raíz: qué es el proyecto, mapa del repo y cómo empezar (D-101) | doc | `268ef85f549fbdeae7c0a31435b1ae9b04536cb15129331c5fe067c21621a113` |
 | `04_Config/scripts/gen_project_manifest.py` | Genera _project_manifest.json y el catálogo de scripts desde el repo (D-101) | rama | `38840b67a1a3c49e5f16e6960e539150c7442b6ea7846d72fe39862b886489bd` |
-| `04_Config/scripts/test_gen_project_manifest.py` | Tests del generador del manifiesto (D-101) | test | `af0a93c2be8751bef6b1184f7bd182b67a9495b5b2219dd30ce448543e89d48b` |
+| `04_Config/scripts/test_gen_project_manifest.py` | Tests del generador del manifiesto (D-101) | test | `4df90d4ad3e1c3ec3cb39968854a99fb7cfa4395f45cf0d4910b12c585a8343d` |
 | `04_Config/scripts/test_d101_fixes.py` | Tests de los fixes A/B/C de D-101 (retención, preventa vs venta, falsos positivos) | test | `474677c0edb4673639181f9dfc4471d778ad9705e37a46f4fa0e4b7e6420bd55` |
-| `El cerebro de dios/38_ARQUITECTURA_DATOS.md` | Arquitectura de datos: 8 categorías, retención por carpeta, dueños, fixes D-101 | diseño | `156a716ffe2ffd3e99b5efb658802297466eb8d4a943c208a5a4fb2ce428f3b5` |
+| `El cerebro de dios/38_ARQUITECTURA_DATOS.md` | Arquitectura de datos: 8 categorías, retención por carpeta, dueños, fixes D-101 | diseño | `15d22eb679723fcfe80ba3237ddc7c47c26edd4ac2a4f2f89c12e238413be451` |
 | `04_Config/scripts/lib_paths.py` | Interfaz central de rutas: tabla PATHS, path/rel/register/validate (D-105) | rama | `bdfe215175f7ecacd87027d243e8e9c8b1d21aa872b7403cafcb81b01b75fcee` |
 | `04_Config/scripts/lib_alerts.py` | Dominio de alertas: lectura/escritura de _all_alerts.json, detalle y trust, con esquema (D-105) | rama | `e43a37c54d27ba725385c099f5588cda0d1aae1e9edfbf8064f5a739aadf31bf` |
 | `04_Config/scripts/lib_early_watch.py` | Dominio del early watch: _watch/_signals por instancia y rutas de git add (D-105) | rama | `3f083ecb4245fdf692c836e33c13e7fa907b57a2e296540a27f94e97d8398777` |
