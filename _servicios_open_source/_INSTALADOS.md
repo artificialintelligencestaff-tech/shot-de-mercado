@@ -24,5 +24,5 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-10-07 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 3 corridas sin ítems
+- [P] 2026-10-07 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 5 corridas sin ítems
 <!-- /AUTO:repair -->
