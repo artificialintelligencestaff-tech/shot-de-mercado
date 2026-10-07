@@ -17,7 +17,7 @@ from typing import Optional
 
 import lib_ohlcv  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 ALERTS_FILE = ROOT / "02_Analisis" / "alerts" / "_all_alerts.json"
 CURATED_FILE = ROOT / "02_Analisis" / "patrimonio" / "dataset_curado.jsonl"
 EVENTS_DIR = ROOT / "02_Analisis" / "events"
@@ -197,6 +197,9 @@ def resolve_outcomes(max_age_hours: int = 72):
 
         try:
             mention_ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            # Ensure timezone-aware
+            if mention_ts.tzinfo is None:
+                mention_ts = mention_ts.replace(tzinfo=timezone.utc)
         except ValueError:
             continue
 
