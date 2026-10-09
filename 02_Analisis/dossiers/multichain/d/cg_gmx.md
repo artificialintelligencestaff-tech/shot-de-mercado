@@ -1,6 +1,6 @@
 # GMX (GMX) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $8.58 · mcap $89,760,008
-Detectado 04/10/2026 22:53 UTC · score 56 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $8.44 · mcap $88,337,332
+Detectado 09/10/2026 16:14 UTC · score 57 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | decentralized-perpetuals |
-| Volumen 24 h | $3,404,980 |
-| Cambio 24 h / 7 d | 4.89515% / 2.2595% |
+| Volumen 24 h | $4,864,373 |
+| Cambio 24 h / 7 d | 7.10539% / 3.1864% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -36,14 +36,14 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
 | Funding (contrarian en extremos) | +11.0% anualizado | +0.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | +0.021 log | +0.04 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | +0.167% | +0.17 | 20 | Hyperliquid |
-| Momentum 24 h | +4.90% | +0.24 | 30 | CoinGecko |
+| Open interest que confirma (24 h) | +0.017 log | +0.03 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | +0.136% | +0.14 | 20 | Hyperliquid |
+| Momentum 24 h | +7.11% | +0.36 | 30 | CoinGecko |
 
-**Total: 56** (umbral 56, cobertura 1.00)
+**Total: 57** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 04/10/2026 22:53 UTC.
+- < 48 h desde 09/10/2026 16:14 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
