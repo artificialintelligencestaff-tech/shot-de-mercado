@@ -52,10 +52,13 @@ jobs:
           python 04_Config/scripts/bot_curator.py resolve 72
           python 04_Config/scripts/bot_curator.py lift
 
-      - name: Commit curated dataset + lift
+      - name: Commit to data/patrimonio branch
         run: |
           git config user.name "shot-de-mercado-bot"
           git config user.email "bot@shotdemercado.local"
+
+          # Rama dedicada SOLO para el curator (evita race con 13+ workflows en main)
+          git checkout -B data/patrimonio
 
           # Solo rutas declaradas (regla doc 38)
           for p in \
@@ -71,14 +74,7 @@ jobs:
             exit 0
           fi
 
-          git commit -q -m "sources_curator: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git commit -q -m "curator: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-          for i in 1 2 3 4; do
-            if git pull -q --rebase origin main && git push origin HEAD:main; then
-              exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            sleep $((i * 10))
-          done
-          echo "::error::No se pudo pushear el dataset curado tras 4 intentos"
-          exit 1
+          # Push a rama dedicada --force-with-lease (solo curator escribe aquí)
+          git push origin data/patrimonio --force-with-lease

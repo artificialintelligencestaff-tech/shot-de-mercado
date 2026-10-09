@@ -1,0 +1,70 @@
+name: flush_data
+
+# Flush de rama data/patrimonio a main cada 15 min.
+# Mergea los commits del curator (data/patrimonio) a main.
+# Evita race: el curator tarda ~7 min y compite con 13+ workflows en main.
+# flush_data es rápido (~1 min) y corre cada 15 min (minutos 3,18,33,48).
+
+on:
+  schedule:
+    - cron: '3,18,33,48 * * * *'   # cada 15 min, desfasado de :00/:30 del curator
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flush-data-write
+  cancel-in-progress: false
+
+jobs:
+  flush:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repo (full history for merge)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch data/patrimonio
+        run: |
+          git fetch origin data/patrimonio
+
+      - name: Check if data/patrimonio has new commits
+        id: check
+        run: |
+          if git merge-base --is-ancestor origin/data/patrimonio main; then
+            echo "has_new=false" >> $GITHUB_OUTPUT
+            echo "data/patrimonio ya está en main"
+          else
+            echo "has_new=true" >> $GITHUB_OUTPUT
+            echo "data/patrimonio tiene commits nuevos"
+          fi
+
+      - name: Merge data/patrimonio → main
+        if: steps.check.outputs.has_new == 'true'
+        run: |
+          git config user.name "shot-de-mercado-bot"
+          git config user.email "bot@shotdemercado.local"
+          
+          git checkout main
+          # Merge fast-forward si es posible, sino merge commit
+          git merge origin/data/patrimonio --no-edit
+          
+          # Push con retry 4 veces (solo flush_data es rápido, ~1 min)
+          for i in 1 2 3 4; do
+            if git pull -q --rebase origin main && git push origin main; then
+              echo "Flush completado en intento $i"
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 10))
+          done
+          echo "::error::No se pudo flushear data/patrimonio a main tras 4 intentos"
+          exit 1
+
+      - name: Sin cambios
+        if: steps.check.outputs.has_new == 'false'
+        run: echo "data/patrimonio ya está en main, sin cambios"
