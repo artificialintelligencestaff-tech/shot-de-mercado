@@ -14,11 +14,11 @@
 | `forums` | diseño | — | —/— |
 | `github` | diseño | — | —/— |
 | `rss` | ok | 1 | 11/11 |
-| `telegram` | ok | 2 | 15/15 |
+| `telegram` | vacío | 0 | 15/15 |
 | `telegram_b` | sin_datos | — | —/— |
 | `web` | diseño | — | —/— |
 | `x` | diseño | — | —/— |
-| `x_influencers` | ok | 6 | 47/50 |
+| `x_influencers` | ok | 1 | 50/50 |
 <!-- /AUTO:sources -->
 
 <!-- AUTO:repair -->
