@@ -1,12 +1,12 @@
 {
  "version": "review-1.0",
- "generated_at": "2026-10-11T12:57:26+00:00",
+ "generated_at": "2026-10-11T18:55:23+00:00",
  "gate": {
-  "n_alerts": 165,
-  "n_resolved": 152,
-  "k_hit": 82,
-  "rate": 0.5395,
-  "elapsed_h": 230.6,
+  "n_alerts": 167,
+  "n_resolved": 159,
+  "k_hit": 84,
+  "rate": 0.5283,
+  "elapsed_h": 236.5,
   "criterion": "primaria < 40% tras 24 h -> gate 15 min",
   "current_gate": 10,
   "decision": "mantener"
@@ -15,30 +15,31 @@
   "hypothesis": "H-0: info_score >= 20 no supera a info_score < 20 en tasa primaria (tokens < 60 min)",
   "min_n": 40,
   "alpha": 0.1,
-  "n_resolved": 36,
+  "n_resolved": 40,
   "groups": {
    "info_ge20": {
-    "n": 13,
-    "k_hit": 4,
-    "rate": 0.3077
+    "n": 15,
+    "k_hit": 5,
+    "rate": 0.3333
    },
    "info_lt20": {
-    "n": 23,
+    "n": 25,
     "k_hit": 6,
-    "rate": 0.2609
+    "rate": 0.24
    }
   },
-  "verdict": "pendiente"
+  "p_value": 0.3874,
+  "verdict": "H-0 no rechazada"
  },
  "coverage_pumpportal": {
   "window_h": 24,
-  "from": "2026-10-10T12:57:26+00:00",
-  "to": "2026-10-11T12:57:26+00:00",
+  "from": "2026-10-10T18:55:23+00:00",
+  "to": "2026-10-11T18:55:23+00:00",
   "by_instance": {
-   "a": 0.9717,
-   "b": 0.9689
+   "a": 0.9674,
+   "b": 0.9716
   },
-  "union": 0.9983,
+  "union": 0.9986,
   "reference_script_82": 0.25
  },
  "rows": [
@@ -87,7 +88,7 @@
    "early_bonus": 0,
    "status": "ok",
    "primary": "miss",
-   "max_ret": 0.0612,
+   "max_ret": 1.9558,
    "min_ret": -0.6835
   },
   {
@@ -171,6 +172,22 @@
    "min_ret": -0.9836
   },
   {
+   "mint": "33jENUQnjoitkMFpvNJcSHyLAHFWJuHwT6E3E8CNpump",
+   "symbol": "DOPE",
+   "alert_ts": "2026-10-11_134411",
+   "t0": 1791726251.0,
+   "price": 0.0004528,
+   "pool": "6iep3EgqksbZwgzMBCyAJtiVtVYkCgL9BnPBEwLR8AGQ",
+   "gate_min": 10,
+   "age_min_at_alert": 11.1,
+   "score": 52,
+   "early_bonus": 0,
+   "status": "ok",
+   "primary": "hit",
+   "max_ret": 3.5361,
+   "min_ret": -0.245
+  },
+  {
    "mint": "3DVcRFGfEj26XVTJ7FyzJNmbxRuh9hmtWWDHXERFpump",
    "symbol": "OpenAI",
    "alert_ts": "2026-10-02_063344",
@@ -200,7 +217,7 @@
    "status": "ok",
    "primary": "hit",
    "max_ret": 0.5637,
-   "min_ret": -0.1112
+   "min_ret": -0.9972
   },
   {
    "mint": "3e9CNFHjof1G5Te3NwBMBFZHdkoM8Gtef7qBEAdVpump",
@@ -392,7 +409,7 @@
    "status": "ok",
    "primary": "hit",
    "max_ret": 0.4411,
-   "min_ret": -0.8069
+   "min_ret": -0.874
   },
   {
    "mint": "5AHB57R3jatNDJ1bYKLwA1YHGSJkJsCrNhQn4Gq6pump",
@@ -939,6 +956,22 @@
    "min_ret": -1.0
   },
   {
+   "mint": "8oDatNBDRsQPjeNKELDT3QAnt84Go6RevnUDc2Sepump",
+   "symbol": "ai",
+   "alert_ts": "2026-10-11_150620",
+   "t0": 1791731180.0,
+   "price": 6.482e-05,
+   "pool": "76jfVJvQWerZmmuyvJegJ2EE27dHGpSqZa3CZuTP6DaM",
+   "gate_min": 10,
+   "age_min_at_alert": 10.2,
+   "score": 43,
+   "early_bonus": 0,
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": 0.2022,
+   "min_ret": -0.9456
+  },
+  {
    "mint": "8vDuxcypxP1W7QzDs537zUqnLbxPbyD6G1i7q49Vpump",
    "symbol": "XMAN",
    "alert_ts": "2026-10-05_233448",
@@ -1046,9 +1079,9 @@
    "score": 100,
    "early_bonus": 0,
    "status": "ok",
-   "primary": "pending",
-   "max_ret": 0.0787,
-   "min_ret": -0.1766
+   "primary": "miss",
+   "max_ret": 0.1708,
+   "min_ret": -0.3427
   },
   {
    "mint": "9NEGAPZd4NzWbC24im1jY5BtDYFUq9ZVLpDvims2pump",
@@ -1285,8 +1318,10 @@
    "age_min_at_alert": 63.6,
    "score": 100,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": 1.0503,
+   "min_ret": -0.9992
   },
   {
    "mint": "BSjxk551K959ukmXUHwEY1qcWChvxPFetFf6HWGEpump",
@@ -1333,8 +1368,8 @@
    "early_bonus": 0,
    "status": "ok",
    "primary": "pending",
-   "max_ret": 0.0004,
-   "min_ret": -0.0174
+   "max_ret": 0.026,
+   "min_ret": -0.0196
   },
   {
    "mint": "CH96B7rRQrcGduNZAHoBoaN2heKPwPnVuJMJ5oUkDESK",
@@ -1347,10 +1382,8 @@
    "age_min_at_alert": 10.9,
    "score": 40,
    "early_bonus": 0,
-   "status": "ok",
-   "primary": "miss",
-   "max_ret": -0.5722,
-   "min_ret": -0.9824
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "CZJfrAmMs5Cz4H22PWzfqTJu5FkP7Q2Vvx1oPVL9pump",
@@ -1379,8 +1412,10 @@
    "age_min_at_alert": 943.0,
    "score": 100,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": 0.0193,
+   "min_ret": -0.9935
   },
   {
    "mint": "CoiSNW851GsdvicYbjDtUFUYPA3uoCyXohxNgwS9pump",
@@ -1473,8 +1508,10 @@
    "age_min_at_alert": 10.9,
    "score": 47,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "hit",
+   "max_ret": 7.853,
+   "min_ret": -0.9279
   },
   {
    "mint": "DGGdESpe4QfhEfcG3Xn5imQdS8qNpAB9EZm7DgxZpump",
@@ -1519,8 +1556,10 @@
    "age_min_at_alert": 11.2,
    "score": 42,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": -0.4516,
+   "min_ret": -0.94
   },
   {
    "mint": "DSmp1qi6fAGn9Xj4cztBi8B1UJUBoiADn7QPhfEnsFq6",
@@ -1931,8 +1970,10 @@
    "age_min_at_alert": 73.8,
    "score": 100,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": 0.0248,
+   "min_ret": -1.0
   },
   {
    "mint": "HbPDWSqu8hpVMX6gMjwMDGe5rVgicWo3Qh3Jaojypump",
@@ -2263,8 +2304,10 @@
    "age_min_at_alert": 61.2,
    "score": 100,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "pending",
+   "max_ret": 0.1735,
+   "min_ret": 0.0095
   },
   {
    "mint": "ccAfwAoWZvvqmmBChcLBq2gx4xz89RnfC8UXiUvpump",
