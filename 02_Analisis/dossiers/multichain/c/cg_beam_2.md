@@ -1,6 +1,6 @@
 # Beam (BEAM) — dossier multi-chain
-🎴 Grupo c (7: categoría governance) · chain n/d · precio $0.00261087 · mcap $133,938,130
-Detectado 08/10/2026 21:57 UTC · score 77 (scoring mc-c-0.3, cobertura 0.80)
+🎴 Grupo c (7: categoría governance) · chain n/d · precio $0.00269237 · mcap $138,112,160
+Detectado 11/10/2026 11:55 UTC · score 63 (scoring mc-c-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | governance |
-| Volumen 24 h | $13,040,576 |
-| Cambio 24 h / 7 d | 2.54125% / 27.5198% |
+| Volumen 24 h | $6,190,017 |
+| Cambio 24 h / 7 d | 2.99498% / -8.1192% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Crecimiento de fees (7d vs 30d) | ρ 1.91 | +1.00 | 25 | DefiLlama overview/fees |
+| Crecimiento de fees (7d vs 30d) | ρ 1.95 | +1.00 | 25 | DefiLlama overview/fees |
 | Valuación mcap/TVL | n/d | n/d | 20 | CoinGecko + DefiLlama |
 | Evento de gobernanza (Snapshot) | 0 propuestas activas, ninguna de fees/emisiones en 48 h | +0.00 | 20 | Snapshot GraphQL |
 | Dilución FDV/mcap | 1.14 | -0.12 | 15 | CoinGecko |
-| Momentum vs categoría (7d) | +35.07 pp | +1.00 | 20 | CoinGecko |
+| Momentum vs categoría (7d) | -1.78 pp | -0.09 | 20 | CoinGecko |
 
-**Total: 77** (umbral 56, cobertura 0.80)
+**Total: 63** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 08/10/2026 21:57 UTC.
+- < 48 h desde 11/10/2026 11:55 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
