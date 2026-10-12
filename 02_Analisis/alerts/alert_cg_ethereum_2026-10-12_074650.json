@@ -1,0 +1,84 @@
+{
+  "key": "cg:ethereum",
+  "group": "h",
+  "group_rule": "1: blue chip",
+  "scoring_version": "mc-h-0.3",
+  "score": 57,
+  "confidence": 1.0,
+  "reasons": [
+    "Retorno 24 h / σ GARCH: +2.71% / σ 2.88% = z +0.93 → s=+0.46 (w 30)",
+    "Bollinger(20,2) con squeeze: ancho en percentil 0.21 · precio dentro de bandas → s=+0.00 (w 20)",
+    "Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia]: +0.0% anualizado → s=+0.00 (w 20)",
+    "Fear & Greed (contrarian en extremos): 69 → s=+0.00 (w 15)",
+    "Tendencia (MA20 ± ATR14): precio 2,572.07 · MA20 2,642.54 · ATR 78.52 → s=+0.00 (w 15)",
+    "Energía M = 1: DVOL (Deribit) sin colectar"
+  ],
+  "components": [
+    {
+      "name": "Retorno 24 h / σ GARCH",
+      "s": 0.4647,
+      "w": 30,
+      "value": "+2.71% / σ 2.88% = z +0.93",
+      "source": "Binance klines + CoinGecko"
+    },
+    {
+      "name": "Bollinger(20,2) con squeeze",
+      "s": 0,
+      "w": 20,
+      "value": "ancho en percentil 0.21 · precio dentro de bandas",
+      "source": "Binance klines"
+    },
+    {
+      "name": "Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia]",
+      "s": 0,
+      "w": 20,
+      "value": "+0.0% anualizado",
+      "source": "Hyperliquid"
+    },
+    {
+      "name": "Fear & Greed (contrarian en extremos)",
+      "s": 0,
+      "w": 15,
+      "value": "69",
+      "source": "alternative.me"
+    },
+    {
+      "name": "Tendencia (MA20 ± ATR14)",
+      "s": 0,
+      "w": 15,
+      "value": "precio 2,572.07 · MA20 2,642.54 · ATR 78.52",
+      "source": "Binance klines"
+    }
+  ],
+  "event": "tocar +2σ₄₈ antes de −2σ₄₈ (σ del GARCH(1,1))",
+  "threshold": 56,
+  "emittable": true,
+  "status_reason": "emitible",
+  "extra": {
+    "garch": {
+      "alpha": 0.1,
+      "beta": 0.7,
+      "omega": 0.000209,
+      "sigma_long": 0.032361,
+      "sigma_last": 0.029376,
+      "sigma_next": 0.028776,
+      "loglik": 1080.218508,
+      "n": 365
+    },
+    "barrier_pct": 8.139
+  },
+  "symbol": "ETH",
+  "name": "Ethereum",
+  "chain": "ethereum",
+  "cg_id": "ethereum",
+  "address": null,
+  "price_usd": 2572.07,
+  "mcap_usd": 314086317998.0,
+  "volume_24h_usd": 9935098645.0,
+  "liquidity_usd": null,
+  "change_24h": 2.7104,
+  "change_7d": -5.1728,
+  "pool_address": null,
+  "pool_created_at": null,
+  "category": "layer-1"
+}
