@@ -1,6 +1,6 @@
 # dYdX (DYDX) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.148637 · mcap $125,789,210
-Detectado 01/10/2026 19:37 UTC · score 56 (scoring mc-d-0.2, cobertura 0.75)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.14437 · mcap $122,131,721
+Detectado 12/10/2026 04:04 UTC · score 56 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | decentralized-perpetuals |
-| Volumen 24 h | $9,840,228 |
-| Cambio 24 h / 7 d | 3.85276% / 9.3462% |
+| Volumen 24 h | $2,411,584 |
+| Cambio 24 h / 7 d | 5.64865% / -2.1672% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -36,15 +36,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
 | Funding (contrarian en extremos) | +11.0% anualizado | +0.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | n/d | n/d | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | +0.182% | +0.18 | 20 | Hyperliquid |
-| Momentum 24 h | +3.85% | +0.19 | 30 | CoinGecko |
+| Open interest que confirma (24 h) | +0.024 log | +0.05 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | +0.069% | +0.07 | 20 | Hyperliquid |
+| Momentum 24 h | +5.65% | +0.28 | 30 | CoinGecko |
 
-**Total: 56** (umbral 56, cobertura 0.75)
+**Total: 56** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/10/2026 19:37 UTC.
+- < 48 h desde 12/10/2026 04:04 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
-- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.2
+- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.3
