@@ -24,5 +24,5 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-10-09 `workflow` workflow sources_curator.yml con 4 fallas seguidas — https://github.com/artificialintelligencestaff-tech/shot-de-mercado/actions/runs/38323253950
+- [P] 2026-10-09 `workflow` workflow sources_curator.yml con 4 fallas seguidas — https://github.com/artificialintelligencestaff-tech/shot-de-mercado/actions/runs/38325641857
 <!-- /AUTO:repair -->
