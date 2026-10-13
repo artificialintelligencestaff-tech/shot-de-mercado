@@ -1,6 +1,6 @@
 # Veranta (AVNT) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.138174 · mcap $49,060,181
-Detectado 11/10/2026 22:12 UTC · score 60 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.127246 · mcap $45,181,562
+Detectado 13/10/2026 23:20 UTC · score 58 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | decentralized-perpetuals |
-| Volumen 24 h | $8,256,853 |
-| Cambio 24 h / 7 d | 3.0685% / 9.4699% |
+| Volumen 24 h | $5,488,169 |
+| Cambio 24 h / 7 d | -3.55018% / -1.9622% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -19.4% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | -0.101 log | -0.20 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.199% | -0.20 | 20 | Hyperliquid |
-| Momentum 24 h | +3.07% | +0.15 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | -46.7% anualizado | +1.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | -0.009 log | +0.02 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | -0.197% | -0.20 | 20 | Hyperliquid |
+| Momentum 24 h | -3.55% | -0.18 | 30 | CoinGecko |
 
-**Total: 60** (umbral 56, cobertura 1.00)
+**Total: 58** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 11/10/2026 22:12 UTC.
+- < 48 h desde 13/10/2026 23:20 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
