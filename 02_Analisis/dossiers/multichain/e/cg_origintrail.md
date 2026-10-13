@@ -1,6 +1,6 @@
 # OriginTrail (TRAC) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.45291 · mcap $202,575,649
-Detectado 04/10/2026 04:14 UTC · score 68 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.413181 · mcap $184,804,854
+Detectado 13/10/2026 17:02 UTC · score 63 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $13,389,800 |
-| Cambio 24 h / 7 d | -6.93639% / 22.7962% |
+| Volumen 24 h | $19,235,381 |
+| Cambio 24 h / 7 d | 4.71227% / -0.7272% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0661 vs mediana 0.0412 | +0.43 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.1041 vs mediana 0.0530 | +0.62 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.12 | -0.10 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.72 pp | +0.14 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +22.97 pp | +1.00 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.85 pp | -0.17 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +8.56 pp | +0.43 | 15 | CoinGecko |
 
-**Total: 68** (umbral 56, cobertura 0.80)
+**Total: 63** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 04/10/2026 04:14 UTC.
+- < 48 h desde 13/10/2026 17:02 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
