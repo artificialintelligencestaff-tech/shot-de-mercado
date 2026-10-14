@@ -1,6 +1,6 @@
 # io.net (IO) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.178424 · mcap $73,191,565
-Detectado 11/10/2026 23:37 UTC · score 67 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.163561 · mcap $67,591,594
+Detectado 14/10/2026 00:22 UTC · score 61 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $32,267,425 |
-| Cambio 24 h / 7 d | 15.04014% / 1.621% |
+| Volumen 24 h | $14,955,543 |
+| Cambio 24 h / 7 d | 2.09373% / -5.1567% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.4409 vs mediana 0.0364 | +1.00 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.2213 vs mediana 0.0510 | +1.00 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
-| Dilución FDV/mcap | 1.94 | -0.61 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +2.16 pp | +0.43 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +4.32 pp | +0.22 | 15 | CoinGecko |
+| Dilución FDV/mcap | 1.93 | -0.60 | 20 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.41 pp | -0.08 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +0.85 pp | +0.04 | 15 | CoinGecko |
 
-**Total: 67** (umbral 56, cobertura 0.80)
+**Total: 61** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 11/10/2026 23:37 UTC.
+- < 48 h desde 14/10/2026 00:22 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
