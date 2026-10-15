@@ -1,6 +1,6 @@
 # UMA (UMA) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.396687 · mcap $36,837,270
-Detectado 13/10/2026 03:00 UTC · score 69 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.383495 · mcap $35,588,668
+Detectado 15/10/2026 09:54 UTC · score 57 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | synthetic-issuer |
-| Volumen 24 h | $4,232,323 |
-| Cambio 24 h / 7 d | -5.06827% / -7.4377% |
+| Volumen 24 h | $3,073,731 |
+| Cambio 24 h / 7 d | -5.4229% / -4.4548% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -11.2% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | -0.516 log | +1.00 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.178% | -0.18 | 20 | Hyperliquid |
-| Momentum 24 h | -5.07% | -0.25 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | -31.4% anualizado | +1.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | -0.035 log | +0.07 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | -0.206% | -0.21 | 20 | Hyperliquid |
+| Momentum 24 h | -5.42% | -0.27 | 30 | CoinGecko |
 
-**Total: 69** (umbral 56, cobertura 1.00)
+**Total: 57** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 13/10/2026 03:00 UTC.
+- < 48 h desde 15/10/2026 09:54 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
