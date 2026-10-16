@@ -1,6 +1,6 @@
 # Bitcoin (BTC) — dossier multi-chain
-🎴 Grupo h (1: blue chip) · chain bitcoin · precio $84,055 · mcap $1,689,130,982,434
-Detectado 12/10/2026 05:02 UTC · score 56 (scoring mc-h-0.3, cobertura 1.00)
+🎴 Grupo h (1: blue chip) · chain bitcoin · precio $82,038 · mcap $1,649,046,513,015
+Detectado 16/10/2026 04:25 UTC · score 56 (scoring mc-h-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | bitcoin |
 | Categoría | layer-1 |
-| Volumen 24 h | $17,249,535,682 |
-| Cambio 24 h / 7 d | 1.35763% / -3.4335% |
+| Volumen 24 h | $35,183,035,718 |
+| Cambio 24 h / 7 d | 1.4899% / 0.0004% |
 
 ## 🔬 Método
 - Evento medido: tocar +2σ₄₈ antes de −2σ₄₈ (σ del GARCH(1,1)).
@@ -35,18 +35,18 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Retorno 24 h / σ GARCH | +1.36% / σ 1.82% = z +0.74 | +0.37 | 30 | Binance klines + CoinGecko |
-| Bollinger(20,2) con squeeze | ancho en percentil 0.04 · precio dentro de bandas | +0.00 | 20 | Binance klines |
-| Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia] | +5.8% anualizado | +0.00 | 20 | Hyperliquid |
-| Fear & Greed (contrarian en extremos) | 69 | +0.00 | 15 | alternative.me |
-| Tendencia (MA20 ± ATR14) | precio 84,055.00 · MA20 84,156.35 · ATR 2,033.93 | +0.00 | 15 | Binance klines |
+| Retorno 24 h / σ GARCH | +1.49% / σ 1.90% = z +0.78 | +0.39 | 30 | Binance klines + CoinGecko |
+| Bollinger(20,2) con squeeze | ancho en percentil 0.10 · precio dentro de bandas | +0.00 | 20 | Binance klines |
+| Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia] | +11.0% anualizado | +0.00 | 20 | Hyperliquid |
+| Fear & Greed (contrarian en extremos) | 63 | +0.00 | 15 | alternative.me |
+| Tendencia (MA20 ± ATR14) | precio 82,038.00 · MA20 83,635.80 · ATR 2,195.88 | +0.00 | 15 | Binance klines |
 
-- GARCH(1,1): α=0.16, β=0.7, σ próximo día 1.82% · barreras ±2σ₄₈ = ±5.14%
+- GARCH(1,1): α=0.16, β=0.7, σ próximo día 1.90% · barreras ±2σ₄₈ = ±5.38%
 
 **Total: 56** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 12/10/2026 05:02 UTC.
+- < 48 h desde 16/10/2026 04:25 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
