@@ -1,6 +1,6 @@
 # Hyperliquid (HYPE) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $87.44 · mcap $19,451,775,848
-Detectado 07/10/2026 17:57 UTC · score 59 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $79.08 · mcap $17,592,783,995
+Detectado 16/10/2026 17:25 UTC · score 61 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | layer-1 |
-| Volumen 24 h | $885,635,710 |
-| Cambio 24 h / 7 d | -4.46648% / 0.1928% |
+| Volumen 24 h | $671,786,831 |
+| Cambio 24 h / 7 d | -2.41374% / -7.1357% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -32.4% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | -0.033 log | +0.07 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.094% | -0.09 | 20 | Hyperliquid |
-| Momentum 24 h | -4.47% | -0.22 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | -18.0% anualizado | +1.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | -0.021 log | +0.04 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | -0.037% | -0.04 | 20 | Hyperliquid |
+| Momentum 24 h | -2.41% | -0.12 | 30 | CoinGecko |
 
-**Total: 59** (umbral 56, cobertura 1.00)
+**Total: 61** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 07/10/2026 17:57 UTC.
+- < 48 h desde 16/10/2026 17:25 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
