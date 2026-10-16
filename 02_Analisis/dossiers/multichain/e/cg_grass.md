@@ -1,6 +1,6 @@
 # Grass (GRASS) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.728125 · mcap $509,317,620
-Detectado 14/10/2026 05:25 UTC · score 58 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.668786 · mcap $467,836,219
+Detectado 16/10/2026 07:22 UTC · score 69 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): K
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $32,214,712 |
-| Cambio 24 h / 7 d | -5.66039% / 10.9825% |
+| Volumen 24 h | $31,273,470 |
+| Cambio 24 h / 7 d | 6.24994% / 7.2513% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): K
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0633 vs mediana 0.0446 | +0.32 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0668 vs mediana 0.0359 | +0.57 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.43 | -0.33 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | -0.57 pp | -0.11 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +14.80 pp | +0.74 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | +2.44 pp | +0.49 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +10.71 pp | +0.54 | 15 | CoinGecko |
 
-**Total: 58** (umbral 56, cobertura 0.80)
+**Total: 69** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 14/10/2026 05:25 UTC.
+- < 48 h desde 16/10/2026 07:22 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
