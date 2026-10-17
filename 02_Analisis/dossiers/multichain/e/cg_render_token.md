@@ -1,6 +1,6 @@
 # Render (RENDER) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $2 · mcap $1,038,574,154
-Detectado 12/10/2026 05:18 UTC · score 59 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $1.91 · mcap $990,155,337
+Detectado 17/10/2026 01:49 UTC · score 72 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $49,406,400 |
-| Cambio 24 h / 7 d | 4.97345% / -1.2434% |
+| Volumen 24 h | $52,482,419 |
+| Cambio 24 h / 7 d | -2.25791% / 0.7393% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Crecimiento de ingresos de red (fees 7d vs 30d) | ρ 1.10 | +0.20 | 30 | DefiLlama overview/fees |
+| Crecimiento de ingresos de red (fees 7d vs 30d) | ρ 1.69 | +1.00 | 30 | DefiLlama overview/fees |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.03 | -0.03 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +2.49 pp | +0.50 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +2.07 pp | +0.10 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.22 pp | -0.04 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +8.25 pp | +0.41 | 15 | CoinGecko |
 
-**Total: 59** (umbral 56, cobertura 0.80)
+**Total: 72** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 12/10/2026 05:18 UTC.
+- < 48 h desde 17/10/2026 01:49 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
