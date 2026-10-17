@@ -1,6 +1,6 @@
 # Synthetix (SNX) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.243513 · mcap $141,479,752
-Detectado 07/10/2026 05:57 UTC · score 63 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.214386 · mcap $124,391,397
+Detectado 17/10/2026 23:18 UTC · score 57 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -23,9 +23,9 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Id de CoinGecko | havven |
 | Contrato | n/d |
 | Chain | n/d |
-| Categoría | governance |
-| Volumen 24 h | $8,006,076 |
-| Cambio 24 h / 7 d | -2.79039% / -4.1046% |
+| Categoría | synthetic-issuer |
+| Volumen 24 h | $3,465,701 |
+| Cambio 24 h / 7 d | -4.67344% / -13.0217% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -25.2% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | -0.158 log | +0.32 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.176% | -0.18 | 20 | Hyperliquid |
-| Momentum 24 h | -2.79% | -0.14 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | -16.5% anualizado | +1.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | +0.004 log | -0.01 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | -0.163% | -0.16 | 20 | Hyperliquid |
+| Momentum 24 h | -4.67% | -0.23 | 30 | CoinGecko |
 
-**Total: 63** (umbral 56, cobertura 1.00)
+**Total: 57** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 07/10/2026 05:57 UTC.
+- < 48 h desde 17/10/2026 23:18 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
