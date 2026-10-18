@@ -1,6 +1,6 @@
 # Bittensor (TAO) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $257.75 · mcap $2,923,758,479
-Detectado 15/10/2026 06:27 UTC · score 56 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $270.11 · mcap $3,062,103,755
+Detectado 18/10/2026 10:20 UTC · score 58 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | layer-1 |
-| Volumen 24 h | $184,504,641 |
-| Cambio 24 h / 7 d | -7.03879% / -7.8532% |
+| Volumen 24 h | $121,788,684 |
+| Cambio 24 h / 7 d | -1.91424% / -5.3023% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0631 vs mediana 0.0396 | +0.42 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0398 vs mediana 0.0224 | +0.52 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.85 | -0.56 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +2.47 pp | +0.49 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +0.86 pp | +0.04 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | +2.48 pp | +0.50 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +0.34 pp | +0.02 | 15 | CoinGecko |
 
-**Total: 56** (umbral 56, cobertura 0.80)
+**Total: 58** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 15/10/2026 06:27 UTC.
+- < 48 h desde 18/10/2026 10:20 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
