@@ -1,6 +1,6 @@
 # Aster (ASTER) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.687379 · mcap $1,866,160,480
-Detectado 14/10/2026 15:29 UTC · score 62 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $0.682831 · mcap $1,851,810,526
+Detectado 18/10/2026 20:04 UTC · score 60 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | decentralized-perpetuals |
-| Volumen 24 h | $81,728,455 |
-| Cambio 24 h / 7 d | -0.12761% / -3.444% |
+| Volumen 24 h | $116,282,990 |
+| Cambio 24 h / 7 d | -3.1465% / -3.6725% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -15.8% anualizado | +1.00 | 25 | Hyperliquid |
+| Funding (contrarian en extremos) | -11.3% anualizado | +1.00 | 25 | Hyperliquid |
 | Open interest que confirma (24 h) | -0.017 log | +0.03 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.070% | -0.07 | 20 | Hyperliquid |
-| Momentum 24 h | -0.13% | -0.01 | 30 | CoinGecko |
+| Basis (mark − oráculo) [H: signo a medir] | -0.091% | -0.09 | 20 | Hyperliquid |
+| Momentum 24 h | -3.15% | -0.16 | 30 | CoinGecko |
 
-**Total: 62** (umbral 56, cobertura 1.00)
+**Total: 60** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 14/10/2026 15:29 UTC.
+- < 48 h desde 18/10/2026 20:04 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
