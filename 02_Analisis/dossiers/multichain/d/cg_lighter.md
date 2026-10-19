@@ -1,6 +1,6 @@
 # Lighter (LIT) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $3.09 · mcap $771,655,958
-Detectado 17/10/2026 18:18 UTC · score 62 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $3.04 · mcap $760,608,334
+Detectado 19/10/2026 22:25 UTC · score 65 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | decentralized-perpetuals |
-| Volumen 24 h | $48,448,287 |
-| Cambio 24 h / 7 d | -0.63311% / -17.2452% |
+| Volumen 24 h | $54,984,605 |
+| Cambio 24 h / 7 d | 4.82222% / -17.5163% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -14.0% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | -0.024 log | +0.05 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.067% | -0.07 | 20 | Hyperliquid |
-| Momentum 24 h | -0.63% | -0.03 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | -16.9% anualizado | +1.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | -0.024 log | -0.05 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | -0.072% | -0.07 | 20 | Hyperliquid |
+| Momentum 24 h | +4.82% | +0.24 | 30 | CoinGecko |
 
-**Total: 62** (umbral 56, cobertura 1.00)
+**Total: 65** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 17/10/2026 18:18 UTC.
+- < 48 h desde 19/10/2026 22:25 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
