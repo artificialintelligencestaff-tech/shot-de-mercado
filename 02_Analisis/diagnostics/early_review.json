@@ -1,12 +1,12 @@
 {
  "version": "review-1.0",
- "generated_at": "2026-10-19T19:15:45+00:00",
+ "generated_at": "2026-10-20T01:17:06+00:00",
  "gate": {
-  "n_alerts": 239,
+  "n_alerts": 240,
   "n_resolved": 231,
   "k_hit": 120,
   "rate": 0.5195,
-  "elapsed_h": 428.9,
+  "elapsed_h": 434.9,
   "criterion": "primaria < 40% tras 24 h -> gate 15 min",
   "current_gate": 10,
   "decision": "mantener"
@@ -15,31 +15,31 @@
   "hypothesis": "H-0: info_score >= 20 no supera a info_score < 20 en tasa primaria (tokens < 60 min)",
   "min_n": 40,
   "alpha": 0.1,
-  "n_resolved": 75,
+  "n_resolved": 77,
   "groups": {
    "info_ge20": {
-    "n": 40,
+    "n": 41,
     "k_hit": 13,
-    "rate": 0.325
+    "rate": 0.3171
    },
    "info_lt20": {
-    "n": 35,
-    "k_hit": 9,
-    "rate": 0.2571
+    "n": 36,
+    "k_hit": 10,
+    "rate": 0.2778
    }
   },
-  "p_value": 0.3494,
+  "p_value": 0.4507,
   "verdict": "H-0 no rechazada"
  },
  "coverage_pumpportal": {
   "window_h": 24,
-  "from": "2026-10-18T19:15:45+00:00",
-  "to": "2026-10-19T19:15:45+00:00",
+  "from": "2026-10-19T01:17:06+00:00",
+  "to": "2026-10-20T01:17:06+00:00",
   "by_instance": {
-   "a": 0.8547,
-   "b": 0.8598
+   "a": 0.8564,
+   "b": 0.8607
   },
-  "union": 0.9854,
+  "union": 0.9861,
   "reference_script_82": 0.25
  },
  "rows": [
@@ -233,7 +233,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": 0.946,
-   "min_ret": -0.7062
+   "min_ret": -0.8333
   },
   {
    "mint": "2trQcQbEiSsNCGhjUKZ7cNtcREgjFdGeTHndet2kpump",
@@ -329,7 +329,7 @@
    "status": "ok",
    "primary": "hit",
    "max_ret": 0.2195,
-   "min_ret": -0.6559
+   "min_ret": -0.7069
   },
   {
    "mint": "3DVcRFGfEj26XVTJ7FyzJNmbxRuh9hmtWWDHXERFpump",
@@ -377,7 +377,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": 3.1076,
-   "min_ret": -0.9773
+   "min_ret": -0.9988
   },
   {
    "mint": "3PfXyn2291NsZYE8DNzyb9iQNiDe2HGdiR8guqgopump",
@@ -457,7 +457,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": -0.5105,
-   "min_ret": -0.8631
+   "min_ret": -0.9671
   },
   {
    "mint": "3oa5Gy38GwD5aRZHuitScfVfGafhYPPn7D5XYFgPpump",
@@ -505,7 +505,7 @@
    "status": "ok",
    "primary": "hit",
    "max_ret": 5.0368,
-   "min_ret": -0.9208
+   "min_ret": -0.9397
   },
   {
    "mint": "3xmzHi86JTUdye7bUuT9TdBPZLeBK9nBCA44JHRdpump",
@@ -982,10 +982,8 @@
    "age_min_at_alert": 10.3,
    "score": 45,
    "early_bonus": 0,
-   "status": "ok",
-   "primary": "miss",
-   "max_ret": -0.5847,
-   "min_ret": -0.9733
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "6hiQ7ro4oS6mcEj5Nx8zETJrKNsv8tk9r1yHsky1pump",
@@ -1020,6 +1018,20 @@
    "min_ret": -0.9876
   },
   {
+   "mint": "6tgusToBREdH1PqFhAgjo8hrBrXmYjpUzJm4mDWnpump",
+   "symbol": "BULLY",
+   "alert_ts": "2026-10-20_004525",
+   "t0": 1792457125.0,
+   "price": 5.649e-05,
+   "pool": "31ZPBi5ZPvu82HH7nFVgESLNmwi1rfWzt2hWk6qbR8Qg",
+   "gate_min": 10,
+   "age_min_at_alert": 11.3,
+   "score": 43,
+   "early_bonus": 0,
+   "status": "http_429",
+   "primary": "sin_datos"
+  },
+  {
    "mint": "6yMZv1NgnQWBeocyfCNKmdqGr3Enu3Lrdpz3TJRvpump",
    "symbol": "CATONICE",
    "alert_ts": "2026-10-19_000340",
@@ -1030,10 +1042,8 @@
    "age_min_at_alert": 507.8,
    "score": 100,
    "early_bonus": 0,
-   "status": "ok",
-   "primary": "miss",
-   "max_ret": 0.178,
-   "min_ret": -0.9449
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "76fvXLL5hPsr6CQUs6PrXTY7VgdyY5tPidjPrpaepump",
@@ -1110,8 +1120,10 @@
    "age_min_at_alert": 11.0,
    "score": 44,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": 1.5469,
+   "min_ret": -0.9547
   },
   {
    "mint": "7fk4C9dUcDMECAKrScaMK6wiFWrXweTDavaDXM4udbCb",
@@ -1172,8 +1184,10 @@
    "age_min_at_alert": 11.6,
    "score": 41,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": 0.23,
+   "min_ret": -0.6092
   },
   {
    "mint": "7jNwX4Me9zGEjmWY7zARDG2LYjVs1WXD6DZ1JvSfpump",
@@ -1840,8 +1854,10 @@
    "age_min_at_alert": 1338.4,
    "score": 99,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "hit",
+   "max_ret": 1.1326,
+   "min_ret": -0.3204
   },
   {
    "mint": "B4kxjbuNHFj1smvSYJark1ucXiiWVXYPmLqfrZ6zpump",
@@ -1934,10 +1950,8 @@
    "age_min_at_alert": 10.2,
    "score": 44,
    "early_bonus": 0,
-   "status": "ok",
-   "primary": "miss",
-   "max_ret": 0.2213,
-   "min_ret": -0.811
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "Bav8Z8q7g95Uyqqxr4BHFiSXedbT8Xyxb96oTiTwpump",
@@ -2062,10 +2076,8 @@
    "age_min_at_alert": 1337.0,
    "score": 100,
    "early_bonus": 2,
-   "status": "ok",
-   "primary": "hit",
-   "max_ret": 0.7938,
-   "min_ret": -0.9878
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "CZJfrAmMs5Cz4H22PWzfqTJu5FkP7Q2Vvx1oPVL9pump",
@@ -2366,8 +2378,10 @@
    "age_min_at_alert": 323.6,
    "score": 100,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "hit",
+   "max_ret": 3.4789,
+   "min_ret": -0.9958
   },
   {
    "mint": "Dt4ox71Zhyhcf1rhmT9NEnKyv4ebuxtet2NXo4nRpump",
@@ -2463,7 +2477,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": -0.618,
-   "min_ret": -0.9492
+   "min_ret": -0.9607
   },
   {
    "mint": "EKfBSf5etGkBxgEf9ydZCrtRE8KEHvg5sC7tgFS6pump",
@@ -2492,10 +2506,8 @@
    "age_min_at_alert": 352.8,
    "score": 100,
    "early_bonus": 0,
-   "status": "ok",
-   "primary": "hit",
-   "max_ret": 1.137,
-   "min_ret": -0.059
+   "status": "http_429",
+   "primary": "sin_datos"
   },
   {
    "mint": "ELEnRRcKCuuPJBJPeTTGCRocjkBCwbd3R3f8nyg8pump",
@@ -2540,8 +2552,10 @@
    "age_min_at_alert": 10.0,
    "score": 45,
    "early_bonus": 0,
-   "status": "http_429",
-   "primary": "sin_datos"
+   "status": "ok",
+   "primary": "miss",
+   "max_ret": -0.636,
+   "min_ret": -0.9812
   },
   {
    "mint": "EgSbbWBKhMMT1Eq43oahS6tg7vVEAqbbniNEDGmUpump",
@@ -2843,7 +2857,7 @@
    "status": "ok",
    "primary": "miss",
    "max_ret": 0.2496,
-   "min_ret": -0.9548
+   "min_ret": -0.9549
   },
   {
    "mint": "Gyk9Z93Ri2JUjqES9HTpc7pxCJTLD7vhBhEjBhyApump",
