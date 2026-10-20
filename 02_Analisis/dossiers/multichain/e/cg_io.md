@@ -1,6 +1,6 @@
 # io.net (IO) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.154219 · mcap $63,748,491
-Detectado 18/10/2026 02:50 UTC · score 64 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.153906 · mcap $63,626,084
+Detectado 20/10/2026 02:59 UTC · score 62 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $9,444,638 |
-| Cambio 24 h / 7 d | -4.12696% / 0.0852% |
+| Volumen 24 h | $7,226,349 |
+| Cambio 24 h / 7 d | 1.77022% / -1.5195% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.1482 vs mediana 0.0324 | +1.00 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.1136 vs mediana 0.0365 | +1.00 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.93 | -0.60 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | -0.74 pp | -0.15 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +9.37 pp | +0.47 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.70 pp | -0.14 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +4.31 pp | +0.22 | 15 | CoinGecko |
 
-**Total: 64** (umbral 56, cobertura 0.80)
+**Total: 62** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 18/10/2026 02:50 UTC.
+- < 48 h desde 20/10/2026 02:59 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
