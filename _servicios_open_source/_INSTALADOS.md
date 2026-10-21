@@ -24,5 +24,6 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- Sin problemas abiertos.
+- [P] 2026-10-21 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 3 corridas sin ítems
+- [P] 2026-10-21 `workflow` workflow sources_curator.yml con 4 fallas seguidas — https://github.com/artificialintelligencestaff-tech/shot-de-mercado/actions/runs/39665778040
 <!-- /AUTO:repair -->
