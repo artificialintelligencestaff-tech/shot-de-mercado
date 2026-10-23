@@ -1,6 +1,6 @@
 # PHALA (PHA) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.073464 · mcap $62,837,788
-Detectado 01/10/2026 18:15 UTC · score 88 (scoring mc-e-0.2, cobertura 0.60)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.065883 · mcap $56,464,398
+Detectado 23/10/2026 13:40 UTC · score 74 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | layer-2 |
-| Volumen 24 h | $33,217,296 |
-| Cambio 24 h / 7 d | -4.78747% / 44.8644% |
+| Volumen 24 h | $40,217,045 |
+| Cambio 24 h / 7 d | 9.71511% / 23.8695% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,17 +35,17 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.5286 vs mediana 0.0694 | +1.00 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.7123 vs mediana 0.0525 | +1.00 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
-| Dilución FDV/mcap | n/d | n/d | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.00 pp | +0.00 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +44.39 pp | +1.00 | 15 | CoinGecko |
+| Dilución FDV/mcap | 1.17 | -0.14 | 20 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -1.14 pp | -0.23 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +29.38 pp | +1.00 | 15 | CoinGecko |
 
-**Total: 88** (umbral 56, cobertura 0.60)
+**Total: 74** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/10/2026 18:15 UTC.
+- < 48 h desde 23/10/2026 13:40 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
-- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.2
+- 02_Analisis/multichain/ (script_114) · lib_scoring_multichain v0.3
