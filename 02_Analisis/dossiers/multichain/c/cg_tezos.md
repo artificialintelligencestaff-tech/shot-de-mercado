@@ -1,6 +1,6 @@
 # Tezos (XTZ) — dossier multi-chain
-🎴 Grupo c (7: categoría governance) · chain n/d · precio $0.29971 · mcap $329,544,829
-Detectado 23/10/2026 01:57 UTC · score 64 (scoring mc-c-0.3, cobertura 0.80)
+🎴 Grupo c (7: categoría governance) · chain n/d · precio $0.291586 · mcap $320,660,896
+Detectado 25/10/2026 06:54 UTC · score 67 (scoring mc-c-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | governance |
-| Volumen 24 h | $3,300,984 |
-| Cambio 24 h / 7 d | -5.31965% / -4.0087% |
+| Volumen 24 h | $3,623,700 |
+| Cambio 24 h / 7 d | -3.68749% / -2.1015% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Crecimiento de fees (7d vs 30d) | ρ 1.61 | +0.95 | 25 | DefiLlama overview/fees |
+| Crecimiento de fees (7d vs 30d) | ρ 2.10 | +1.00 | 25 | DefiLlama overview/fees |
 | Valuación mcap/TVL | n/d | n/d | 20 | CoinGecko + DefiLlama |
 | Evento de gobernanza (Snapshot) | 0 propuestas activas, ninguna de fees/emisiones en 48 h | +0.00 | 20 | Snapshot GraphQL |
 | Dilución FDV/mcap | 1.02 | -0.02 | 15 | CoinGecko |
-| Momentum vs categoría (7d) | -0.30 pp | -0.02 | 20 | CoinGecko |
+| Momentum vs categoría (7d) | +2.79 pp | +0.14 | 20 | CoinGecko |
 
-**Total: 64** (umbral 56, cobertura 0.80)
+**Total: 67** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 23/10/2026 01:57 UTC.
+- < 48 h desde 25/10/2026 06:54 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
