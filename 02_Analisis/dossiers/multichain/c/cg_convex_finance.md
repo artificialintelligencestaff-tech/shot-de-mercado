@@ -1,6 +1,6 @@
 # Convex Finance (CVX) — dossier multi-chain
-🎴 Grupo c (7: categoría governance) · chain n/d · precio $2.48 · mcap $230,775,549
-Detectado 23/10/2026 03:01 UTC · score 59 (scoring mc-c-0.3, cobertura 1.00)
+🎴 Grupo c (7: categoría governance) · chain n/d · precio $2.42 · mcap $225,463,529
+Detectado 25/10/2026 12:16 UTC · score 59 (scoring mc-c-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | governance |
-| Volumen 24 h | $10,194,094 |
-| Cambio 24 h / 7 d | -2.57426% / 23.6952% |
+| Volumen 24 h | $10,004,990 |
+| Cambio 24 h / 7 d | 0.84304% / 21.6639% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Crecimiento de fees (7d vs 30d) | ρ 0.75 | -0.57 | 25 | DefiLlama overview/fees |
+| Crecimiento de fees (7d vs 30d) | ρ 0.75 | -0.56 | 25 | DefiLlama overview/fees |
 | Valuación mcap/TVL | 0.40 | +0.66 | 20 | CoinGecko + DefiLlama |
 | Evento de gobernanza (Snapshot) | 0 propuestas activas, ninguna de fees/emisiones en 48 h | +0.00 | 20 | Snapshot GraphQL |
 | Dilución FDV/mcap | 1.07 | -0.06 | 15 | CoinGecko |
-| Momentum vs categoría (7d) | +27.18 pp | +1.00 | 20 | CoinGecko |
+| Momentum vs categoría (7d) | +28.23 pp | +1.00 | 20 | CoinGecko |
 
 **Total: 59** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 23/10/2026 03:01 UTC.
+- < 48 h desde 25/10/2026 12:16 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
