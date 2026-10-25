@@ -1,6 +1,6 @@
 # Arbitrum (ARB) — dossier multi-chain
-🎴 Grupo f (6: L1/L2 o token nativo de una chain) · chain arbitrum · precio $0.177654 · mcap $1,223,895,251
-Detectado 23/10/2026 20:55 UTC · score 62 (scoring mc-f-0.3, cobertura 1.00)
+🎴 Grupo f (6: L1/L2 o token nativo de una chain) · chain arbitrum · precio $0.170005 · mcap $1,171,597,878
+Detectado 25/10/2026 23:48 UTC · score 65 (scoring mc-f-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | arbitrum |
 | Categoría | layer-2 |
-| Volumen 24 h | $143,365,909 |
-| Cambio 24 h / 7 d | -1.62776% / -6.248% |
+| Volumen 24 h | $89,280,606 |
+| Cambio 24 h / 7 d | 1.6397% / -4.8035% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Momentum de TVL (g₇) | +0.0359 | +0.36 | 25 | DefiLlama historicalChainTvl |
-| Aceleración de TVL (a₇) | -0.0011 | -0.02 | 15 | DefiLlama historicalChainTvl |
-| Actividad DEX/TVL (ranking entre chains) | 0.118 · percentil 0.71 | +0.43 | 20 | DefiLlama overview/dexs |
-| Fees/TVL anualizado (ranking entre chains) | 16.29% · percentil 0.86 | +0.71 | 15 | DefiLlama overview/fees |
-| Momentum relativo vs ETH (7d) | -6.25% − ETH -0.30% = -5.94 pp | -0.30 | 25 | CoinGecko |
+| Momentum de TVL (g₇) | +0.0502 | +0.50 | 25 | DefiLlama historicalChainTvl |
+| Aceleración de TVL (a₇) | +0.0274 | +0.55 | 15 | DefiLlama historicalChainTvl |
+| Actividad DEX/TVL (ranking entre chains) | 0.094 · percentil 0.71 | +0.43 | 20 | DefiLlama overview/dexs |
+| Fees/TVL anualizado (ranking entre chains) | 16.77% · percentil 0.71 | +0.43 | 15 | DefiLlama overview/fees |
+| Momentum relativo vs ETH (7d) | -4.80% − ETH -0.85% = -3.95 pp | -0.20 | 25 | CoinGecko |
 
-**Total: 62** (umbral 56, cobertura 1.00)
+**Total: 65** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 23/10/2026 20:55 UTC.
+- < 48 h desde 25/10/2026 23:48 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
