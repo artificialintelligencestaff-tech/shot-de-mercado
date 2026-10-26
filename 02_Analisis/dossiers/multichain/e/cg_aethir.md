@@ -1,6 +1,6 @@
 # Aethir (ATH) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.00593054 · mcap $119,263,520
-Detectado 24/10/2026 04:25 UTC · score 64 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.00548513 · mcap $110,765,003
+Detectado 26/10/2026 08:11 UTC · score 64 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $16,214,827 |
-| Cambio 24 h / 7 d | -5.03352% / 3.2303% |
+| Volumen 24 h | $8,421,879 |
+| Cambio 24 h / 7 d | -4.06614% / 3.0353% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Crecimiento de ingresos de red (fees 7d vs 30d) | ρ 2.37 | +1.00 | 30 | DefiLlama overview/fees |
+| Crecimiento de ingresos de red (fees 7d vs 30d) | ρ 4.01 | +1.00 | 30 | DefiLlama overview/fees |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 2.09 | -0.67 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | -0.05 pp | -0.01 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +8.11 pp | +0.41 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | +0.09 pp | +0.02 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +7.85 pp | +0.39 | 15 | CoinGecko |
 
 **Total: 64** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 24/10/2026 04:25 UTC.
+- < 48 h desde 26/10/2026 08:11 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
