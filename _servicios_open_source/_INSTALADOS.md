@@ -24,5 +24,6 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-10-26 `rss` atraso repetido en 24 h — última corrida: 2026-10-27 02:11 UTC
+- [P] 2026-10-26 `rss` atraso repetido en 24 h — última corrida: 2026-10-27 08:03 UTC
+- [P] 2026-10-27 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 3 corridas sin ítems
 <!-- /AUTO:repair -->
