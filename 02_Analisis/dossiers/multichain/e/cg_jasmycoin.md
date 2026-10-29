@@ -1,6 +1,6 @@
 # JasmyCoin (JASMY) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.00464452 · mcap $229,212,116
-Detectado 23/10/2026 07:28 UTC · score 57 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.00378462 · mcap $187,189,832
+Detectado 29/10/2026 08:00 UTC · score 60 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $13,681,904 |
-| Cambio 24 h / 7 d | -0.0719% / -3.0845% |
+| Volumen 24 h | $23,241,909 |
+| Cambio 24 h / 7 d | -10.87065% / -20.2272% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0597 vs mediana 0.0425 | +0.31 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.1242 vs mediana 0.0372 | +1.00 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.01 | -0.01 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.47 pp | +0.09 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +1.19 pp | +0.06 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -1.35 pp | -0.27 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | -12.06 pp | -0.60 | 15 | CoinGecko |
 
-**Total: 57** (umbral 56, cobertura 0.80)
+**Total: 60** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 23/10/2026 07:28 UTC.
+- < 48 h desde 29/10/2026 08:00 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
