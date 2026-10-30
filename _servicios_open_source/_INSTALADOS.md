@@ -24,5 +24,5 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- Sin problemas abiertos.
+- [P] 2026-10-30 `rss` atraso repetido en 24 h — última corrida: 2026-10-30 05:33 UTC
 <!-- /AUTO:repair -->
