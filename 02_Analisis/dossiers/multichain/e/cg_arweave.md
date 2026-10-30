@@ -1,6 +1,6 @@
 # Arweave (AR) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $3.83 · mcap $251,533,587
-Detectado 20/10/2026 04:27 UTC · score 56 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $3.12 · mcap $204,850,938
+Detectado 30/10/2026 03:58 UTC · score 58 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $10,566,576 |
-| Cambio 24 h / 7 d | 0.94219% / -0.0441% |
+| Volumen 24 h | $14,974,456 |
+| Cambio 24 h / 7 d | -7.90901% / -14.1987% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0420 vs mediana 0.0374 | +0.11 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0731 vs mediana 0.0383 | +0.59 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.00 | +0.00 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.00 pp | +0.00 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +7.54 pp | +0.38 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.93 pp | -0.19 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | -2.59 pp | -0.13 | 15 | CoinGecko |
 
-**Total: 56** (umbral 56, cobertura 0.80)
+**Total: 58** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 20/10/2026 04:27 UTC.
+- < 48 h desde 30/10/2026 03:58 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
