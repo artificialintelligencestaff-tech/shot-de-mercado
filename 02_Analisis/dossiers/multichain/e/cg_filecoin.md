@@ -1,6 +1,6 @@
 # Filecoin (FIL) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $1.14 · mcap $951,727,963
-Detectado 16/10/2026 21:09 UTC · score 62 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.87418 · mcap $733,529,798
+Detectado 01/11/2026 21:07 UTC · score 60 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $248,132,935 |
-| Cambio 24 h / 7 d | -0.6763% / 4.6732% |
+| Volumen 24 h | $56,935,209 |
+| Cambio 24 h / 7 d | 0.89048% / -5.9256% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Crecimiento de ingresos de red (fees 7d vs 30d) | ρ 1.52 | +0.84 | 30 | DefiLlama overview/fees |
+| Crecimiento de ingresos de red (fees 7d vs 30d) | ρ 1.82 | +1.00 | 30 | DefiLlama overview/fees |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
-| Dilución FDV/mcap | 2.34 | -0.77 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.35 pp | +0.07 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +10.58 pp | +0.53 | 15 | CoinGecko |
+| Dilución FDV/mcap | 2.33 | -0.77 | 20 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.07 pp | -0.01 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +2.61 pp | +0.13 | 15 | CoinGecko |
 
-**Total: 62** (umbral 56, cobertura 0.80)
+**Total: 60** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 16/10/2026 21:09 UTC.
+- < 48 h desde 01/11/2026 21:07 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
