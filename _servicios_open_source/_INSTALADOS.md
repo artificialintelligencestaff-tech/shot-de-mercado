@@ -24,5 +24,5 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-11-01 `x_influencers` atraso repetido en 24 h — última corrida: 2026-11-02 00:37 UTC
+- [P] 2026-11-02 `telegram` atraso repetido en 24 h — última corrida: 2026-11-02 08:23 UTC
 <!-- /AUTO:repair -->
