@@ -1,6 +1,6 @@
 # BitTorrent (BTT) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $3.59992e-07 · mcap $347,420,015
-Detectado 01/11/2026 11:02 UTC · score 62 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $3.66104e-07 · mcap $353,527,161
+Detectado 04/11/2026 00:25 UTC · score 68 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $16,796,624 |
-| Cambio 24 h / 7 d | 1.61365% / -3.1513% |
+| Volumen 24 h | $21,564,709 |
+| Cambio 24 h / 7 d | 1.59149% / 0.9491% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0483 vs mediana 0.0263 | +0.55 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0610 vs mediana 0.0274 | +0.73 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.03 | -0.02 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.11 pp | +0.02 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +3.27 pp | +0.16 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | +0.00 pp | +0.00 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +10.50 pp | +0.52 | 15 | CoinGecko |
 
-**Total: 62** (umbral 56, cobertura 0.80)
+**Total: 68** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 01/11/2026 11:02 UTC.
+- < 48 h desde 04/11/2026 00:25 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
