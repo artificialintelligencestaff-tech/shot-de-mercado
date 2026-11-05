@@ -1,6 +1,6 @@
 # Solana (SOL) — dossier multi-chain
-🎴 Grupo h (1: blue chip) · chain solana · precio $106.67 · mcap $62,889,493,661
-Detectado 20/10/2026 14:20 UTC · score 58 (scoring mc-h-0.3, cobertura 1.00)
+🎴 Grupo h (1: blue chip) · chain solana · precio $96.23 · mcap $56,816,381,248
+Detectado 05/11/2026 08:33 UTC · score 60 (scoring mc-h-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | solana |
 | Categoría | layer-1 |
-| Volumen 24 h | $2,272,843,916 |
-| Cambio 24 h / 7 d | 2.73009% / -1.5357% |
+| Volumen 24 h | $3,816,183,296 |
+| Cambio 24 h / 7 d | 3.73241% / -4.0698% |
 
 ## 🔬 Método
 - Evento medido: tocar +2σ₄₈ antes de −2σ₄₈ (σ del GARCH(1,1)).
@@ -35,18 +35,18 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Retorno 24 h / σ GARCH | +2.73% / σ 2.64% = z +1.02 | +0.51 | 30 | Binance klines + CoinGecko |
-| Bollinger(20,2) con squeeze | ancho en percentil 0.69 · precio dentro de bandas | +0.00 | 20 | Binance klines |
+| Retorno 24 h / σ GARCH | +3.73% / σ 2.87% = z +1.28 | +0.64 | 30 | Binance klines + CoinGecko |
+| Bollinger(20,2) con squeeze | ancho en percentil 0.52 · precio dentro de bandas | +0.00 | 20 | Binance klines |
 | Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia] | +11.0% anualizado | +0.00 | 20 | Hyperliquid |
-| Fear & Greed (contrarian en extremos) | 55 | +0.00 | 15 | alternative.me |
-| Tendencia (MA20 ± ATR14) | precio 106.67 · MA20 111.12 · ATR 5.10 | +0.00 | 15 | Binance klines |
+| Fear & Greed (contrarian en extremos) | 50 | +0.00 | 15 | alternative.me |
+| Tendencia (MA20 ± ATR14) | precio 96.23 · MA20 100.00 · ATR 4.21 | +0.00 | 15 | Binance klines |
 
-- GARCH(1,1): α=0.12, β=0.75, σ próximo día 2.64% · barreras ±2σ₄₈ = ±7.46%
+- GARCH(1,1): α=0.14, β=0.72, σ próximo día 2.87% · barreras ±2σ₄₈ = ±8.11%
 
-**Total: 58** (umbral 56, cobertura 1.00)
+**Total: 60** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 20/10/2026 14:20 UTC.
+- < 48 h desde 05/11/2026 08:33 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
