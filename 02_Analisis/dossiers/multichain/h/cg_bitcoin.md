@@ -1,6 +1,6 @@
 # Bitcoin (BTC) — dossier multi-chain
-🎴 Grupo h (1: blue chip) · chain bitcoin · precio $83,073 · mcap $1,669,801,445,324
-Detectado 20/10/2026 23:23 UTC · score 56 (scoring mc-h-0.3, cobertura 1.00)
+🎴 Grupo h (1: blue chip) · chain bitcoin · precio $80,603 · mcap $1,620,552,761,656
+Detectado 05/11/2026 01:35 UTC · score 64 (scoring mc-h-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | bitcoin |
 | Categoría | layer-1 |
-| Volumen 24 h | $27,787,502,834 |
-| Cambio 24 h / 7 d | 1.30899% / -0.5564% |
+| Volumen 24 h | $40,143,298,051 |
+| Cambio 24 h / 7 d | 4.5096% / -0.9271% |
 
 ## 🔬 Método
 - Evento medido: tocar +2σ₄₈ antes de −2σ₄₈ (σ del GARCH(1,1)).
@@ -35,18 +35,18 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Retorno 24 h / σ GARCH | +1.31% / σ 1.69% = z +0.77 | +0.39 | 30 | Binance klines + CoinGecko |
-| Bollinger(20,2) con squeeze | ancho en percentil 0.15 · precio dentro de bandas | +0.00 | 20 | Binance klines |
+| Retorno 24 h / σ GARCH | +4.51% / σ 2.38% = z +1.85 | +0.93 | 30 | Binance klines + CoinGecko |
+| Bollinger(20,2) con squeeze | ancho en percentil 0.37 · precio dentro de bandas | +0.00 | 20 | Binance klines |
 | Funding (contrarian en extremos) [H: umbral absoluto hasta tener historia] | +11.0% anualizado | +0.00 | 20 | Hyperliquid |
-| Fear & Greed (contrarian en extremos) | 55 | +0.00 | 15 | alternative.me |
-| Tendencia (MA20 ± ATR14) | precio 83,073.00 · MA20 83,282.64 · ATR 2,058.84 | +0.00 | 15 | Binance klines |
+| Fear & Greed (contrarian en extremos) | 50 | +0.00 | 15 | alternative.me |
+| Tendencia (MA20 ± ATR14) | precio 80,603.00 · MA20 80,269.61 · ATR 2,163.95 | +0.00 | 15 | Binance klines |
 
-- GARCH(1,1): α=0.16, β=0.7, σ próximo día 1.69% · barreras ±2σ₄₈ = ±4.77%
+- GARCH(1,1): α=0.16, β=0.7, σ próximo día 2.38% · barreras ±2σ₄₈ = ±6.73%
 
-**Total: 56** (umbral 56, cobertura 1.00)
+**Total: 64** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 20/10/2026 23:23 UTC.
+- < 48 h desde 05/11/2026 01:35 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
