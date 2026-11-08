@@ -1,0 +1,71 @@
+{
+  "key": "cg:arbitrum",
+  "group": "f",
+  "group_rule": "6: L1/L2 o token nativo de una chain",
+  "scoring_version": "mc-f-0.3",
+  "score": 61,
+  "confidence": 1.0,
+  "reasons": [
+    "Momentum de TVL (g₇): -0.0040 → s=-0.04 (w 25)",
+    "Aceleración de TVL (a₇): +0.0050 → s=+0.10 (w 15)",
+    "Actividad DEX/TVL (ranking entre chains): 0.049 · percentil 0.67 → s=+0.33 (w 20)",
+    "Fees/TVL anualizado (ranking entre chains): 17.77% · percentil 0.83 → s=+0.67 (w 15)",
+    "Momentum relativo vs ETH (7d): +2.21% − ETH -1.63% = +3.84 pp → s=+0.19 (w 25)"
+  ],
+  "components": [
+    {
+      "name": "Momentum de TVL (g₇)",
+      "s": -0.0399,
+      "w": 25,
+      "value": "-0.0040",
+      "source": "DefiLlama historicalChainTvl"
+    },
+    {
+      "name": "Aceleración de TVL (a₇)",
+      "s": 0.1004,
+      "w": 15,
+      "value": "+0.0050",
+      "source": "DefiLlama historicalChainTvl"
+    },
+    {
+      "name": "Actividad DEX/TVL (ranking entre chains)",
+      "s": 0.3333,
+      "w": 20,
+      "value": "0.049 · percentil 0.67",
+      "source": "DefiLlama overview/dexs"
+    },
+    {
+      "name": "Fees/TVL anualizado (ranking entre chains)",
+      "s": 0.6667,
+      "w": 15,
+      "value": "17.77% · percentil 0.83",
+      "source": "DefiLlama overview/fees"
+    },
+    {
+      "name": "Momentum relativo vs ETH (7d)",
+      "s": 0.1921,
+      "w": 25,
+      "value": "+2.21% − ETH -1.63% = +3.84 pp",
+      "source": "CoinGecko"
+    }
+  ],
+  "event": "+20% antes de −15% en 48 h",
+  "threshold": 56,
+  "emittable": true,
+  "status_reason": "emitible",
+  "extra": {},
+  "symbol": "ARB",
+  "name": "Arbitrum",
+  "chain": "arbitrum",
+  "cg_id": "arbitrum",
+  "address": null,
+  "price_usd": 0.169698,
+  "mcap_usd": 1169578466.0,
+  "volume_24h_usd": 99108544.0,
+  "liquidity_usd": null,
+  "change_24h": 1.76637,
+  "change_7d": 2.2138,
+  "pool_address": null,
+  "pool_created_at": null,
+  "category": "layer-2"
+}
