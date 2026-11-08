@@ -1,6 +1,6 @@
 # Impossible Cloud Network Token (ICNT) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.244051 · mcap $61,669,963
-Detectado 05/11/2026 08:33 UTC · score 68 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.321945 · mcap $81,388,419
+Detectado 08/11/2026 02:09 UTC · score 66 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $12,722,985 |
-| Cambio 24 h / 7 d | 16.34759% / 29.5114% |
+| Volumen 24 h | $30,642,911 |
+| Cambio 24 h / 7 d | 6.67865% / 71.3434% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.2063 vs mediana 0.0375 | +1.00 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.3765 vs mediana 0.0235 | +1.00 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 2.77 | -0.93 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | +0.64 pp | +0.13 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +32.85 pp | +1.00 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | -0.07 pp | -0.01 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +76.71 pp | +1.00 | 15 | CoinGecko |
 
-**Total: 68** (umbral 56, cobertura 0.80)
+**Total: 66** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 05/11/2026 08:33 UTC.
+- < 48 h desde 08/11/2026 02:09 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
