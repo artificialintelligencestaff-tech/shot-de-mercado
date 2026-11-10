@@ -24,6 +24,5 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-11-09 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 5 corridas sin ítems
-- [P] 2026-11-09 `telegram` sin ítems hace más de 24 h — último ítem: 2026-11-08 07:49 UTC
+- [P] 2026-11-10 `rss` atraso repetido en 24 h — última corrida: 2026-11-10 00:09 UTC
 <!-- /AUTO:repair -->
