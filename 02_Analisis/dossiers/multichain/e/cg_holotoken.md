@@ -1,6 +1,6 @@
 # Holo (HOT) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.00035396 · mcap $62,916,122
-Detectado 08/11/2026 02:09 UTC · score 71 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.00042278 · mcap $75,211,727
+Detectado 11/11/2026 07:31 UTC · score 65 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $4,129,385 |
-| Cambio 24 h / 7 d | -7.45481% / 1.4667% |
+| Volumen 24 h | $17,409,502 |
+| Cambio 24 h / 7 d | -4.32914% / -12.1966% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0656 vs mediana 0.0235 | +0.93 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.2315 vs mediana 0.0387 | +1.00 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.00 | +0.00 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | -0.07 pp | -0.01 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | +6.83 pp | +0.34 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | +0.00 pp | +0.00 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | -7.74 pp | -0.39 | 15 | CoinGecko |
 
-**Total: 71** (umbral 56, cobertura 0.80)
+**Total: 65** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 08/11/2026 02:09 UTC.
+- < 48 h desde 11/11/2026 07:31 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
