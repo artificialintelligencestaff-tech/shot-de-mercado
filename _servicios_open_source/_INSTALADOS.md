@@ -24,8 +24,7 @@
 <!-- AUTO:repair -->
 ## Reparaciones escaladas (automático: bot_self_repair)
 
-- [P] 2026-11-15 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 4 corridas sin ítems
+- [P] 2026-11-15 `telegram` vacío con todas las fuentes OK (¿cambió el formato?) — 5 corridas sin ítems
 - [P] 2026-11-15 `telegram` sin ítems hace más de 24 h — último ítem: 2026-11-14 03:42 UTC
-- [P] 2026-11-15 `rss` atraso repetido en 24 h — última corrida: 2026-11-15 00:58 UTC
-- [P] 2026-11-15 `x_influencers` atraso repetido en 24 h — última corrida: 2026-11-15 00:28 UTC
+- [P] 2026-11-15 `rss` atraso repetido en 24 h — última corrida: 2026-11-15 07:46 UTC
 <!-- /AUTO:repair -->
