@@ -13,12 +13,12 @@
 |---|---|---|---|
 | `forums` | diseño | — | —/— |
 | `github` | diseño | — | —/— |
-| `rss` | atrasado | 27 | 11/11 |
+| `rss` | atrasado | 64 | 11/11 |
 | `telegram` | atrasado | 0 | 15/15 |
 | `telegram_b` | sin_datos | — | —/— |
 | `web` | diseño | — | —/— |
 | `x` | diseño | — | —/— |
-| `x_influencers` | ok | 46 | 46/50 |
+| `x_influencers` | atrasado | 12 | 47/50 |
 <!-- /AUTO:sources -->
 
 <!-- AUTO:repair -->
