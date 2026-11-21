@@ -1,6 +1,6 @@
 # AIOZ Network (AIOZ) — dossier multi-chain
-🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.096791 · mcap $125,271,922
-Detectado 26/10/2026 15:20 UTC · score 60 (scoring mc-e-0.3, cobertura 0.80)
+🎴 Grupo e (5: categoría DePIN) · chain n/d · precio $0.075404 · mcap $97,448,222
+Detectado 21/11/2026 18:48 UTC · score 66 (scoring mc-e-0.3, cobertura 0.80)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | depin |
-| Volumen 24 h | $9,361,755 |
-| Cambio 24 h / 7 d | -1.71596% / -8.1665% |
+| Volumen 24 h | $9,906,747 |
+| Cambio 24 h / 7 d | 5.39566% / 0.4079% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,16 +35,16 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): C
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.0747 vs mediana 0.0359 | +0.67 | 30 | CoinGecko |
+| Actividad (vol/mcap vs categoría) [H: proxy de ingresos de red] | 0.1017 vs mediana 0.0556 | +0.55 | 30 | CoinGecko |
 | Divergencia ingresos vs precio | n/d | n/d | 20 | DefiLlama fees (sin colectar) |
 | Dilución FDV/mcap | 1.00 | -0.00 | 20 | CoinGecko |
-| Momentum de la categoría (24 h vs mediana de las 7) | -0.31 pp | -0.06 | 15 | CoinGecko coins/categories |
-| Momentum vs categoría (7d) | -3.72 pp | -0.19 | 15 | CoinGecko |
+| Momentum de la categoría (24 h vs mediana de las 7) | +1.01 pp | +0.20 | 15 | CoinGecko coins/categories |
+| Momentum vs categoría (7d) | +7.18 pp | +0.36 | 15 | CoinGecko |
 
-**Total: 60** (umbral 56, cobertura 0.80)
+**Total: 66** (umbral 56, cobertura 0.80)
 
 ## ⏱️ Vigencia
-- < 48 h desde 26/10/2026 15:20 UTC.
+- < 48 h desde 21/11/2026 18:48 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
