@@ -1,6 +1,6 @@
 # PancakeSwap (CAKE) — dossier multi-chain
-🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $2.06 · mcap $704,242,242
-Detectado 29/10/2026 08:00 UTC · score 60 (scoring mc-d-0.3, cobertura 1.00)
+🎴 Grupo d (3: categoría de sintéticos / perps) · chain n/d · precio $1.47 · mcap $489,546,188
+Detectado 22/11/2026 03:36 UTC · score 62 (scoring mc-d-0.3, cobertura 1.00)
 Ventana de la señal: < 48 h desde la detección.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,8 +24,8 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 | Contrato | n/d |
 | Chain | n/d |
 | Categoría | governance |
-| Volumen 24 h | $52,493,214 |
-| Cambio 24 h / 7 d | -1.10806% / -6.131% |
+| Volumen 24 h | $41,198,321 |
+| Cambio 24 h / 7 d | -0.31719% / -4.8688% |
 
 ## 🔬 Método
 - Evento medido: +20% antes de −15% en 48 h.
@@ -35,15 +35,15 @@ Ruta por exchange centralizado (par confirmado en CoinGecko para este activo): B
 ## 🎯 Fundamento
 | Componente | Valor | sᵢ | wᵢ | Fuente |
 |---|---|---|---|---|
-| Funding (contrarian en extremos) | -18.0% anualizado | +1.00 | 25 | Hyperliquid |
-| Open interest que confirma (24 h) | +0.019 log | -0.04 | 25 | Hyperliquid (historial de _perps.json) |
-| Basis (mark − oráculo) [H: signo a medir] | -0.107% | -0.11 | 20 | Hyperliquid |
-| Momentum 24 h | -1.11% | -0.06 | 30 | CoinGecko |
+| Funding (contrarian en extremos) | -56.5% anualizado | +1.00 | 25 | Hyperliquid |
+| Open interest que confirma (24 h) | -0.051 log | +0.10 | 25 | Hyperliquid (historial de _perps.json) |
+| Basis (mark − oráculo) [H: signo a medir] | -0.181% | -0.18 | 20 | Hyperliquid |
+| Momentum 24 h | -0.32% | -0.02 | 30 | CoinGecko |
 
-**Total: 60** (umbral 56, cobertura 1.00)
+**Total: 62** (umbral 56, cobertura 1.00)
 
 ## ⏱️ Vigencia
-- < 48 h desde 29/10/2026 08:00 UTC.
+- < 48 h desde 22/11/2026 03:36 UTC.
 
 ## 📚 Fuentes
 - CoinGecko / GeckoTerminal / DefiLlama vía script_114
